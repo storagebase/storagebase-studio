@@ -55,6 +55,7 @@ anchored to a live pass against this stack, same discipline as
   its live pass replays the Vault seed by hand against `:8201` and proves the
   module, not the seed:
   `export VAULT_ADDR=http://127.0.0.1:8201 VAULT_TOKEN=root &&
+  bao secrets enable -path=storagebase kv-v2 &&
   bao kv put storagebase/fixture username=fixture password=fixture-pass`.
 
 ## Verify by hand

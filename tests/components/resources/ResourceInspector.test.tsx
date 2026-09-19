@@ -35,6 +35,8 @@ mock.module("@/components/ui/dialog", () => ({
 // The inspector imports the real blob viewer barrel (self-registration, like
 // production); kafka has no viewer, which is exactly what the fallback test needs.
 import { ResourceInspector } from "@/components/resources/ResourceInspector";
+import { hasResourceViewer } from "@/components/resources/viewer-registry";
+import { RESOURCE_TYPES } from "@/lib/resources/types";
 import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 
 const s3Connection: ResourceConnection = {
@@ -45,26 +47,11 @@ const s3Connection: ResourceConnection = {
   region: "us-east-1",
 };
 
-const vaultConnection: ResourceConnection = {
-  id: "res-2",
-  name: "vault",
-  type: "hashicorp-vault",
-  createdAt: "2026-01-01T00:00:00.000Z",
-};
-
 const objectNode: ResourceNode = {
   id: "bucket/fixture-blobs/hello.txt",
   parentId: "bucket/fixture-blobs",
   kind: "object",
   name: "hello.txt",
-  hasChildren: false,
-};
-
-const secretNode: ResourceNode = {
-  id: "storagebase/fixture",
-  parentId: null,
-  kind: "secret",
-  name: "fixture",
   hasChildren: false,
 };
 
@@ -102,11 +89,14 @@ describe("ResourceInspector", () => {
     expect(screen.queryByTestId("resource-inspector-fallback")).toBeNull();
   });
 
-  test("unregistered types degrade to the fallback, naming the type", () => {
-    render(<ResourceInspector connection={vaultConnection} node={secretNode} {...props} />);
-
-    const fallback = screen.getByTestId("resource-inspector-fallback");
-    expect(fallback.textContent).toContain("hashicorp-vault");
+  test("every resource type resolves a viewer — no reachable fallback", () => {
+    // All ten type-ids registered a viewer with their family; the inspector's
+    // fallback branch stays as defense for future ids, but nothing reachable
+    // may hit it. RESOURCE_TYPES is the union's only list, so this fails when
+    // a family forgets a registration.
+    for (const type of RESOURCE_TYPES) {
+      expect(hasResourceViewer(type), type).toBe(true);
+    }
   });
 
   test("renders nothing without a connection and node", () => {

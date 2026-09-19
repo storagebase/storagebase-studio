@@ -15,3 +15,4 @@
  */
 import "./blob";
 import "./messaging";
+import "./vaults";
