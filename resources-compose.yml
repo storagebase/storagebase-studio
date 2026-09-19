@@ -1,0 +1,183 @@
+# Fixture stack for the StorageBase resource families (workstream B).
+#
+# One file, separate from database-compose.yml, so the resource live passes
+# boot without the database fleet and vice versa. Container names use the
+# `storagebase-*` prefix for the same reason the database fleet uses
+# `libredb-*`: the two stacks can run side by side with no name clash.
+#
+# Port discipline: host ports must not collide with database-compose.yml.
+# RisingWave already holds host 4566 there, so LocalStack's edge (4566 in
+# every SDK default) is published on host 4567 and the SQS/KMS/SecretsManager
+# fixtures connect through an explicit endpoint override — which is also what
+# the `s3` endpoint field exercises for MinIO/R2/Spaces.
+#
+# Image tags: rolling `:latest` everywhere except the two lines with stable
+# major tags (rabbitmq:4-management, vault:1). The QuestDB warning in
+# database-compose.yml applies — a rolling tag can move under a live pass —
+# but MinIO/LocalStack/OpenBao publish no stable major line, so pinning would
+# be a version that stops resolving. Re-pull before a live pass; the family
+# docs record the build each measurement was taken against.
+#
+# Every seed below is re-runnable (IF NOT EXISTS / tolerate-exists), because
+# the init sidecars run on every `up`, not just the first.
+
+services:
+  # S3 fixture. Console on :9001 is for humans; providers speak :9000.
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: storagebase-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Creates the fixture buckets + sample object. Separate container (the
+  # couchbase-init sidecar precedent): the server image carries no `mc`.
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: storagebase-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./docker/minio-init:/init:ro
+    entrypoint: ["/bin/sh", "/init/01-buckets.sh"]
+
+  # Azure Blob emulator. Blob service only (queue/table ports unmapped and
+  # unused); the well-known devstore account is the whole credential story.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: storagebase-azurite
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite-data:/data
+
+  # Kafka in KRaft mode: one combined broker+controller, no ZooKeeper, topics
+  # auto-created so a bare browse works. The cluster id is the documented
+  # example value, not generated: a fresh id per boot would invalidate stored
+  # offsets and make the fixture unrepeatable.
+  kafka:
+    image: apache/kafka:latest
+    container_name: storagebase-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  # Creates the fixture topics. Retries because the broker accepts the port
+  # before KRaft elects itself leader; create is idempotent past the first run.
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: storagebase-kafka-init
+    depends_on:
+      - kafka
+    volumes:
+      - ./docker/kafka-init:/init:ro
+    entrypoint: ["/bin/bash", "/init/01-topics.sh"]
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: storagebase-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./docker/rabbitmq-init/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./docker/rabbitmq-init/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # AWS fixture for SQS, KMS and Secrets Manager. Narrow SERVICES keeps the
+  # boot fast; anything else a family needs is added here, not assumed.
+  localstack:
+    image: localstack/localstack:latest
+    container_name: storagebase-localstack
+    ports:
+      - "4567:4566"
+    environment:
+      SERVICES: sqs,kms,secretsmanager
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    volumes:
+      - ./docker/localstack-init:/etc/localstack/init/ready.d:ro
+      - localstack-data:/var/lib/localstack
+
+  # Vault dev server. In-memory, unsealed, root token `root` — a fixture, never
+  # a deployment shape. The seed sidecar writes one kv-v2 secret.
+  vault:
+    image: hashicorp/vault:1.21
+    container_name: storagebase-vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8200/v1/sys/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vault-init:
+    image: hashicorp/vault:1.21
+    container_name: storagebase-vault-init
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+    volumes:
+      - ./docker/vault-init:/init:ro
+    entrypoint: ["/bin/sh", "/init/01-seed.sh"]
+
+  # OpenBao dev server. Same API as Vault (the fixture the `openbao` type-id
+  # shares its provider module with); seeded by hand, not by the vault sidecar,
+  # so the two fixtures stay independently resettable. See docs/resources/compose.md.
+  openbao:
+    image: openbao/openbao:latest
+    container_name: storagebase-openbao
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8201:8200"
+    command: server -dev -dev-root-token-id=root -dev-listen-address=0.0.0.0:8200
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8200/v1/sys/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  minio-data:
+  azurite-data:
+  kafka-data:
+  rabbitmq-data:
+  localstack-data:
