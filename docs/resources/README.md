@@ -33,5 +33,21 @@ M1 ships the spine only: types, base provider, registry, factory, storage and
 API handling, UI configuration and icons. The four REST routes and the sidebar
 listing speak through them, but no provider module is registered yet, so the
 picker offers no types: `selectableResourceTypes()` is empty by design until
-M2 registers `s3`. That is the honest midpoint — a type that answers 501 looks
+the blob family registers `s3`. That is the honest midpoint — a type that answers 501 looks
 broken, so the UI hides it rather than offering it.
+
+## Dependencies (workstream A)
+
+Family SDKs are regular `dependencies`, externalized in both `tsup.config.ts`
+and `next.config.ts` `serverExternalPackages` like the database drivers:
+
+- S3 + S3-compatibles (MinIO/R2/Spaces via endpoint override): `@aws-sdk/client-s3`
+- Azure Blob: `@azure/storage-blob`
+- Kafka: `kafkajs` (pure JS, no native addon)
+- RabbitMQ: `amqplib` (+ `@types/amqplib` dev) — dual UMD/ESM, hence the double externalization
+- SQS: `@aws-sdk/client-sqs`; KMS: `@aws-sdk/client-kms`; Secrets Manager: `@aws-sdk/client-secrets-manager`
+- Azure Key Vault: `@azure/keyvault-secrets` + `@azure/identity` (`ClientSecretCredential`
+  matches the connection fields: tenantId/clientId/clientSecret)
+- HashiCorp Vault / OpenBao: **no dependency**. The Vault API is plain REST and
+  `node-vault` is unmaintained; the family module speaks HTTP via `fetch`,
+  like the resource routes already do.
