@@ -242,6 +242,17 @@ const nextConfig: NextConfig = {
     "oracledb",
     "@duckdb/node-api",
     "@duckdb/node-bindings",
+    // Resource families (StorageBase fork) — same externalization as the
+    // drivers above. amqplib is dual UMD/ESM: external in both run modes.
+    "@aws-sdk/client-s3",
+    "@aws-sdk/client-sqs",
+    "@aws-sdk/client-kms",
+    "@aws-sdk/client-secrets-manager",
+    "@azure/storage-blob",
+    "@azure/keyvault-secrets",
+    "@azure/identity",
+    "kafkajs",
+    "amqplib",
   ],
 
   // One rule over every path, not just the skipped ones: both values are constants and byte

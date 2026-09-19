@@ -47,6 +47,19 @@ export default defineConfig({
     "@libredb/libredb",
     // SSH and crypto
     "ssh2",
+    // Resource families (StorageBase fork) — SDKs the providers dynamic-import.
+    // Consumers install what they need, same as the database drivers above.
+    // amqplib ships dual UMD/ESM: external here AND in serverExternalPackages,
+    // verified in both run modes (the fork's risk register).
+    "@aws-sdk/client-s3",
+    "@aws-sdk/client-sqs",
+    "@aws-sdk/client-kms",
+    "@aws-sdk/client-secrets-manager",
+    "@azure/storage-blob",
+    "@azure/keyvault-secrets",
+    "@azure/identity",
+    "kafkajs",
+    "amqplib",
     // Monaco editor
     "monaco-editor",
     "@monaco-editor/react",
