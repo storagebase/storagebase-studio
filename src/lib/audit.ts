@@ -56,6 +56,15 @@ export type AuditEventType =
    * queue purge, secret write) join this vocabulary with their families.
    */
   | "resource_connection_test"
+  /**
+   * A resource-layer write (StorageBase fork): one event for the guard decision
+   * and, when allowed, one for the provider's outcome — the `agent_operation` /
+   * `object_edit` shape, so an operator can tell who decided from what happened.
+   * Reads (meta/tree/health/test) are not audited here: like object reads, they
+   * change nothing. Family routes emit these; the registry of outcome reasons
+   * below is the closed set they map to.
+   */
+  | "resource_operation"
   // Phase 1 auth events
   | "login_success"
   | "login_failure"
@@ -151,7 +160,18 @@ export type AuditReason =
   // service was unreachable, refused the credentials, or answered a protocol
   // error. One code covers all three because the test route's RESPONSE carries
   // the provider's own sentence; the audit trail only needs the class.
-  | "resource_unreachable";
+  | "resource_unreachable"
+  // The resource write outcomes (StorageBase fork), emitted on `resource_operation`
+  // events by the family routes. Each family maps its outcomes onto these with a
+  // total record (the `DENY_REASONS` precedent), so an outcome with no reading
+  // here fails to compile. `resource_unsupported` is the honest refusal: Kafka has
+  // no purge and SQS peek is receive-with-visibility≈0, so the route says which
+  // operation the service cannot do rather than failing it as an error.
+  | "resource_denied"
+  | "resource_not_found"
+  | "resource_conflict"
+  | "resource_unsupported"
+  | "resource_failed";
 
 export interface AuditEvent {
   id: string;

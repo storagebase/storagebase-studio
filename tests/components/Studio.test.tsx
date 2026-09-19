@@ -84,6 +84,19 @@ const mockStorageGetFavoriteConnectionIds = mock(() => [] as string[]);
 const mockStorageToggleFavoriteConnection = mock(() => [] as string[]);
 const mockStorageGetConnectionOrder = mock(() => [] as string[]);
 const mockStorageSetConnectionOrder = mock(() => {});
+// Resource connections (StorageBase fork). Backed by an array reset per test,
+// so the real useResourceConnections hook exercises the real read-modify-write.
+let storedResourceConnections: unknown[] = [];
+const mockStorageGetResourceConnections = mock(() => [...storedResourceConnections]);
+const mockStorageSaveResourceConnection = mock((conn: unknown) => {
+  const id = (conn as { id: string }).id;
+  const index = storedResourceConnections.findIndex((s) => (s as { id: string }).id === id);
+  if (index > -1) storedResourceConnections[index] = conn;
+  else storedResourceConnections.push(conn);
+});
+const mockStorageDeleteResourceConnection = mock((id: unknown) => {
+  storedResourceConnections = storedResourceConnections.filter((s) => (s as { id: string }).id !== id);
+});
 // Data Masking
 const mockSaveMaskingConfig = mock(() => {});
 // URL (for export tests)
@@ -247,6 +260,9 @@ mock.module("@/lib/storage", () => ({
     toggleFavoriteConnection: mockStorageToggleFavoriteConnection,
     getConnectionOrder: mockStorageGetConnectionOrder,
     setConnectionOrder: mockStorageSetConnectionOrder,
+    getResourceConnections: mockStorageGetResourceConnections,
+    saveResourceConnection: mockStorageSaveResourceConnection,
+    deleteResourceConnection: mockStorageDeleteResourceConnection,
   },
 }));
 
@@ -491,6 +507,7 @@ mock.module("@/components/ui/resizable", () => {
 
 const { default: Studio } = await import("@/components/Studio");
 import type { DatabaseConnection } from "@/lib/types";
+import type { ResourceConnection } from "@/lib/resources/types";
 import type { DatabaseObject } from "@/lib/db/types";
 import type { TreeRowActionHandlers } from "@/components/object-tree/row-actions";
 
@@ -590,6 +607,10 @@ describe("Studio", () => {
     mockStorageGetConnectionOrder.mockClear();
     mockStorageGetConnectionOrder.mockReturnValue([]);
     mockStorageSetConnectionOrder.mockClear();
+    storedResourceConnections = [];
+    mockStorageGetResourceConnections.mockClear();
+    mockStorageSaveResourceConnection.mockClear();
+    mockStorageDeleteResourceConnection.mockClear();
     mockSaveMaskingConfig.mockClear();
     // Set rather than restored: one test turns masking on, and `mockRestore` in bun
     // drops the implementation entirely instead of returning it to this default.
@@ -2932,5 +2953,88 @@ describe("Studio", () => {
 
     const rail = await findByTestId("agent-rail");
     expect(rail.closest('[data-testid="resizable-panel"]')).not.toBeNull();
+  });
+
+  // =========================================================================
+  // Resource connections (StorageBase fork)
+  // =========================================================================
+
+  describe("resource connections", () => {
+    const resConn: ResourceConnection = {
+      id: "res-1",
+      name: "backups",
+      type: "s3",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      region: "us-east-1",
+    };
+    const resConn2: ResourceConnection = {
+      id: "res-2",
+      name: "events",
+      type: "kafka",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    test("passes resource state and handlers to the Sidebar", () => {
+      render(<Studio />);
+      expect(capturedSidebarProps.resourceConnections).toEqual([]);
+      expect(capturedSidebarProps.activeResourceConnection).toBeNull();
+      expect(typeof capturedSidebarProps.onSelectResourceConnection).toBe("function");
+      expect(typeof capturedSidebarProps.onDeleteResourceConnection).toBe("function");
+      expect(typeof capturedSidebarProps.onEditResourceConnection).toBe("function");
+      expect(typeof capturedSidebarProps.onAddResourceConnection).toBe("function");
+    });
+
+    test("passes the resource save handler to the connection modal", () => {
+      render(<Studio />);
+      expect(typeof capturedConnectionModalProps.onConnectResource).toBe("function");
+      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
+    });
+
+    test("modal onConnectResource saves, activates and closes", () => {
+      render(<Studio />);
+      const addFn = capturedSidebarProps.onAddConnection as () => void;
+      act(() => addFn());
+      expect(capturedConnectionModalProps.isOpen).toBe(true);
+
+      const saveFn = capturedConnectionModalProps.onConnectResource as (c: ResourceConnection) => void;
+      act(() => saveFn(resConn));
+
+      expect(mockStorageSaveResourceConnection).toHaveBeenCalledWith(resConn);
+      expect(capturedConnectionModalProps.isOpen).toBe(false);
+      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
+      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn);
+      expect(capturedSidebarProps.resourceConnections).toEqual([resConn]);
+    });
+
+    test("sidebar edit opens the modal pinned to the resource connection", () => {
+      render(<Studio />);
+      const editFn = capturedSidebarProps.onEditResourceConnection as (c: ResourceConnection) => void;
+      act(() => editFn(resConn));
+      expect(capturedConnectionModalProps.isOpen).toBe(true);
+      expect(capturedConnectionModalProps.editResourceConnection).toEqual(resConn);
+    });
+
+    test("modal onClose clears the resource edit target", () => {
+      render(<Studio />);
+      const editFn = capturedSidebarProps.onEditResourceConnection as (c: ResourceConnection) => void;
+      act(() => editFn(resConn));
+      const closeFn = capturedConnectionModalProps.onClose as () => void;
+      act(() => closeFn());
+      expect(capturedConnectionModalProps.isOpen).toBe(false);
+      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
+    });
+
+    test("deleting the active resource falls back to the first survivor", () => {
+      storedResourceConnections = [resConn, resConn2];
+      render(<Studio />);
+      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn);
+
+      const deleteFn = capturedSidebarProps.onDeleteResourceConnection as (id: string) => void;
+      act(() => deleteFn("res-1"));
+
+      expect(mockStorageDeleteResourceConnection).toHaveBeenCalledWith("res-1");
+      expect(capturedSidebarProps.resourceConnections).toEqual([resConn2]);
+      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn2);
+    });
   });
 });

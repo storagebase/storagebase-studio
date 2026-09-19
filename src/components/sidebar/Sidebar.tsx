@@ -11,6 +11,9 @@ import { GitHubRepoLink } from "@/components/github-repo-link";
 import { getAppVersion } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { ConnectionsList } from "./ConnectionsList";
+import { ResourceConnectionsList } from "@/components/resources/ResourceConnectionsList";
+import { ResourceTree } from "@/components/resources/ResourceTree";
+import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 
 interface SidebarProps {
   connections: DatabaseConnection[];
@@ -72,6 +75,19 @@ interface SidebarProps {
    * inventory; the embedded workspace does not, because its host runs the statements.
    */
   objectRefreshToken?: number;
+  /**
+   * Resource connections (StorageBase fork). The whole group is optional and
+   * renders only when `resourceConnections` is provided — the shell passes the
+   * full set together, so partial wiring is not a state the UI represents.
+   */
+  resourceConnections?: ResourceConnection[];
+  activeResourceConnection?: ResourceConnection | null;
+  onSelectResourceConnection?: (conn: ResourceConnection) => void;
+  onDeleteResourceConnection?: (id: string) => void;
+  onEditResourceConnection?: (conn: ResourceConnection) => void;
+  onAddResourceConnection?: () => void;
+  /** A resource tree row the reader activated, handed over whole. */
+  onResourceNodeClick?: (node: ResourceNode) => void;
 }
 
 export function Sidebar({
@@ -96,6 +112,13 @@ export function Sidebar({
   objectActions,
   objectSource,
   objectRefreshToken,
+  resourceConnections,
+  activeResourceConnection,
+  onSelectResourceConnection,
+  onDeleteResourceConnection,
+  onEditResourceConnection,
+  onAddResourceConnection,
+  onResourceNodeClick,
 }: SidebarProps) {
   const appVersion = getAppVersion();
 
@@ -150,6 +173,21 @@ export function Sidebar({
           onReorderConnections={onReorderConnections}
           onAddConnection={onAddConnection}
         />
+        {resourceConnections !== undefined &&
+          onSelectResourceConnection !== undefined &&
+          onDeleteResourceConnection !== undefined &&
+          onAddResourceConnection !== undefined && (
+            <div className="mt-4">
+              <ResourceConnectionsList
+                connections={resourceConnections}
+                activeConnection={activeResourceConnection ?? null}
+                onSelectConnection={onSelectResourceConnection}
+                onDeleteConnection={onDeleteResourceConnection}
+                onEditConnection={onEditResourceConnection}
+                onAddConnection={onAddResourceConnection}
+              />
+            </div>
+          )}
       </ScrollArea>
 
       {/*
@@ -204,6 +242,16 @@ export function Sidebar({
               <span className="mt-3 text-xs font-medium">Reading the connection...</span>
             </div>
           )}
+        </div>
+      )}
+
+      {activeResourceConnection && (
+        <div className="flex-1 min-h-0 px-2 pb-4 overflow-y-auto">
+          <ResourceTree
+            key={activeResourceConnection.id}
+            connection={activeResourceConnection}
+            onNodeClick={onResourceNodeClick}
+          />
         </div>
       )}
 
