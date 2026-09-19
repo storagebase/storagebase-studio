@@ -206,8 +206,8 @@ describe("instrumentation register()", () => {
       log.mockRestore();
     }
 
-    expect(output).toContain("LibreDB Studio");
-    expect(output).toContain("https://github.com/libredb/libredb-studio");
+    expect(output).toContain("StorageBase Studio");
+    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
   });
 
   test("prints no banner when the server refuses to boot (#227)", async () => {

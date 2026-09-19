@@ -7,7 +7,7 @@ import { SOCIAL_LINKS } from "@/lib/social-links";
  * to say "GitHub" six times. The repository is the door; what is behind it is GitHub's job
  * to show.
  */
-const REPO_URL = "https://github.com/libredb/libredb-studio";
+const REPO_URL = "https://github.com/storagebase/storagebase-studio";
 
 interface CommunitySectionProps {
   variant: "desktop" | "mobile";
@@ -81,7 +81,7 @@ function DesktopCommunity() {
             rel="noopener noreferrer"
             className="hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-tint/50 rounded-sm transition-colors duration-200"
           >
-            github.com/libredb/libredb-studio
+            github.com/storagebase/storagebase-studio
           </a>
         </p>
 
@@ -107,7 +107,7 @@ function MobileCommunity() {
           rel="noopener noreferrer"
           className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-tint/50 rounded-sm transition-colors"
         >
-          github.com/libredb/libredb-studio
+          github.com/storagebase/storagebase-studio
         </a>
       </p>
 

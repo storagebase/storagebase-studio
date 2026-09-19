@@ -56,7 +56,7 @@ describe("showStarPromptToast", () => {
     lastToastCall().options.action.onClick();
 
     expect(openMock).toHaveBeenCalledWith(REPO_URL, "_blank", "noopener,noreferrer");
-    expect(REPO_URL).toBe("https://github.com/libredb/libredb-studio");
+    expect(REPO_URL).toBe("https://github.com/storagebase/storagebase-studio");
     expect(localStorage.getItem(HANDLED_KEY)).not.toBeNull();
   });
 

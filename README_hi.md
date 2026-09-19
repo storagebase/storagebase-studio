@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="LibreDB Studio Logo" />
+  <img src="public/logo.svg" width="200" alt="StorageBase Studio Logo" />
 </p>
 
-<h1 align="center">LibreDB Studio</h1>
+<h1 align="center">StorageBase Studio</h1>
 
 <p align="center">
   <strong>डेटाबेस एडिटर जो आपके laptop पर नहीं, आपके डेटा के क़रीब deploy होता है।</strong>
@@ -37,7 +37,7 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/hero-demo.gif" alt="LibreDB Studio" width="100%" />
+  <img src="public/screenshots/hero-demo.gif" alt="StorageBase Studio" width="100%" />
 </p>
 
 <p align="center">
@@ -75,7 +75,7 @@ Helm, Homebrew, Snap, winget या deb/rpm चाहिए? नीचे [इ�
 
 **डेटाबेस अपनी जगह बदल चुके हैं।** वे Kubernetes में, managed cloud में, और ग्राहक के ऐसे VPC में पहुँच गए हैं जहाँ jump host से होकर ही जाया जा सकता है। **पर उन्हें पढ़ने वाले tools वहीं के वहीं रह गए।** वे आज भी desktop apps हैं: भारी, हर seat का पैसा लेने वाले, पहले install होने वाले, और यह मानकर चलने वाले कि एक ही डेटाबेस है, एक ही laptop है, और एक ही इंसान है जो कभी device नहीं बदलता।
 
-LibreDB Studio दूसरा रास्ता चुनता है: **tool डेटा के पास जाता है, डेटा tool के पास नहीं आता।**
+StorageBase Studio दूसरा रास्ता चुनता है: **tool डेटा के पास जाता है, डेटा tool के पास नहीं आता।**
 
 इस बात को गंभीरता से लें, तो यह पसंद-नापसंद नहीं रह जाती। यह एक specification बन जाती है।
 

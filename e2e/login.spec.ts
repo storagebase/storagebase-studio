@@ -10,7 +10,7 @@ test.describe("Login Flow", () => {
   });
 
   test("shows login page with email and password fields", async ({ page }) => {
-    await expect(page.locator("text=LibreDB Studio").first()).toBeVisible();
+    await expect(page.locator("text=StorageBase Studio").first()).toBeVisible();
     await expect(page.locator('input[type="email"]').first()).toBeVisible();
     await expect(page.locator('input[type="password"]').first()).toBeVisible();
     await expect(page.locator('button:has-text("Sign in")').first()).toBeVisible();

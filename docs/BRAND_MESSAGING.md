@@ -4,7 +4,7 @@ The messaging architecture marketing teams work from: what LibreDB claims, who i
 
 ## Positioning statement
 
-> For engineering teams whose databases live in the cloud, LibreDB Studio is the database editor that deploys next to the data instead of onto your laptop: one browser tab for PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, Redis, SQLite, libSQL, DuckDB, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino and Cassandra, with SSO and audit built in, under MIT with nothing held back.
+> For engineering teams whose databases live in the cloud, StorageBase Studio is the database editor that deploys next to the data instead of onto your laptop: one browser tab for PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, Redis, SQLite, libSQL, DuckDB, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino and Cassandra, with SSO and audit built in, under MIT with nothing held back.
 
 One sentence, one reference point. Everything else in this brief either supports it or is cut.
 
@@ -46,7 +46,7 @@ And it has to be unrestricted. You cannot place a per-seat licensed, feature-gat
 
 ### Why the paid Platform is consistent with this
 
-LibreDB Studio is MIT because it has to go everywhere. libredb-platform is paid because it is a service rather than an environment: hosting, tenancy, billing and support for teams that would rather not run Studio themselves.
+StorageBase Studio is MIT because it has to go everywhere. libredb-platform is paid because it is a service rather than an environment: hosting, tenancy, billing and support for teams that would rather not run Studio themselves.
 
 The line holds under pressure, which is the point. The editor you deploy is free and stays free; what costs money is someone else running it for you. No capability is moved across that line to create a reason to upgrade.
 
@@ -120,7 +120,7 @@ Every promise in this brief resolves to a row below. A claim with no row here do
 
 Facts drift. Provider counts, channel counts and competitor editions all change, so each row carries the date it was checked. A row whose date has gone stale is unverified, not true.
 
-### LibreDB Studio
+### StorageBase Studio
 
 | Claim | Evidence | Source | Verified |
 | :--- | :--- | :--- | :--- |
@@ -225,7 +225,7 @@ An engineer speaking to an engineer.
 - Competitors are never disparaged by name. A comparison is a table with sources, and the reader draws the conclusion.
 - Prefer the concrete number to the impressive word. "Sixteen engines" beats "extensive database support".
 - Say the limitation out loud. Stating scope precisely is what makes the rest of the claims credible to this audience.
-- Product terms stay in English in every language. LibreDB Studio, not a translated variant.
+- Product terms stay in English in every language. StorageBase Studio, not a translated variant.
 
 ## Tagline candidates
 

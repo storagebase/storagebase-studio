@@ -2,6 +2,8 @@
 
 Guidance for Claude Code in this repo — conventions, rules, and gotchas only. Read the code and `docs/` for anything derivable from them.
 
+> **This repo is the StorageBase Studio fork** of `libredb/libredb-studio` (synced from upstream for database work). **Read [`STORAGEBASE.md`](STORAGEBASE.md) first** — it owns the fork rules: the parallel resource layer (`src/lib/resources/**`, `src/app/api/resources/**`, `src/components/resources/**`) must never require edits inside `src/lib/db/**`, branding vs identifier policy, and the upstream-sync runbook in [`docs/UPSTREAM_SYNC.md`](docs/UPSTREAM_SYNC.md).
+
 > **This repo is published as the npm package `@libredb/studio`** — a CLI (`npx @libredb/studio`) plus an embeddable library surface built by `build:lib`. It is **not** embedded in `libredb-platform`: separate products since 2026-08-14, so "platform consumes this" is never a reason to keep or avoid anything (`.claude/rules/platform-integration.md` was deleted with that decision).
 
 ## Project Overview

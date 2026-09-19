@@ -1,6 +1,6 @@
 {
-  "name": "LibreDB Studio",
-  "short_name": "LibreDB",
+  "name": "StorageBase Studio",
+  "short_name": "StorageBase",
   "start_url": ".",
   "display": "standalone",
   "icons": [

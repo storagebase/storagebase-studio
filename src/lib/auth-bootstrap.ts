@@ -34,7 +34,7 @@ export function isBootstrapEnabled(): boolean {
   if (normalized === "off" || normalized === "false" || normalized === "0") return false;
   if (normalized !== "on" && normalized !== "true" && normalized !== "1") {
     console.warn(
-      `LibreDB Studio: unrecognized AUTH_BOOTSTRAP value "${raw}"; bootstrap stays on (use "off" to disable)`,
+      `StorageBase Studio: unrecognized AUTH_BOOTSTRAP value "${raw}"; bootstrap stays on (use "off" to disable)`,
     );
   }
   return true;
@@ -76,7 +76,7 @@ function readBootstrapFile(filePath: string): BootstrapFile {
     // clear any older .bak first — the newest evidence wins.
     fs.rmSync(`${filePath}.bak`, { force: true });
     fs.renameSync(filePath, `${filePath}.bak`);
-    console.warn(`LibreDB Studio: corrupt ${filePath} moved to .bak; regenerating credentials`);
+    console.warn(`StorageBase Studio: corrupt ${filePath} moved to .bak; regenerating credentials`);
     return {};
   }
 }
@@ -122,7 +122,7 @@ function writeBootstrapFile(filePath: string, data: BootstrapFile): void {
       } catch {
         // Best-effort hardening: the credentials were written successfully, so
         // an unsupported/failed chmod must not abort bootstrap. Warn instead.
-        console.warn(`LibreDB Studio: could not restrict permissions on ${filePath}`);
+        console.warn(`StorageBase Studio: could not restrict permissions on ${filePath}`);
       }
     } finally {
       fs.rmSync(tempPath, { force: true });
@@ -136,7 +136,7 @@ function printFirstRunBanner(filePath: string, adminPassword: string): void {
     [
       "",
       "============================================================",
-      " LibreDB Studio first run: generated admin credentials",
+      " StorageBase Studio first run: generated admin credentials",
       ` Email:    ${adminEmail}`,
       ` Password: ${adminPassword}`,
       ` Stored in ${filePath} (delete the file to regenerate)`,
@@ -201,10 +201,12 @@ export function bootstrapAuth(): void {
     if (needPassword && stored.adminPassword) {
       process.env.ADMIN_PASSWORD = stored.adminPassword;
       if (passwordGenerated) printFirstRunBanner(filePath, stored.adminPassword);
-      else console.log(`LibreDB Studio: using generated admin credentials from ${filePath}`);
+      else console.log(`StorageBase Studio: using generated admin credentials from ${filePath}`);
     }
   } catch (error) {
     // Fail open: leave env untouched so login surfaces the clear 503 (PR #106).
-    console.warn(`LibreDB Studio: auth bootstrap skipped (${error instanceof Error ? error.message : String(error)})`);
+    console.warn(
+      `StorageBase Studio: auth bootstrap skipped (${error instanceof Error ? error.message : String(error)})`,
+    );
   }
 }

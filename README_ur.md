@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="LibreDB Studio Logo" />
+  <img src="public/logo.svg" width="200" alt="StorageBase Studio Logo" />
 </p>
 
-<h1 align="center">LibreDB Studio</h1>
+<h1 align="center">StorageBase Studio</h1>
 
 <p align="center" dir="rtl">
   <strong>ڈیٹا بیس ایڈیٹر جو آپ کے ڈیٹا کے ساتھ deploy ہوتا ہے، آپ کے laptop کے اندر نہیں۔</strong>
@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/hero-demo.gif" alt="LibreDB Studio" width="100%" />
+  <img src="public/screenshots/hero-demo.gif" alt="StorageBase Studio" width="100%" />
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ npx @libredb/studio
 
 <span dir="rtl">**Databases پہلے ہی منتقل ہو چکے ہیں۔** وہ Kubernetes، managed clouds اور customer VPCs میں چلے گئے ہیں جن تک bastion کے ذریعے ہی پہنچا جا سکتا ہے۔ **لیکن انہیں پڑھنے کے tools ان کے ساتھ منتقل نہیں ہوئے۔** وہ اب بھی desktop applications ہیں: بھاری، per-seat license والے، استعمال سے پہلے install ہونے والے، اور اس مفروضے پر بنے ہوئے کہ آپ کے پاس صرف ایک database، ایک laptop اور ایک ایسا شخص ہے جو کبھی device تبدیل نہیں کرتا۔</span>
 
-<span dir="rtl">LibreDB Studio اس کے برعکس راستہ اختیار کرتا ہے: **tool کو data کے پاس لے جایا جاتا ہے، data کو tool کے پاس نہیں۔**</span>
+<span dir="rtl">StorageBase Studio اس کے برعکس راستہ اختیار کرتا ہے: **tool کو data کے پاس لے جایا جاتا ہے، data کو tool کے پاس نہیں۔**</span>
 
 <span dir="rtl">اس جملے کو سنجیدگی سے لیں تو یہ محض ترجیح نہیں رہتا، بلکہ ایک specification بن جاتا ہے۔</span>
 

@@ -38,10 +38,10 @@ describe("printStartupBanner", () => {
 
     const output = capture();
 
-    expect(output).toContain("LibreDB Studio 1.2.3");
+    expect(output).toContain("StorageBase Studio 1.2.3");
     expect(output).toContain("http://127.0.0.1:3000");
     expect(output).toContain("Star the project if it helps you");
-    expect(output).toContain("https://github.com/libredb/libredb-studio");
+    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
   });
 
   test("reflects a custom PORT", () => {
@@ -100,9 +100,9 @@ describe("printStartupBanner", () => {
   test("never prints 'undefined' when the version is missing", () => {
     const output = capture();
 
-    expect(output).toContain("LibreDB Studio");
+    expect(output).toContain("StorageBase Studio");
     expect(output).not.toContain("undefined");
-    expect(output).toContain("https://github.com/libredb/libredb-studio");
+    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
   });
 
   test("prints nothing when LIBREDB_NO_BANNER=1", () => {
@@ -129,7 +129,7 @@ describe("printStartupBanner", () => {
   test("still prints for values that are not an opt-out", () => {
     for (const value of ["0", "false", "", "yes"]) {
       process.env.LIBREDB_NO_BANNER = value;
-      expect(capture()).toContain("LibreDB Studio");
+      expect(capture()).toContain("StorageBase Studio");
     }
   });
 

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="LibreDB Studio Logo" />
+  <img src="public/logo.svg" width="200" alt="StorageBase Studio Logo" />
 </p>
 
-<h1 align="center">LibreDB Studio</h1>
+<h1 align="center">StorageBase Studio</h1>
 
 <p align="center">
   <strong>把数据库编辑器部署到数据旁边，而不是装到你的笔记本上。</strong>
@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/hero-demo.gif" alt="LibreDB Studio" width="100%" />
+  <img src="public/screenshots/hero-demo.gif" alt="StorageBase Studio" width="100%" />
 </p>
 
 <p align="center">
@@ -77,7 +77,7 @@ npx @libredb/studio
 
 **数据库已经搬走了。** 它们搬进了 Kubernetes，搬进了托管云，搬进了要穿过跳板机才能到达的客户 VPC。**但读它们的工具没有跟着搬。** 它们仍然是桌面应用：笨重、按席位收费、必须先安装，并且假设你只有一个数据库、一台笔记本，以及一个永远不换设备的人。
 
-LibreDB Studio 走另一条路：**工具去找数据，而不是把数据搬来找工具。**
+StorageBase Studio 走另一条路：**工具去找数据，而不是把数据搬来找工具。**
 
 认真对待这句话，它就不再是一种偏好，而是一份规格说明。
 

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="LibreDB Studio Logo" />
+  <img src="public/logo.svg" width="200" alt="StorageBase Studio Logo" />
 </p>
 
-<h1 align="center">LibreDB Studio</h1>
+<h1 align="center">StorageBase Studio</h1>
 
 <p align="center">
   <strong>The database editor that deploys next to your data, not onto your laptop.</strong>
@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <img src="public/screenshots/hero-demo.gif" alt="Opening a table, running a join, charting the result and reading the ER diagram in LibreDB Studio" width="100%" />
+  <img src="public/screenshots/hero-demo.gif" alt="Opening a table, running a join, charting the result and reading the ER diagram in StorageBase Studio" width="100%" />
 </p>
 
 <p align="center">
@@ -91,7 +91,7 @@ Then open **http://localhost:3000**. On first run, the admin password is printed
 
 ## Live Test
 
-> **Try LibreDB Studio instantly without installation!**
+> **Try StorageBase Studio instantly without installation!**
 
 | Test | URL | Credentials |
 |------|-----|-------------|
@@ -106,13 +106,13 @@ The test instance comes with a pre-configured PostgreSQL database via [Seed Conn
 
 You create a Postgres on a managed platform. It is ready in forty seconds. Then you want to look inside it — so you open a port to the internet, dig an SSH tunnel, or install a desktop client on every machine that needs one.
 
-LibreDB Studio goes the other way. It deploys next to the data: a container, a Helm chart, an operator, a one-click template on your PaaS, or `npm i @libredb/studio` inside your own product. Nothing has to face outward.
+StorageBase Studio goes the other way. It deploys next to the data: a container, a Helm chart, an operator, a one-click template on your PaaS, or `npm i @libredb/studio` inside your own product. Nothing has to face outward.
 
 Sixteen engines share one interface — PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra — with the same explorer everywhere, and ER diagrams, schema diff and monitoring wherever the engine has something to report. Three of the sixteen are read-only because their own SQL is: Druid, Elasticsearch and OpenSearch have no `UPDATE` and no `CREATE TABLE` in the grammar at all, so those controls are reported as unsupported instead of failing when used. Cassandra is the newest, and the one that reports the least on purpose: it publishes no row count and no size that is true, so the object browser shows neither rather than showing a number that is wrong — the estimate it does publish counts partitions from flushed files, and it read 143 for a 500-row table. Trino is the other odd one: it is a query engine rather than a database, so it declares no keys and no indexes and reports the bytes as belonging to the systems behind its connectors.
 
 And nothing is held back. Single sign-on, ER diagrams, the AI features and the NoSQL engines all ship in the MIT build. MIT is not generosity here, it is a requirement of the architecture: you cannot place a per-seat licensed, feature-gated tool into every environment you own.
 
-### Why LibreDB Studio?
+### Why StorageBase Studio?
 - **Deploys next to the data**: container, Helm chart, Rancher, OpenShift operator, one-click PaaS template, or embedded via npm.
 - **Sixteen engines, one interface**: PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino, Cassandra.
 - **Runs where you are**: browser, phone, Windows, MacOS, Linux desktop.
@@ -335,7 +335,7 @@ Standalone application only: the embedded `@libredb/studio` package carries no a
 
   ### Quick Start (Docker)
 
-  Run LibreDB Studio with a single command — no clone, no install, no build:
+  Run StorageBase Studio with a single command — no clone, no install, no build:
 
 ```bash
 docker run \
@@ -546,7 +546,7 @@ Sample tables: `app.customers`, `app.products`, `app.orders`, `app.order_items`,
 
 ## Testing
 
-LibreDB Studio has a comprehensive test suite: 549 test files and 17,692 tests across seven layers, plus 79 browser tests, with **100% line coverage** enforced by CI (`bun run coverage:check`).
+StorageBase Studio has a comprehensive test suite: 549 test files and 17,692 tests across seven layers, plus 79 browser tests, with **100% line coverage** enforced by CI (`bun run coverage:check`).
 
 ### Quick Commands
 
@@ -607,7 +607,7 @@ The nineteenth spec in `e2e/`, `base-path.spec.ts`, is not in that 18: it needs 
 
 ## One-Click Deploy
 
-Deploy your own instance of LibreDB Studio with a single click on DigitalOcean, Koyeb, Render, Railway, Sealos, CapRover, or Dokploy:
+Deploy your own instance of StorageBase Studio with a single click on DigitalOcean, Koyeb, Render, Railway, Sealos, CapRover, or Dokploy:
 
  [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=libredb-studio&type=docker&image=ghcr.io%2Flibredb%2Flibredb-studio%3Alatest&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900&env%5BADMIN_EMAIL%5D=admin%40libredb.org&env%5BADMIN_PASSWORD%5D=LibreDB.2026&env%5BJWT_SECRET%5D=replace_with_openssl_rand_base64_32&env%5BLLM_API_KEY%5D=your_GEMINI_API_KEY&env%5BLLM_MODEL%5D=gemini-2.5-flash&env%5BLLM_PROVIDER%5D=gemini&env%5BNEXT_PUBLIC_AUTH_PROVIDER%5D=local&env%5BSTORAGE_PROVIDER%5D=local&env%5BUSER_EMAIL%5D=user%40libredb.org&env%5BUSER_PASSWORD%5D=LibreDB.2026&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)  
  [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/libredb/libredb-studio)  
@@ -620,15 +620,15 @@ Deploy your own instance of LibreDB Studio with a single click on DigitalOcean, 
 
 > **DigitalOcean:** the [Marketplace listing](https://marketplace.digitalocean.com/apps/libredb-studio) creates a preconfigured Droplet. Unique admin credentials are generated on first boot; the welcome message (MOTD) tells you where to find them.
 >
-> **CapRover:** open your CapRover dashboard → **Apps → One-Click Apps/Databases**, search for **LibreDB Studio**, and deploy.
+> **CapRover:** open your CapRover dashboard → **Apps → One-Click Apps/Databases**, search for **StorageBase Studio**, and deploy.
 >
 > **Koyeb:** set a strong `JWT_SECRET` (at least 32 characters — `openssl rand -base64 32`) and credentials before deploying (Koyeb cannot auto-generate secrets); the prefilled values are placeholders, and a secret under 32 characters makes the app exit at startup. The button uses `STORAGE_PROVIDER=local` — connection metadata lives in the browser, which suits Koyeb's ephemeral filesystem. For persistence across redeploys, switch to `STORAGE_PROVIDER=postgres` and point `STORAGE_POSTGRES_URL` at a Koyeb managed Postgres or Neon database. The button also fills in `LLM_PROVIDER`/`LLM_MODEL`/`LLM_API_KEY`, but Agent mode needs a server-held connection, so its Start button stays disabled until `STORAGE_PROVIDER` is `sqlite` or `postgres` (see [docs/AGENT.md](docs/AGENT.md#turning-it-on)). See [`deploy/koyeb/`](deploy/koyeb/).
 >
 > **Fly.io:** the repo ships a ready [`fly.toml`](fly.toml) — full steps (app name, volume, secrets) in [`docs/FLY.md`](docs/FLY.md).
 >
-> **Cosmos:** install in one click from the [Cosmos](https://cosmos-cloud.io) Marketplace — search for **LibreDB Studio**. Cosmos auto-generates secrets, provisions a persistent SQLite volume, and serves the app behind its SmartShield reverse proxy. See [`deploy/cosmos/`](deploy/cosmos/).
+> **Cosmos:** install in one click from the [Cosmos](https://cosmos-cloud.io) Marketplace — search for **StorageBase Studio**. Cosmos auto-generates secrets, provisions a persistent SQLite volume, and serves the app behind its SmartShield reverse proxy. See [`deploy/cosmos/`](deploy/cosmos/).
 >
-> **Dokploy:** install in one click from the [Dokploy template catalog](https://templates.dokploy.com) — in your Dokploy dashboard, **Create Service → Template**, search for **LibreDB Studio**, and deploy. Dokploy auto-generates `ADMIN_PASSWORD`, `USER_PASSWORD`, and `JWT_SECRET`, and persists connections on a SQLite volume behind Traefik. See [`deploy/dokploy/`](deploy/dokploy/).
+> **Dokploy:** install in one click from the [Dokploy template catalog](https://templates.dokploy.com) — in your Dokploy dashboard, **Create Service → Template**, search for **StorageBase Studio**, and deploy. Dokploy auto-generates `ADMIN_PASSWORD`, `USER_PASSWORD`, and `JWT_SECRET`, and persists connections on a SQLite volume behind Traefik. See [`deploy/dokploy/`](deploy/dokploy/).
 
 
 ### Environment Variables
@@ -683,7 +683,7 @@ See [`deploy/koyeb/`](deploy/koyeb/) for the complete setup and storage options.
 
 ### Railway
 
-LibreDB Studio is available as a one-click [Railway](https://railway.com) template.
+StorageBase Studio is available as a one-click [Railway](https://railway.com) template.
 See [`deploy/railway/`](deploy/railway/) for the template definition, install
 instructions, and the publish checklist. The template runs the prebuilt
 `ghcr.io/libredb/libredb-studio` image with SQLite persistence on a Railway
@@ -692,10 +692,10 @@ release (same as CapRover).
 
 ### CapRover
 
-LibreDB Studio is published in the official [CapRover One-Click Apps](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/libredb-studio.yml) catalog:
+StorageBase Studio is published in the official [CapRover One-Click Apps](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/libredb-studio.yml) catalog:
 
 1. **Open your CapRover dashboard** → **Apps → One-Click Apps/Databases**
-2. **Search** for **LibreDB Studio**
+2. **Search** for **StorageBase Studio**
 3. **Fill in the variables** (admin/user credentials, `JWT_SECRET`, optional AI/storage settings)
 4. **Deploy!**
 
@@ -703,10 +703,10 @@ The app runs the prebuilt `ghcr.io/libredb/libredb-studio` image. As with Railwa
 
 ### Kubero
 
-LibreDB Studio is listed in the official
+StorageBase Studio is listed in the official
 [Kubero template catalog](https://www.kubero.dev/templates) (a self-hosted
 "Heroku alternative for Kubernetes"). From your Kubero dashboard, browse
-**Templates**, search **LibreDB Studio**, fill in the credentials / `JWT_SECRET`,
+**Templates**, search **StorageBase Studio**, fill in the credentials / `JWT_SECRET`,
 and deploy. The template runs the prebuilt `ghcr.io/libredb/libredb-studio` image
 with SQLite persistence on a 5Gi volume at `/app/data`. See
 [`deploy/kubero/`](deploy/kubero/) for install and post-install details. As with
@@ -715,11 +715,11 @@ each release.
 
 ### Cosmos
 
-LibreDB Studio is listed in the official
+StorageBase Studio is listed in the official
 [Cosmos servapp marketplace](https://github.com/azukaar/cosmos-servapps-official)
 ([Cosmos](https://cosmos-cloud.io) is a self-hosted server manager and secure
 reverse proxy). From your Cosmos dashboard, open **Marketplace**, search
-**LibreDB Studio**, and install. Cosmos auto-generates the credentials and
+**StorageBase Studio**, and install. Cosmos auto-generates the credentials and
 `JWT_SECRET`, provisions a persistent SQLite volume at `/app/data`, and serves
 the app behind a SmartShield-protected route. See
 [`deploy/cosmos/`](deploy/cosmos/) for install and post-install details. As with
@@ -728,7 +728,7 @@ bump on each release.
 
 ### Render (Recommended for cloud deployment)
 
-LibreDB Studio includes a `render.yaml` Blueprint for one-click deployment:
+StorageBase Studio includes a `render.yaml` Blueprint for one-click deployment:
 
 1. **Fork this repository**
 2. **Connect to Render**: [dashboard.render.com](https://dashboard.render.com) → New → Blueprint

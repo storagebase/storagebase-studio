@@ -8,7 +8,7 @@ import { dismissStarPrompt, recordQuerySuccess } from "./star-prompt";
  * once per browser and never again.
  */
 export function showStarPromptToast(): void {
-  toast("LibreDB Studio is open source and free. A star on GitHub helps other teams find it.", {
+  toast("StorageBase Studio is open source and free. A star on GitHub helps other teams find it.", {
     duration: Number.POSITIVE_INFINITY,
     action: {
       label: "Star on GitHub",

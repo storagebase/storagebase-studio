@@ -330,10 +330,10 @@ describe("StudioDesktopHeader", () => {
   describe("github link", () => {
     test("renders a repository link beside the version badge", () => {
       const { container } = render(<StudioDesktopHeader {...defaultProps} />);
-      const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
+      const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]');
 
       expect(link).not.toBeNull();
-      expect(link!.getAttribute("href")).toBe("https://github.com/libredb/libredb-studio");
+      expect(link!.getAttribute("href")).toBe("https://github.com/storagebase/storagebase-studio");
       expect(link!.getAttribute("target")).toBe("_blank");
       expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
     });
@@ -345,7 +345,7 @@ describe("StudioDesktopHeader", () => {
     test("following the link marks the star prompt handled", () => {
       localStorage.removeItem("libredb_star_prompt_handled");
       const { container } = render(<StudioDesktopHeader {...defaultProps} />);
-      const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]')!;
+      const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]')!;
 
       fireEvent.click(link);
 

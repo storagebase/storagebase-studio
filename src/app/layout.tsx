@@ -12,14 +12,14 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-const title = "LibreDB Studio | Universal Database Editor";
+const title = "StorageBase Studio | Universal Database Editor";
 const description =
   "A self-hosted database management platform for SQL and NoSQL databases, with schema exploration, query tools, data import, and AI-assisted database development.";
 // Project previews use the public demo documented in README, including on private deployments.
-const siteUrl = "https://libredb.org";
+const siteUrl = "https://github.com/storagebase/storagebase-studio";
 const previewImage = {
   url: `https://raw.githubusercontent.com/libredb/libredb-studio/main/public/screenshots/hero-editor.png`,
-  alt: "LibreDB Studio SQL editor and query results",
+  alt: "StorageBase Studio SQL editor and query results",
 };
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     title,
     description,
-    siteName: "LibreDB Studio",
+    siteName: "StorageBase Studio",
     images: [{ ...previewImage, width: 1440, height: 900 }],
   },
   twitter: {

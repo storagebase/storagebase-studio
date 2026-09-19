@@ -11,7 +11,7 @@ describe("CommunitySection", () => {
     cleanup();
   });
 
-  const REPO_URL = "https://github.com/libredb/libredb-studio";
+  const REPO_URL = "https://github.com/storagebase/storagebase-studio";
 
   // The six action cards were removed with the login redesign: every one of them pointed at
   // a path under the repository, so the hero spent six lines saying "GitHub" six times. What

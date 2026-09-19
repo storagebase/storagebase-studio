@@ -153,11 +153,11 @@ describe("Sidebar", () => {
     }
   });
 
-  test("renders LibreDB Studio header", () => {
+  test("renders StorageBase Studio header", () => {
     const props = createDefaultProps();
     const { queryByText } = render(<Sidebar {...props} />);
 
-    expect(queryByText("LibreDB Studio")).not.toBeNull();
+    expect(queryByText("StorageBase Studio")).not.toBeNull();
   });
 
   test('shows "Add Connection" button (Plus icon)', () => {
@@ -407,10 +407,10 @@ describe("Sidebar", () => {
   test("footer links to the repository, in both standalone and embedded chrome", () => {
     const props = createDefaultProps();
     const { container } = render(<Sidebar {...props} />);
-    const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
+    const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]');
 
     expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("https://github.com/libredb/libredb-studio");
+    expect(link!.getAttribute("href")).toBe("https://github.com/storagebase/storagebase-studio");
     expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
   });
 

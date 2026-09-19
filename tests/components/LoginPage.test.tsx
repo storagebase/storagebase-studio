@@ -64,9 +64,9 @@ describe("LoginPage", () => {
     expect(getByRole("button", { name: "Sign in" })).not.toBeNull();
   });
 
-  test("renders LibreDB Studio title", () => {
+  test("renders StorageBase Studio title", () => {
     const { getAllByText } = renderLogin();
-    expect(getAllByText("LibreDB Studio").length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText("StorageBase Studio").length).toBeGreaterThanOrEqual(1);
   });
 
   test("shows error toast when submitting empty form", () => {

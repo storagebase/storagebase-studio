@@ -193,7 +193,7 @@ async function login(page: Page): Promise<void> {
 
 /** The real connection modal, filled the way a user fills it. */
 async function connectToTheFixture(page: Page): Promise<void> {
-  const sidebarButtons = page.locator("text=LibreDB Studio").locator("..").locator("..").locator("button");
+  const sidebarButtons = page.locator("text=StorageBase Studio").locator("..").locator("..").locator("button");
   await sidebarButtons.last().click();
   const dialog = page.locator('[role="dialog"]');
   await expect(dialog).toBeVisible({ timeout: 10_000 });
