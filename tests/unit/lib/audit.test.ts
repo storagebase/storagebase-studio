@@ -61,6 +61,75 @@ describe("AuditRingBuffer", () => {
   });
 
   // ==========================================================================
+  // resource vocabulary (StorageBase fork)
+  // ==========================================================================
+
+  describe("resource vocabulary", () => {
+    test("resource_operation decision and outcome round-trip through the buffer", () => {
+      const correlationId = "corr-1";
+      buffer.push({
+        type: "resource_operation",
+        action: "blob.delete",
+        target: "s3:backups:archive/2026-01-01.tar",
+        connectionName: "backups",
+        user: "admin",
+        result: "success",
+        correlationId,
+      });
+      buffer.push({
+        type: "resource_operation",
+        action: "blob.delete",
+        target: "s3:backups:archive/2026-01-01.tar",
+        connectionName: "backups",
+        user: "admin",
+        result: "failure",
+        reason: "resource_not_found",
+        correlationId,
+      });
+
+      const operations = buffer.filter({ type: "resource_operation" });
+      expect(operations).toHaveLength(2);
+      expect(operations[0].correlationId).toBe(correlationId);
+      expect(operations[1].reason).toBe("resource_not_found");
+    });
+
+    test("every resource outcome reason is accepted on a resource_operation event", () => {
+      const reasons = [
+        "resource_denied",
+        "resource_not_found",
+        "resource_conflict",
+        "resource_unsupported",
+        "resource_failed",
+      ] as const;
+      for (const reason of reasons) {
+        const result = buffer.push({
+          type: "resource_operation",
+          action: "message.purge",
+          target: "kafka:events",
+          user: "admin",
+          result: "failure",
+          reason,
+        });
+        expect(result.reason).toBe(reason);
+      }
+    });
+
+    test("resource_connection_test still round-trips beside the new type", () => {
+      buffer.push({
+        type: "resource_connection_test",
+        action: "tested",
+        target: "s3:backups",
+        user: "admin",
+        result: "failure",
+        reason: "resource_unreachable",
+      });
+
+      expect(buffer.filter({ type: "resource_connection_test" })).toHaveLength(1);
+      expect(buffer.filter({ type: "resource_operation" })).toHaveLength(0);
+    });
+  });
+
+  // ==========================================================================
   // getAll
   // ==========================================================================
 
