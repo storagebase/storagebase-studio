@@ -13,6 +13,7 @@ import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 // the registry, so an unregistered type degrades to the fallback below.
 import "@/components/resources/blob";
 import "@/components/resources/messaging";
+import "@/components/resources/vaults";
 
 /**
  * The resource inspector: what a tree row opens. Renders the family's viewer

@@ -12,6 +12,11 @@
 #   must read as a folder, the same ruling the blob prefix fixture proves.
 set -eu
 
+# The dev server ships only secret/ and cubbyhole: enable the fixture mount
+# first, idempotently (a second enable answers "path is already in use").
+if ! vault secrets list | grep -q '^storagebase/'; then
+  vault secrets enable -path=storagebase kv-v2 >/dev/null
+fi
 vault kv put storagebase/fixture username="fixture" password="fixture-pass" >/dev/null
 vault kv put storagebase/nested/deep key="deep-value" >/dev/null
 vault kv list storagebase/ >/dev/null
