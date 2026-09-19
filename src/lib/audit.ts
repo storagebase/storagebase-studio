@@ -48,6 +48,14 @@ export type AuditEventType =
    * the shipped source's copy of them: if one moves, move the other in the same commit.
    */
   | "object_edit"
+  /**
+   * A resource-layer connection test (StorageBase fork): the /api/resources/test
+   * route's outcome, one event per test, mirroring `connection_test`. Distinct
+   * on purpose so an operator filtering the log can separate database probes
+   * from blob/messaging/vault probes. Family write operations (blob delete,
+   * queue purge, secret write) join this vocabulary with their families.
+   */
+  | "resource_connection_test"
   // Phase 1 auth events
   | "login_success"
   | "login_failure"
@@ -138,7 +146,12 @@ export type AuditReason =
   | "object_edit_refused"
   | "object_edit_guard_refused"
   | "object_edit_interrupted"
-  | "object_edit_plan_invalid";
+  | "object_edit_plan_invalid"
+  // The resource layer (StorageBase fork). A test that connected to nothing: the
+  // service was unreachable, refused the credentials, or answered a protocol
+  // error. One code covers all three because the test route's RESPONSE carries
+  // the provider's own sentence; the audit trail only needs the class.
+  | "resource_unreachable";
 
 export interface AuditEvent {
   id: string;

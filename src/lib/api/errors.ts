@@ -26,6 +26,7 @@ import {
 } from "@/lib/llm/types";
 import { RateLimitError } from "@/lib/api/rate-limit";
 import { SeedConnectionError } from "@/lib/seed/resolve-connection";
+import { ResourceError } from "@/lib/resources/errors";
 
 // ============================================================================
 // Types
@@ -47,6 +48,24 @@ export interface ApiErrorResponse {
 
 export function createErrorResponse(error: unknown, context?: { route?: string }): NextResponse<ApiErrorResponse> {
   const route = context?.route;
+
+  // --- Resource layer (StorageBase fork) ---
+  // Before the DB arms: ResourceConfigError and ResourceConnectionError deliberately
+  // shadow nothing upstream, but ordering early keeps the fork's arm one block.
+  if (error instanceof ResourceError) {
+    if (error.statusCode >= 500) logger.error("Resource error", error, { route });
+    else logger.warn("Resource error", { route, code: error.code });
+    const retryable = error.code === "RESOURCE_CONNECTION_ERROR";
+    return NextResponse.json(
+      {
+        error: error.message,
+        code: error.code as ApiErrorCode,
+        statusCode: error.statusCode,
+        ...(retryable ? { retryable: true } : {}),
+      },
+      { status: error.statusCode },
+    );
+  }
 
   // --- Seed Connection Error ---
   if (error instanceof SeedConnectionError) {

@@ -1,4 +1,5 @@
 import type { DatabaseConnection, QueryHistoryItem, SavedQuery, SchemaSnapshot, SavedChartConfig } from "../types";
+import type { ResourceConnection } from "../resources/types";
 import type { AuditEvent } from "../audit";
 import type { MaskingConfig } from "../data-masking";
 import type { ThresholdConfig } from "../monitoring-thresholds";
@@ -38,6 +39,14 @@ export interface StorageData {
    * is most likely to have reordered.
    */
   connection_order: string[];
+  /**
+   * The fork's resource connections (blob, messaging, vault), a sibling of
+   * `connections` rather than a field on it: a DatabaseConnection and a
+   * ResourceConnection are different records for different providers, and the
+   * twelve upstream consumers of `connections` must never have to filter
+   * foreign shapes out of it.
+   */
+  resource_connections: ResourceConnection[];
 }
 
 /** Collection names that can be synced to server storage */
@@ -57,6 +66,7 @@ export const STORAGE_COLLECTIONS: StorageCollection[] = [
   "dismissed_seeds",
   "favorite_connections",
   "connection_order",
+  "resource_connections",
 ];
 
 /**

@@ -29,6 +29,15 @@ export const ApiErrorCode = {
    */
   EDIT_PLAN_INVALID: "EDIT_PLAN_INVALID",
 
+  // Resource layer (StorageBase fork): codes reused from the database vocabulary
+  // where the client behavior matches, plus these three where it does not.
+  /** A resource connection record is unusable as given (unknown type, missing addressing). */
+  RESOURCE_CONFIG_ERROR: "RESOURCE_CONFIG_ERROR",
+  /** The type-id is known but its provider module is not registered yet. */
+  RESOURCE_PROVIDER_UNAVAILABLE: "RESOURCE_PROVIDER_UNAVAILABLE",
+  /** The provider declares no such operation (e.g. purge on Kafka, which has none). */
+  RESOURCE_OPERATION_UNSUPPORTED: "RESOURCE_OPERATION_UNSUPPORTED",
+
   // LLM errors
   LLM_SAFETY: "LLM_SAFETY",
   LLM_AUTH: "LLM_AUTH",

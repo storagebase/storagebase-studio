@@ -1,7 +1,13 @@
 import { logger } from "@/lib/logger";
-import { decryptConnections, encryptConnections } from "./connection-secrets";
+import {
+  decryptConnections,
+  decryptResourceConnections,
+  encryptConnections,
+  encryptResourceConnections,
+} from "./connection-secrets";
 import type { ServerStorageProvider, StorageCollection, StorageData } from "./types";
 import type { DatabaseConnection } from "@/lib/types";
+import type { ResourceConnection } from "@/lib/resources/types";
 
 /**
  * Credential encryption, applied ABOVE the ServerStorageProvider boundary.
@@ -18,6 +24,7 @@ import type { DatabaseConnection } from "@/lib/types";
  */
 
 const CONNECTIONS: StorageCollection = "connections";
+const RESOURCE_CONNECTIONS: StorageCollection = "resource_connections";
 
 /**
  * Quoted verbatim in docs/STORAGE.md's troubleshooting section, and exported so the doc and the
@@ -55,31 +62,57 @@ class CredentialEncryptingProvider implements ServerStorageProvider {
 
   async getAllData(userId: string): Promise<Partial<StorageData>> {
     const data = await this.inner.getAllData(userId);
-    if (!data.connections) return data;
-    const { connections, undecryptable } = decryptConnections(data.connections);
-    reportUndecryptable(undecryptable);
-    return { ...data, connections };
+    let next = data;
+    if (next.connections) {
+      const { connections, undecryptable } = decryptConnections(next.connections);
+      reportUndecryptable(undecryptable);
+      next = { ...next, connections };
+    }
+    if (next.resource_connections) {
+      const { resourceConnections, undecryptable } = decryptResourceConnections(next.resource_connections);
+      reportUndecryptable(undecryptable);
+      next = { ...next, resource_connections: resourceConnections };
+    }
+    return next;
   }
 
   async getCollection<K extends StorageCollection>(userId: string, collection: K): Promise<StorageData[K] | null> {
     const value = await this.inner.getCollection(userId, collection);
-    if (collection !== CONNECTIONS || value === null) return value;
-    // TypeScript cannot narrow StorageData[K] from a runtime comparison on K, so the two casts are
-    // unavoidable; the runtime guard above is what makes them sound.
-    const { connections, undecryptable } = decryptConnections(value as DatabaseConnection[]);
-    reportUndecryptable(undecryptable);
-    return connections as StorageData[K];
+    if (value === null) return value;
+    // TypeScript cannot narrow StorageData[K] from a runtime comparison on K, so the casts are
+    // unavoidable; the runtime guards are what make them sound.
+    if (collection === CONNECTIONS) {
+      const { connections, undecryptable } = decryptConnections(value as DatabaseConnection[]);
+      reportUndecryptable(undecryptable);
+      return connections as StorageData[K];
+    }
+    if (collection === RESOURCE_CONNECTIONS) {
+      const { resourceConnections, undecryptable } = decryptResourceConnections(value as ResourceConnection[]);
+      reportUndecryptable(undecryptable);
+      return resourceConnections as StorageData[K];
+    }
+    return value;
   }
 
   setCollection<K extends StorageCollection>(userId: string, collection: K, data: StorageData[K]): Promise<void> {
+    if (collection === RESOURCE_CONNECTIONS) {
+      const sealed = encryptResourceConnections(data as ResourceConnection[]) as StorageData[K];
+      return this.inner.setCollection(userId, collection, sealed);
+    }
     if (collection !== CONNECTIONS) return this.inner.setCollection(userId, collection, data);
     const sealed = encryptConnections(data as DatabaseConnection[]) as StorageData[K];
     return this.inner.setCollection(userId, collection, sealed);
   }
 
   mergeData(userId: string, data: Partial<StorageData>): Promise<void> {
-    if (!data.connections) return this.inner.mergeData(userId, data);
-    return this.inner.mergeData(userId, { ...data, connections: encryptConnections(data.connections) });
+    let next = data;
+    if (next.resource_connections) {
+      next = { ...next, resource_connections: encryptResourceConnections(next.resource_connections) };
+    }
+    if (next.connections) {
+      next = { ...next, connections: encryptConnections(next.connections) };
+    }
+    return this.inner.mergeData(userId, next);
   }
 }
 

@@ -342,7 +342,21 @@ describe("assertPersistableState — CREDENTIAL_KEY", () => {
     // matters - no credential stem matches it, so the derivation is its only
     // cover.
     expect(new Set(STORED_SECRET_FIELDS)).toEqual(
-      new Set(["password", "connectionString", "agentPassword", "clientKey", "privateKey", "passphrase"]),
+      new Set([
+        "password",
+        "connectionString",
+        "agentPassword",
+        "clientKey",
+        "privateKey",
+        "passphrase",
+        // The resource layer's sibling map (StorageBase fork), registered in
+        // SECRET_FIELD_MAPS alongside the three above: its four credential
+        // fields join the same aggregate the guard derives from.
+        "secretAccessKey",
+        "sessionToken",
+        "token",
+        "clientSecret",
+      ]),
     );
   });
 

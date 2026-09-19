@@ -1,5 +1,6 @@
 import { encryptSecret, readSecret } from "./encryption";
 import type { DatabaseConnection, SSHTunnelConfig, SSLConfig } from "@/lib/types";
+import type { ResourceConnection } from "@/lib/resources/types";
 
 /**
  * The single answer to "which stored fields are credentials".
@@ -81,6 +82,39 @@ export const SSH_TUNNEL_FIELDS: Record<keyof SSHTunnelConfig, FieldClass> = {
 };
 
 /**
+ * The resource layer's connection fields (StorageBase fork), held to the same
+ * compile-time enforcement as `CONNECTION_FIELDS`: add a field to
+ * `ResourceConnection` and this literal stops satisfying its type until the
+ * field is classified.
+ */
+export const RESOURCE_CONNECTION_FIELDS: Record<keyof ResourceConnection, FieldClass> = {
+  id: "public",
+  name: "public",
+  type: "public",
+  createdAt: "public",
+  color: "public",
+  environment: "public",
+  group: "public",
+  // Addresses, not credentials: an account URL, a Vault address, a bootstrap list.
+  endpoint: "public",
+  region: "public",
+  // An access key id identifies an account the way a username does; the secret
+  // access key is the credential, and it is classified below.
+  accessKeyId: "public",
+  secretAccessKey: "secret",
+  sessionToken: "secret",
+  // Carries user:pass inline, the same shape `connectionString` classifies as secret above.
+  connectionString: "secret",
+  token: "secret",
+  tenantId: "public",
+  clientId: "public",
+  clientSecret: "secret",
+  vaultName: "public",
+  namespace: "public",
+  sshTunnel: "nested",
+};
+
+/**
  * Every classification map in this module, in one place, so a consumer that needs "which fields
  * does this product classify as credentials" imports one name instead of restating three.
  * (src/lib/agent/state-guard.ts derives its credential-key set from it.)
@@ -107,6 +141,7 @@ export const SECRET_FIELD_MAPS: readonly Record<string, FieldClass>[] = [
   CONNECTION_FIELDS,
   SSL_FIELDS,
   SSH_TUNNEL_FIELDS,
+  RESOURCE_CONNECTION_FIELDS,
 ];
 
 /** Derived, never written out twice: a second hand-maintained list is a second thing that drifts. */
@@ -117,6 +152,7 @@ function secretsOf(map: Record<string, FieldClass>): string[] {
 const CONNECTION_SECRET_KEYS = secretsOf(CONNECTION_FIELDS);
 const SSL_SECRET_KEYS = secretsOf(SSL_FIELDS);
 const SSH_TUNNEL_SECRET_KEYS = secretsOf(SSH_TUNNEL_FIELDS);
+const RESOURCE_CONNECTION_SECRET_KEYS = secretsOf(RESOURCE_CONNECTION_FIELDS);
 
 /**
  * Applies `transform` to each named field of `target` in place. A transform returning `undefined`
@@ -195,6 +231,27 @@ function openOrDrop(value: string): string | undefined {
 }
 
 /**
+ * The resource layer's walker (StorageBase fork): the same shared-walker rule
+ * as `walkConnection`, over the resource field groups. The tunnel group reuses
+ * the same map, so the two walkers cannot disagree about a bastion credential.
+ */
+function walkResourceConnection(
+  connection: ResourceConnection,
+  transform: (value: string) => string | undefined,
+): { connection: ResourceConnection; dropped: number } {
+  const copy: Record<string, unknown> = { ...connection };
+  let dropped = mapSecretFields(copy, RESOURCE_CONNECTION_SECRET_KEYS, transform);
+
+  if (copy.sshTunnel) {
+    const tunnel = { ...(copy.sshTunnel as Record<string, unknown>) };
+    dropped += mapSecretFields(tunnel, SSH_TUNNEL_SECRET_KEYS, transform);
+    copy.sshTunnel = tunnel;
+  }
+
+  return { connection: copy as unknown as ResourceConnection, dropped };
+}
+
+/**
  * Every write goes through this. Never returns a connection with a plaintext credential in it: a
  * secret field is left alone only when it is already a v1 envelope that opens under the current
  * key (`readSecret` returns `decrypted`) - plaintext and anything merely shaped like an envelope
@@ -202,6 +259,11 @@ function openOrDrop(value: string): string | undefined {
  */
 export function encryptConnections(connections: DatabaseConnection[]): DatabaseConnection[] {
   return connections.map((connection) => walkConnection(connection, sealIfPlaintext).connection);
+}
+
+/** The resource-layer twin of `encryptConnections`, same rules, same key. */
+export function encryptResourceConnections(connections: ResourceConnection[]): ResourceConnection[] {
+  return connections.map((connection) => walkResourceConnection(connection, sealIfPlaintext).connection);
 }
 
 export interface ConnectionReadResult {
@@ -230,4 +292,21 @@ export function decryptConnections(connections: DatabaseConnection[]): Connectio
     return result.connection;
   });
   return { connections: opened, undecryptable };
+}
+
+/** The resource-layer twin of `decryptConnections`: omit-and-count, never throw, never drop the record. */
+export function decryptResourceConnections(connections: ResourceConnection[]): ResourceConnectionReadResult {
+  let undecryptable = 0;
+  const resourceConnections = connections.map((connection) => {
+    const result = walkResourceConnection(connection, openOrDrop);
+    undecryptable += result.dropped;
+    return result.connection;
+  });
+  return { resourceConnections, undecryptable };
+}
+
+export interface ResourceConnectionReadResult {
+  resourceConnections: ResourceConnection[];
+  /** How many secret fields could not be opened. The caller reports it once, not per field. */
+  undecryptable: number;
 }

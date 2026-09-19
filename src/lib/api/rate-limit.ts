@@ -145,6 +145,12 @@ const BUCKETS: Record<RateLimitBucket, BucketSpec> = {
   // directories exist; this passage used to say seven did, because the count moved ahead of the
   // last two routes landing, and a reader who counts today gets nine.
   //
+  // The StorageBase fork adds a SECOND indirect group: the FOUR resource routes under
+  // src/app/api/resources (meta, test, health, tree), which reach this bucket through
+  // handleResourceRequest in resource-route.ts and carry no bucket literal of their own, for
+  // the same reason the object routes do not. Family operation routes (blob/messaging/vault)
+  // join that group as they land, the same way.
+  //
   // A SLOT IS NOT A UNIT OF COST HERE EITHER, and the two new routes are the sharpest example in
   // this bucket. An edit-apply slot runs DDL against a live engine; a db/pool-stats slot reads a
   // counter. They share one budget because the workload they share is a connection, and a bucket

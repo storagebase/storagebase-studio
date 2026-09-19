@@ -5,6 +5,7 @@
  */
 
 import { DatabaseConnection, QueryHistoryItem, SavedQuery, SchemaSnapshot, SavedChartConfig } from "../types";
+import type { ResourceConnection } from "../resources/types";
 import { type AuditEvent } from "../audit";
 import { DEFAULT_MASKING_CONFIG, type MaskingConfig } from "../data-masking";
 import { DEFAULT_THRESHOLDS, type ThresholdConfig } from "../monitoring-thresholds";
@@ -118,6 +119,37 @@ export const storage = {
   setConnectionOrder: (order: string[]) => {
     writeJSON("connection_order", order);
     dispatchChange("connection_order", order);
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Resource connections (StorageBase fork)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  getResourceConnections: (): ResourceConnection[] => {
+    const data = readJSON<ResourceConnection[]>("resource_connections");
+    if (!data) return [];
+    return reviveDates(data, "createdAt");
+  },
+
+  saveResourceConnection: (connection: ResourceConnection) => {
+    const connections = storage.getResourceConnections();
+    const existingIndex = connections.findIndex((c) => c.id === connection.id);
+
+    if (existingIndex > -1) {
+      connections[existingIndex] = connection;
+    } else {
+      connections.push(connection);
+    }
+
+    writeJSON("resource_connections", connections);
+    dispatchChange("resource_connections", connections);
+  },
+
+  deleteResourceConnection: (id: string) => {
+    const connections = storage.getResourceConnections();
+    const filtered = connections.filter((c) => c.id !== id);
+    writeJSON("resource_connections", filtered);
+    dispatchChange("resource_connections", filtered);
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
