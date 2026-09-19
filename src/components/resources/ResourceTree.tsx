@@ -149,7 +149,11 @@ export function ResourceTree({ connection, onNodeClick }: ResourceTreeProps) {
 
     const nodes = state.page?.nodes ?? [];
     if (nodes.length === 0) {
-      return <p data-testid="resource-tree-empty" className="text-xs text-muted-foreground py-4 px-1">Nothing listed here yet.</p>;
+      return (
+        <p data-testid="resource-tree-empty" className="text-xs text-muted-foreground py-4 px-1">
+          Nothing listed here yet.
+        </p>
+      );
     }
 
     return (

@@ -1,9 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import {
-  getResourceViewer,
-  hasResourceViewer,
-  registerResourceViewer,
-} from "@/components/resources/viewer-registry";
+import { getResourceViewer, hasResourceViewer, registerResourceViewer } from "@/components/resources/viewer-registry";
 
 function FakeViewer() {
   return null;

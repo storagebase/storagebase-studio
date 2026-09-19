@@ -32,7 +32,9 @@ const rootsPage: ResourceNodePage = {
 };
 
 const childrenPage: ResourceNodePage = {
-  nodes: [{ id: "buckets/photos/a.jpg", parentId: "buckets/photos", kind: "object", name: "a.jpg", hasChildren: false }],
+  nodes: [
+    { id: "buckets/photos/a.jpg", parentId: "buckets/photos", kind: "object", name: "a.jpg", hasChildren: false },
+  ],
   truncated: true,
 };
 
