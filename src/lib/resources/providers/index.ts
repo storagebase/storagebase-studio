@@ -14,3 +14,4 @@
  * the registry tests document), and an import here would silently populate it.
  */
 import "./blob";
+import "./messaging";

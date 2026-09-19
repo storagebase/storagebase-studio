@@ -12,6 +12,7 @@ import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 // import is for effect (self-registration); the inspector itself only reads
 // the registry, so an unregistered type degrades to the fallback below.
 import "@/components/resources/blob";
+import "@/components/resources/messaging";
 
 /**
  * The resource inspector: what a tree row opens. Renders the family's viewer

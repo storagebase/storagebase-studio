@@ -45,10 +45,10 @@ const s3Connection: ResourceConnection = {
   region: "us-east-1",
 };
 
-const kafkaConnection: ResourceConnection = {
+const vaultConnection: ResourceConnection = {
   id: "res-2",
-  name: "events",
-  type: "kafka",
+  name: "vault",
+  type: "hashicorp-vault",
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
@@ -60,12 +60,12 @@ const objectNode: ResourceNode = {
   hasChildren: false,
 };
 
-const topicNode: ResourceNode = {
-  id: "topic/events",
+const secretNode: ResourceNode = {
+  id: "storagebase/fixture",
   parentId: null,
-  kind: "topic",
-  name: "events",
-  hasChildren: true,
+  kind: "secret",
+  name: "fixture",
+  hasChildren: false,
 };
 
 describe("ResourceInspector", () => {
@@ -103,10 +103,10 @@ describe("ResourceInspector", () => {
   });
 
   test("unregistered types degrade to the fallback, naming the type", () => {
-    render(<ResourceInspector connection={kafkaConnection} node={topicNode} {...props} />);
+    render(<ResourceInspector connection={vaultConnection} node={secretNode} {...props} />);
 
     const fallback = screen.getByTestId("resource-inspector-fallback");
-    expect(fallback.textContent).toContain("kafka");
+    expect(fallback.textContent).toContain("hashicorp-vault");
   });
 
   test("renders nothing without a connection and node", () => {
