@@ -68,8 +68,13 @@ services:
   # auto-created so a bare browse works. The cluster id is the documented
   # example value, not generated: a fresh id per boot would invalidate stored
   # offsets and make the fixture unrepeatable.
+  # PINNED to 3.9.0, not :latest: kafkajs 2.2.4 cannot fetch from Kafka 4.x
+  # (joins and metadata work; record fetches never arrive — measured against
+  # 4.3.1 with the Java console consumer proving the broker healthy). 3.9 is
+  # the newest line the client's fetch path is verified against; re-probe
+  # before moving this pin.
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:3.9.0
     container_name: storagebase-kafka
     ports:
       - "9092:9092"
@@ -82,6 +87,15 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Single node: the group-coordinator and transaction topics default to
+      # replication factor 3, which can never elect on one broker — consumer
+      # groups then fail with "coordinator not available" (measured). One copy
+      # is the whole cluster here, and rebalancing starts immediately.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka-data:/var/lib/kafka/data
@@ -89,7 +103,7 @@ services:
   # Creates the fixture topics. Retries because the broker accepts the port
   # before KRaft elects itself leader; create is idempotent past the first run.
   kafka-init:
-    image: apache/kafka:latest
+    image: apache/kafka:3.9.0
     container_name: storagebase-kafka-init
     depends_on:
       - kafka

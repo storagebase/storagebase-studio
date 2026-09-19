@@ -13,6 +13,9 @@
 #   so this topic is what that refusal is measured against.
 set -eu
 
+# kafka-topics.sh lives outside PATH in the apache/kafka image.
+export PATH="$PATH:/opt/kafka/bin"
+
 BOOTSTRAP="${KAFKA_BOOTSTRAP:-kafka:9092}"
 for i in $(seq 1 30); do
   if kafka-topics.sh --bootstrap-server "$BOOTSTRAP" --list >/dev/null 2>&1; then
