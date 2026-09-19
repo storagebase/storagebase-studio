@@ -1,0 +1,48 @@
+{
+  "users": [
+    {
+      "name": "probe",
+      "password": "probe",
+      "tags": "management"
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    {
+      "user": "probe",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "fixture.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "fixture.orders",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "fixture.events",
+      "vhost": "/",
+      "destination": "fixture.orders",
+      "destination_type": "queue",
+      "routing_key": "orders.#",
+      "arguments": {}
+    }
+  ]
+}
