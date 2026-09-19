@@ -33,6 +33,7 @@ let capturedAgentRailProps: Record<string, unknown> = {};
 let capturedProfilerProps: Record<string, unknown> = {};
 let capturedCodeGenProps: Record<string, unknown> = {};
 let capturedTestDataProps: Record<string, unknown> = {};
+let capturedInspectorProps: Record<string, unknown> = {};
 let originalFetch: typeof globalThis.fetch;
 let originalMatchMedia: typeof window.matchMedia;
 
@@ -435,6 +436,15 @@ mock.module("@/components/CreateTableModal", () => ({
   },
 }));
 
+mock.module("@/components/resources/ResourceInspector", () => ({
+  ResourceInspector: (props: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    capturedInspectorProps = props;
+    return React.createElement("div", { "data-testid": "resource-inspector" }, "ResourceInspector");
+  },
+}));
+
 mock.module("@/components/SaveQueryModal", () => ({
   SaveQueryModal: (props: Record<string, unknown>) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -559,6 +569,7 @@ describe("Studio", () => {
     capturedProfilerProps = {};
     capturedCodeGenProps = {};
     capturedTestDataProps = {};
+    capturedInspectorProps = {};
 
     // Reset overrides
     connMgrOverride = {};
@@ -3035,6 +3046,37 @@ describe("Studio", () => {
       expect(mockStorageDeleteResourceConnection).toHaveBeenCalledWith("res-1");
       expect(capturedSidebarProps.resourceConnections).toEqual([resConn2]);
       expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn2);
+    });
+
+    test("clicking a resource tree row opens the inspector for the node", () => {
+      storedResourceConnections = [resConn];
+      const { queryByTestId } = render(<Studio />);
+      expect(queryByTestId("resource-inspector")).toBeNull();
+
+      const node = { id: "bucket/backups", parentId: null, kind: "bucket", name: "backups", hasChildren: true };
+      const clickFn = capturedSidebarProps.onResourceNodeClick as (node: unknown) => void;
+      act(() => clickFn(node));
+
+      expect(queryByTestId("resource-inspector")).not.toBeNull();
+      expect(capturedInspectorProps.node).toEqual(node);
+      expect(capturedInspectorProps.connection).toEqual(resConn);
+    });
+
+    test("inspector change bumps the tree refresh token, close clears the node", () => {
+      storedResourceConnections = [resConn];
+      const { queryByTestId } = render(<Studio />);
+      const node = { id: "bucket/backups", parentId: null, kind: "bucket", name: "backups", hasChildren: true };
+      const clickFn = capturedSidebarProps.onResourceNodeClick as (node: unknown) => void;
+      act(() => clickFn(node));
+      expect(capturedSidebarProps.resourceRefreshToken).toBe(0);
+
+      const changedFn = capturedInspectorProps.onChanged as () => void;
+      act(() => changedFn());
+      expect(capturedSidebarProps.resourceRefreshToken).toBe(1);
+
+      const closeFn = capturedInspectorProps.onClose as () => void;
+      act(() => closeFn());
+      expect(queryByTestId("resource-inspector")).toBeNull();
     });
   });
 });

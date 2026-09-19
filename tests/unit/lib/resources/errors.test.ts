@@ -3,6 +3,7 @@ import {
   ResourceConfigError,
   ResourceConnectionError,
   ResourceError,
+  ResourceNotFoundError,
   ResourceOperationUnsupportedError,
   ResourceProviderUnavailableError,
 } from "@/lib/resources/errors";
@@ -24,6 +25,11 @@ describe("resource errors", () => {
       code: "RESOURCE_OPERATION_UNSUPPORTED",
       statusCode: 400,
     });
+    expect(new ResourceNotFoundError('Object "a" does not exist')).toMatchObject({
+      name: "ResourceNotFoundError",
+      code: "RESOURCE_NOT_FOUND",
+      statusCode: 404,
+    });
   });
 
   test("an unavailable type names the type and, when loaders exist, which ids are ready", () => {
@@ -40,6 +46,7 @@ describe("resource errors", () => {
       new ResourceConfigError("a"),
       new ResourceConnectionError("b"),
       new ResourceOperationUnsupportedError("c"),
+      new ResourceNotFoundError("d"),
       new ResourceProviderUnavailableError("s3", []),
     ]) {
       expect(error).toBeInstanceOf(ResourceError);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appFetch } from "@/lib/config/base-path";
@@ -22,6 +22,12 @@ import type { ResourceConnection, ResourceNode, ResourceNodePage } from "@/lib/r
 interface ResourceTreeProps {
   connection: ResourceConnection;
   onNodeClick?: (node: ResourceNode) => void;
+  /**
+   * Bump to re-read every loaded level without losing expansion (the
+   * objectRefreshToken ruling). A write behind the tree — an upload, a
+   * delete — is the only caller.
+   */
+  refreshToken?: number;
 }
 
 interface LevelState {
@@ -40,9 +46,11 @@ function toMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Tree read failed";
 }
 
-export function ResourceTree({ connection, onNodeClick }: ResourceTreeProps) {
+export function ResourceTree({ connection, onNodeClick, refreshToken }: ResourceTreeProps) {
   const [levels, setLevels] = useState<Record<string, LevelState>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  /** Levels with an answer on screen — what a refresh re-reads. */
+  const loadedKeys = useRef<Set<string>>(new Set());
 
   /** The read itself, state-free so the mount effect can await it first. */
   const fetchLevel = useCallback(
@@ -70,13 +78,32 @@ export function ResourceTree({ connection, onNodeClick }: ResourceTreeProps) {
       setLevels((prev) => ({ ...prev, [key]: { page: prev[key]?.page ?? null, error: null, loading: true } }));
       try {
         const page = await fetchLevel(parentId);
+        loadedKeys.current.add(key);
         setLevels((prev) => ({ ...prev, [key]: { page, error: null, loading: false } }));
       } catch (error) {
+        loadedKeys.current.add(key);
         setLevels((prev) => ({ ...prev, [key]: { page: null, error: toMessage(error), loading: false } }));
       }
     },
     [fetchLevel],
   );
+
+  // Re-read every answered level when the token moves, keeping expansion: the
+  // answers on screen are stale after a write behind the tree, but the open
+  // folders are still the reader's context. Skipped on mount — the mount
+  // effect owns the first read — so a token that starts defined does not
+  // double-load the roots.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    if (refreshToken === undefined) return;
+    for (const key of loadedKeys.current) {
+      void loadLevel(key === ROOT_KEY ? null : key);
+    }
+  }, [refreshToken, loadLevel]);
 
   // Roots load once, with the mount: the first state write lands after the
   // read resolves, never synchronously in the effect body. Expansion state
@@ -86,10 +113,14 @@ export function ResourceTree({ connection, onNodeClick }: ResourceTreeProps) {
     let cancelled = false;
     fetchLevel(null).then(
       (page) => {
-        if (!cancelled) setLevels({ [ROOT_KEY]: { page, error: null, loading: false } });
+        if (cancelled) return;
+        loadedKeys.current.add(ROOT_KEY);
+        setLevels({ [ROOT_KEY]: { page, error: null, loading: false } });
       },
       (error: unknown) => {
-        if (!cancelled) setLevels({ [ROOT_KEY]: { page: null, error: toMessage(error), loading: false } });
+        if (cancelled) return;
+        loadedKeys.current.add(ROOT_KEY);
+        setLevels({ [ROOT_KEY]: { page: null, error: toMessage(error), loading: false } });
       },
     );
     return () => {

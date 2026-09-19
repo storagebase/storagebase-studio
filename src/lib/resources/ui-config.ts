@@ -34,6 +34,7 @@ export type ResourceConnectionField =
   | "tenantId"
   | "clientId"
   | "clientSecret"
+  | "accountKey"
   | "vaultName"
   | "namespace";
 
@@ -62,7 +63,7 @@ export const RESOURCE_UI_CONFIG: Record<ResourceType, ResourceUIConfig> = {
     color: "text-hue-sky",
     label: "Azure Blob Storage",
     defaultPort: "443",
-    connectionFields: ["endpoint", "tenantId", "clientId", "clientSecret"],
+    connectionFields: ["endpoint", "tenantId", "clientId", "clientSecret", "accountKey"],
   },
   kafka: {
     category: "messaging",

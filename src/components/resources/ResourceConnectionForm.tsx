@@ -48,6 +48,7 @@ const FIELD_META: Record<ResourceConnectionField, FieldMeta> = {
   tenantId: { label: "Tenant ID", placeholder: "00000000-0000-0000-0000-000000000000", mono: true },
   clientId: { label: "Client ID", placeholder: "00000000-0000-0000-0000-000000000000", mono: true },
   clientSecret: { label: "Client Secret", placeholder: "***", secret: true },
+  accountKey: { label: "Account Key (or Entra ID above)", placeholder: "***", secret: true },
   vaultName: { label: "Vault Name", placeholder: "my-vault" },
   namespace: { label: "Namespace (optional)", placeholder: "ns1" },
 };

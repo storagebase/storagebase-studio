@@ -95,6 +95,12 @@ export interface ResourceConnection {
   tenantId?: string;
   clientId?: string;
   clientSecret?: string;
+  /**
+   * Storage account key (Azure Blob shared-key auth, and the Azurite emulator
+   * which speaks no Entra ID). A credential — sealed at rest. Either this or
+   * the Entra triple above; the provider refuses neither silently.
+   */
+  accountKey?: string;
   /** Azure Key Vault name, when the endpoint is not spelled as a full vault URL. */
   vaultName?: string;
   /** HashiCorp Vault / OpenBao Enterprise namespace. */
