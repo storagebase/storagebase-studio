@@ -39,6 +39,7 @@ mock.module("@/components/resources/ResourceTree", () => ({
         "data-testid": "resource-tree",
         "data-connection": String((props.connection as Record<string, string>)?.id ?? "none"),
         "data-has-click": String(props.onNodeClick !== undefined),
+        "data-refresh-token": props.refreshToken === undefined ? "none" : String(props.refreshToken),
       },
       "ResourceTree Mock",
     );
@@ -205,6 +206,15 @@ describe("Sidebar resource sections", () => {
       // The tree mock reports the handler's presence; ResourceTree's own tests
       // cover the click path. Presence here is the sidebar's whole job.
       expect(screen.getByTestId("resource-tree").getAttribute("data-has-click")).toBe("true");
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("hands the refresh token to the tree", () => {
+    render(<Sidebar {...baseProps()} activeResourceConnection={resourceConnection} resourceRefreshToken={7} />);
+    try {
+      expect(screen.getByTestId("resource-tree").getAttribute("data-refresh-token")).toBe("7");
     } finally {
       cleanup();
     }

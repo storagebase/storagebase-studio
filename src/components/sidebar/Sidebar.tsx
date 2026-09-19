@@ -88,6 +88,8 @@ interface SidebarProps {
   onAddResourceConnection?: () => void;
   /** A resource tree row the reader activated, handed over whole. */
   onResourceNodeClick?: (node: ResourceNode) => void;
+  /** Bump to re-read the resource tree's answered levels (a write landed behind it). */
+  resourceRefreshToken?: number;
 }
 
 export function Sidebar({
@@ -119,6 +121,7 @@ export function Sidebar({
   onEditResourceConnection,
   onAddResourceConnection,
   onResourceNodeClick,
+  resourceRefreshToken,
 }: SidebarProps) {
   const appVersion = getAppVersion();
 
@@ -251,6 +254,7 @@ export function Sidebar({
             key={activeResourceConnection.id}
             connection={activeResourceConnection}
             onNodeClick={onResourceNodeClick}
+            refreshToken={resourceRefreshToken}
           />
         </div>
       )}

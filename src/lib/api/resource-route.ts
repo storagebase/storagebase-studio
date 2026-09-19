@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createErrorResponse } from "@/lib/api/errors";
 import { guardRoute } from "@/lib/api/require-session";
 import { isResourceType, type ResourceConnection } from "@/lib/resources/types";
+// Family provider registration (server side): every resource route runs
+// through this handler, so one import covers the whole namespace.
+import "@/lib/resources/providers";
 
 /** The inline `connection` field every resource route's body carries. */
 export function isResourceConnection(value: unknown): value is ResourceConnection {

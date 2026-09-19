@@ -9,7 +9,8 @@ export type ResourceErrorCode =
   | "RESOURCE_CONFIG_ERROR"
   | "RESOURCE_CONNECTION_ERROR"
   | "RESOURCE_PROVIDER_UNAVAILABLE"
-  | "RESOURCE_OPERATION_UNSUPPORTED";
+  | "RESOURCE_OPERATION_UNSUPPORTED"
+  | "RESOURCE_NOT_FOUND";
 
 export class ResourceError extends Error {
   public readonly code: ResourceErrorCode;
@@ -58,5 +59,13 @@ export class ResourceOperationUnsupportedError extends ResourceError {
   constructor(message: string) {
     super(message, "RESOURCE_OPERATION_UNSUPPORTED", 400);
     this.name = "ResourceOperationUnsupportedError";
+  }
+}
+
+/** The addressed object does not exist (a deleted key, an uncreated secret). */
+export class ResourceNotFoundError extends ResourceError {
+  constructor(message: string) {
+    super(message, "RESOURCE_NOT_FOUND", 404);
+    this.name = "ResourceNotFoundError";
   }
 }

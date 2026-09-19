@@ -58,6 +58,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useConnectionManager } from "@/hooks/use-connection-manager";
 import { useResourceConnections } from "@/hooks/use-resource-connections";
 import type { ResourceConnection } from "@/lib/resources/types";
+// Family provider registration (client side): the standalone shell composes
+// the build's families, so the picker's offers match what the server answers.
+// Presentational components never import this barrel — unit tests start from
+// an empty registry and register fakes explicitly, and the embedded workspace
+// (which carries no routes) must never offer tiles that would answer 501.
+import "@/lib/resources/providers";
+import type { ResourceNode } from "@/lib/resources/types";
+import { ResourceInspector } from "@/components/resources/ResourceInspector";
 import { useTabManager } from "@/hooks/use-tab-manager";
 import { useTransactionControl } from "@/hooks/use-transaction-control";
 import { useQueryExecution } from "@/hooks/use-query-execution";
@@ -479,6 +487,10 @@ export default function Studio() {
   // Resource edit target (StorageBase fork). Cleared wherever the database
   // edit target is cleared, so the two halves never disagree about edit mode.
   const [editingResourceConnection, setEditingResourceConnection] = useState<ResourceConnection | null>(null);
+  // The resource tree row under inspection, if any, and the token that
+  // re-reads the tree after a viewer write lands behind it.
+  const [resourceNode, setResourceNode] = useState<ResourceNode | null>(null);
+  const [resourceRefreshToken, setResourceRefreshToken] = useState(0);
   const handleDuplicateConnection = (source: DatabaseConnection) => {
     setEditingConnection({
       ...structuredClone(source),
@@ -949,6 +961,8 @@ export default function Studio() {
                   setIsConnectionModalOpen(true);
                 }}
                 onAddResourceConnection={() => setIsConnectionModalOpen(true)}
+                onResourceNodeClick={(node) => setResourceNode(node)}
+                resourceRefreshToken={resourceRefreshToken}
                 metadata={metadata}
                 metadataError={metadataError}
                 onRetryMetadata={retryMetadata}
@@ -1351,6 +1365,14 @@ export default function Studio() {
         onTableCreated={(sql) => queryExec.executeQuery(sql)}
         dbType={conn.activeConnection?.type}
       />
+      {resourceNode && res.activeConnection && (
+        <ResourceInspector
+          connection={res.activeConnection}
+          node={resourceNode}
+          onClose={() => setResourceNode(null)}
+          onChanged={() => setResourceRefreshToken((token) => token + 1)}
+        />
+      )}
       <SaveQueryModal
         isOpen={isSaveQueryModalOpen}
         onClose={() => setIsSaveQueryModalOpen(false)}

@@ -56,6 +56,7 @@ const FIELD_OWNERSHIP: Record<keyof ResourceConnection, FieldOwnership> = {
   tenantId: "edited",
   clientId: "edited",
   clientSecret: "edited",
+  accountKey: "edited",
   vaultName: "edited",
   namespace: "edited",
   // No input owns these yet: the group is assigned elsewhere (sidebar), and the
@@ -138,6 +139,7 @@ export function useResourceConnectionForm({
   const [tenantId, setTenantId] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [accountKey, setAccountKey] = useState("");
   const [vaultName, setVaultName] = useState("");
   const [namespace, setNamespace] = useState("");
   const [isTesting, setIsTesting] = useState(false);
@@ -170,6 +172,7 @@ export function useResourceConnectionForm({
     tenantId: setTenantId,
     clientId: setClientId,
     clientSecret: setClientSecret,
+    accountKey: setAccountKey,
     vaultName: setVaultName,
     namespace: setNamespace,
   };
@@ -185,6 +188,7 @@ export function useResourceConnectionForm({
     tenantId,
     clientId,
     clientSecret,
+    accountKey,
     vaultName,
     namespace,
   };
@@ -211,6 +215,7 @@ export function useResourceConnectionForm({
       setTenantId(editConnection.tenantId || "");
       setClientId(editConnection.clientId || "");
       setClientSecret(editConnection.clientSecret || "");
+      setAccountKey(editConnection.accountKey || "");
       setVaultName(editConnection.vaultName || "");
       setNamespace(editConnection.namespace || "");
     }
@@ -275,6 +280,7 @@ export function useResourceConnectionForm({
     tenantId,
     clientId,
     clientSecret,
+    accountKey,
     vaultName,
     namespace,
   ]);

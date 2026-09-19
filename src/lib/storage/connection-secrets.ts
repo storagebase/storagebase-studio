@@ -109,6 +109,9 @@ export const RESOURCE_CONNECTION_FIELDS: Record<keyof ResourceConnection, FieldC
   tenantId: "public",
   clientId: "public",
   clientSecret: "secret",
+  // The shared key authenticates exactly like the client secret: whoever holds
+  // it owns the account, so it seals the same way.
+  accountKey: "secret",
   vaultName: "public",
   namespace: "public",
   sshTunnel: "nested",

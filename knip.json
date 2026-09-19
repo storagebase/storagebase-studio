@@ -17,13 +17,10 @@
     "tailwindcss",
     "@workflow/world-postgres",
     "@ai-sdk/anthropic",
-    "@aws-sdk/client-s3",
     "@aws-sdk/client-sqs",
     "@aws-sdk/client-kms",
     "@aws-sdk/client-secrets-manager",
-    "@azure/storage-blob",
     "@azure/keyvault-secrets",
-    "@azure/identity",
     "kafkajs",
     "amqplib",
     "@types/amqplib"

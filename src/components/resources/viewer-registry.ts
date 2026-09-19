@@ -16,6 +16,13 @@ import type { ResourceConnection, ResourceNode, ResourceType } from "@/lib/resou
 export interface ResourceViewerProps {
   connection: ResourceConnection;
   node: ResourceNode;
+  /**
+   * The viewer calls this after a write (upload, delete) so the shell
+   * refreshes the tree behind it. Reads never call it: nothing changed.
+   */
+  onChanged?: () => void;
+  /** The viewer calls this after a delete: the node it showed is gone. */
+  onClose?: () => void;
 }
 
 export type ResourceViewer = ComponentType<ResourceViewerProps>;

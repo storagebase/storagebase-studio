@@ -186,4 +186,36 @@ describe("ResourceTree", () => {
       expect(screen.getByTestId("resource-tree-error")).toBeDefined();
     });
   });
+
+  test("bumping refreshToken re-reads answered levels and keeps expansion", async () => {
+    let calls = 0;
+    mockGlobalFetch({
+      "api/resources/tree": async (req: Request) => {
+        calls += 1;
+        const body = (await req.json()) as { parent?: string };
+        return { json: body.parent ? childrenPage : rootsPage };
+      },
+    });
+
+    const { rerender } = render(<ResourceTree connection={connection} refreshToken={0} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("photos")).toBeDefined();
+    });
+    expect(calls).toBe(1);
+
+    // Expand to answer a second level, then refresh: both re-read, expansion kept.
+    fireEvent.click(screen.getByText("photos").closest("button") as HTMLButtonElement);
+    await waitFor(() => {
+      expect(screen.getByText("a.jpg")).toBeDefined();
+    });
+    expect(calls).toBe(2);
+
+    rerender(<ResourceTree connection={connection} refreshToken={1} />);
+
+    await waitFor(() => {
+      expect(calls).toBe(4);
+    });
+    expect(screen.getByText("a.jpg")).toBeDefined();
+  });
 });
