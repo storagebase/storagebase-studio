@@ -56,6 +56,8 @@ import { useProviderMetadata } from "@/hooks/use-provider-metadata";
 import { useConnectionOrder } from "@/hooks/use-connection-order";
 import { useAuth } from "@/hooks/use-auth";
 import { useConnectionManager } from "@/hooks/use-connection-manager";
+import { useResourceConnections } from "@/hooks/use-resource-connections";
+import type { ResourceConnection } from "@/lib/resources/types";
 import { useTabManager } from "@/hooks/use-tab-manager";
 import { useTransactionControl } from "@/hooks/use-transaction-control";
 import { useQueryExecution } from "@/hooks/use-query-execution";
@@ -116,6 +118,9 @@ export default function Studio() {
   const { metadata, error: metadataError, retry: retryMetadata } = useProviderMetadata(conn.activeConnection);
   const { favoriteIds, toggleFavorite } = useFavoriteConnections(storageReady);
   const { order: connectionOrder, setOrder: setConnectionOrder } = useConnectionOrder(storageReady);
+  // 2.5. Resource connections (StorageBase fork). Same storage-ready gate as
+  // the database manager; no seeds, catalogs or polling (see the hook).
+  const res = useResourceConnections(storageReady);
 
   // 3. Tab Manager
   const tabMgr = useTabManager({
@@ -471,6 +476,9 @@ export default function Studio() {
   // === Modal state ===
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<DatabaseConnection | null>(null);
+  // Resource edit target (StorageBase fork). Cleared wherever the database
+  // edit target is cleared, so the two halves never disagree about edit mode.
+  const [editingResourceConnection, setEditingResourceConnection] = useState<ResourceConnection | null>(null);
   const handleDuplicateConnection = (source: DatabaseConnection) => {
     setEditingConnection({
       ...structuredClone(source),
@@ -932,6 +940,15 @@ export default function Studio() {
                 onObjectClick={onObjectClick}
                 objectActions={objectActions}
                 onShowDiagram={() => setShowDiagram(true)}
+                resourceConnections={res.connections}
+                activeResourceConnection={res.activeConnection}
+                onSelectResourceConnection={res.setActiveConnection}
+                onDeleteResourceConnection={res.deleteResourceConnection}
+                onEditResourceConnection={(c) => {
+                  setEditingResourceConnection(c);
+                  setIsConnectionModalOpen(true);
+                }}
+                onAddResourceConnection={() => setIsConnectionModalOpen(true)}
                 metadata={metadata}
                 metadataError={metadataError}
                 onRetryMetadata={retryMetadata}
@@ -1309,6 +1326,7 @@ export default function Studio() {
         onClose={() => {
           setIsConnectionModalOpen(false);
           setEditingConnection(null);
+          setEditingResourceConnection(null);
         }}
         onConnect={(c) => {
           storage.saveConnection(c);
@@ -1320,6 +1338,12 @@ export default function Studio() {
           setEditingConnection(null);
         }}
         editConnection={editingConnection}
+        onConnectResource={(c) => {
+          res.saveResourceConnection(c);
+          setIsConnectionModalOpen(false);
+          setEditingResourceConnection(null);
+        }}
+        editResourceConnection={editingResourceConnection}
       />
       <CreateTableModal
         isOpen={isCreateTableModalOpen}

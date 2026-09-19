@@ -33,5 +33,5 @@ M1 ships the spine only: types, base provider, registry, factory, storage and
 API handling, UI configuration and icons. The four REST routes and the sidebar
 listing speak through them, but no provider module is registered yet, so the
 picker offers no types: `selectableResourceTypes()` is empty by design until
-M2 registers `s3`. That is the honest midpoint — a type that answers 501 looks
+the blob family registers `s3`. That is the honest midpoint — a type that answers 501 looks
 broken, so the UI hides it rather than offering it.
