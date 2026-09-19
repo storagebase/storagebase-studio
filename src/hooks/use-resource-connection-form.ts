@@ -9,9 +9,9 @@ import {
   RESOURCE_UI_CONFIG,
   selectableResourceTypes,
   takesResourceConnectionField,
-  type ResourceCategory,
+  type ResourceConnectionField,
 } from "@/lib/resources/ui-config";
-import type { ResourceConnection, ResourceConnectionField, ResourceType } from "@/lib/resources/types";
+import type { ResourceCategory, ResourceConnection, ResourceType } from "@/lib/resources/types";
 
 /**
  * Form state for a resource connection — the parallel of `useConnectionForm`,
@@ -85,6 +85,13 @@ interface UseResourceConnectionFormProps {
   onConnect: (conn: ResourceConnection) => void;
   editConnection?: ResourceConnection | null;
   /**
+   * The category whose picker this form serves. When set and the current type
+   * is not selectable in it (e.g. s3 still selected after switching to the
+   * Messaging tab), the form moves to the category's first selectable type —
+   * otherwise it would render one category's fields under another's tab.
+   */
+  category?: ResourceCategory;
+  /**
    * Optional API adapter: when provided, bypasses the built-in
    * /api/resources/test fetch (the embedded workspace carries no routes).
    */
@@ -116,6 +123,7 @@ export function useResourceConnectionForm({
   onConnect,
   editConnection,
   onTestConnection,
+  category,
 }: UseResourceConnectionFormProps) {
   const [type, setType] = useState<ResourceType>("s3");
   const [name, setName] = useState("");
@@ -140,6 +148,16 @@ export function useResourceConnectionForm({
   const [degradedSaveAcknowledged, setDegradedSaveAcknowledged] = useState(false);
 
   const isEditMode = !!editConnection;
+
+  // Keep the selected type inside the served category (see the `category` prop
+  // docblock). Adjusted while rendering, like the edit blocks below: the setter
+  // converges (the new type is selectable by construction), so no loop.
+  if (category !== undefined) {
+    const categoryTypes = selectableResourceTypes(category);
+    if (categoryTypes.length > 0 && !categoryTypes.includes(type)) {
+      setType(categoryTypes[0]);
+    }
+  }
 
   const fieldSetters: Record<ResourceConnectionField, (value: string) => void> = {
     endpoint: setEndpoint,
@@ -182,7 +200,7 @@ export function useResourceConnectionForm({
     if (editConnection) {
       setType(editConnection.type);
       setName(editConnection.name);
-      setEnvironment(editConnection.environment || "local");
+      setEnvironment((editConnection.environment || "local") as ConnectionEnvironment);
       setEndpoint(editConnection.endpoint || "");
       setRegion(editConnection.region || "");
       setAccessKeyId(editConnection.accessKeyId || "");

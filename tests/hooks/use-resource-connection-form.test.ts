@@ -15,7 +15,7 @@ describe("useResourceConnectionForm", () => {
   const defaultProps = {
     isOpen: true,
     onClose: mock(() => {}),
-    onConnect: mock(() => {}),
+    onConnect: mock((_conn: ResourceConnection) => {}),
     editConnection: null as ResourceConnection | null,
   };
 
@@ -78,6 +78,15 @@ describe("useResourceConnectionForm", () => {
     expect([...result.current.selectableTypes("blob")]).toEqual(["s3"]);
     expect([...result.current.selectableTypes("messaging")]).toEqual(["kafka"]);
     expect(result.current.selectableTypes("vault")).toEqual([]);
+  });
+
+  test("category prop keeps the selected type inside the served category", () => {
+    const { result } = renderHook(() => useResourceConnectionForm({ ...defaultProps, category: "messaging" }));
+
+    // s3 (the default) is not a messaging type, so the form moves to kafka,
+    // the first selectable messaging type registered above.
+    expect(result.current.type).toBe("kafka");
+    expect([...result.current.fieldsForType]).toEqual(["endpoint"]);
   });
 
   test("test button posts the built connection and shows success with latency", async () => {
@@ -221,7 +230,11 @@ describe("useResourceConnectionForm", () => {
   });
 
   test("uses the adapter instead of fetch when provided", async () => {
-    const onTestConnection = mock(async () => ({ success: true, message: "via adapter", latencyMs: 3 }));
+    const onTestConnection = mock(async (_conn: ResourceConnection) => ({
+      success: true,
+      message: "via adapter",
+      latencyMs: 3,
+    }));
     const fetchMock = mockGlobalFetch({
       "api/resources/test": { json: { success: false, message: "must not reach here" } },
     });
@@ -280,7 +293,7 @@ describe("useResourceConnectionForm", () => {
     const { result, rerender } = renderHook(
       ({ isOpen, editConnection: edit }: { isOpen: boolean; editConnection: ResourceConnection | null }) =>
         useResourceConnectionForm({ ...defaultProps, isOpen, editConnection: edit }),
-      { initialProps: { isOpen: true, editConnection } },
+      { initialProps: { isOpen: true, editConnection: editConnection as ResourceConnection | null } },
     );
 
     expect(result.current.fieldValues.token).toBe("s3cret");
