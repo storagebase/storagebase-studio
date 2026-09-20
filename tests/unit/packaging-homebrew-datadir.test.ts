@@ -54,7 +54,10 @@ describeIf(CANNOT_RUN, "packaging/homebrew/storagebase-studio.rb.tmpl data dir (
     const script = rawScript
       .replaceAll('#{Formula["node@24"].opt_bin}/node', nodePath)
       .replaceAll("#{libexec}/server.js", serverPath)
-      .replaceAll("#{var}/storagebase-studio/storagebase-storage.db", join(brewVar, "storagebase-studio/storagebase-storage.db"));
+      .replaceAll(
+        "#{var}/storagebase-studio/storagebase-storage.db",
+        join(brewVar, "storagebase-studio/storagebase-storage.db"),
+      );
     const result = Bun.spawnSync([BASH!, "-c", script], {
       env: { ...process.env, HOME: dir, HOSTNAME: "", LIBREDB_BIND: "", STORAGE_SQLITE_PATH: "", ...env },
       stdout: "pipe",

@@ -98,12 +98,13 @@ const explainCapable: DatabaseType[] = providerFiles(PROVIDER_ROOT)
   .sort();
 
 /**
- * The engines a listing may NOT name in an explain sentence. `storagebase` is excluded from
+ * The engines a listing may NOT name in an explain sentence. `libredb` is excluded from
  * both sides: it is the embedded engine, not one of the fourteen a listing counts, and
  * its label is a substring of the product name in every one of these files.
+ * (Engine type-id, not a release identifier: the rename script leaves it alone.)
  */
 const explainIncapable = (Object.keys(DB_UI_CONFIG) as DatabaseType[])
-  .filter((type) => type !== "storagebase" && !explainCapable.includes(type))
+  .filter((type) => type !== "libredb" && !explainCapable.includes(type))
   .sort();
 
 /**

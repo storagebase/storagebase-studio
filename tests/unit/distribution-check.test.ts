@@ -263,7 +263,9 @@ describe("githubAuthHeaders", () => {
 
   test("never leaks the token to another host", () => {
     process.env.GITHUB_TOKEN = "ghp_example";
-    expect(githubAuthHeaders("https://hub.docker.com/v2/repositories/storagebase/storagebase-studio/tags/latest")).toEqual({});
+    expect(
+      githubAuthHeaders("https://hub.docker.com/v2/repositories/storagebase/storagebase-studio/tags/latest"),
+    ).toEqual({});
   });
 
   test("sends no authorization at all when no token is configured", () => {
@@ -401,7 +403,11 @@ describe("maxPublishedVersion (winget enumerates every version, with no floating
 describe("extractPin", () => {
   test("extracts a single pinned version", () => {
     expect(
-      extractPin("image: ghcr.io/storagebase/storagebase-studio:0.9.27\n", "storagebase-studio:(\\d+\\.\\d+\\.\\d+)", "x"),
+      extractPin(
+        "image: ghcr.io/storagebase/storagebase-studio:0.9.27\n",
+        "storagebase-studio:(\\d+\\.\\d+\\.\\d+)",
+        "x",
+      ),
     ).toBe("0.9.27");
   });
 
@@ -421,9 +427,9 @@ describe("extractPin", () => {
 
   test("extracts across lines (kubero repository/tag style)", () => {
     const content = "    repository: ghcr.io/storagebase/storagebase-studio\n    tag: 0.9.27\n";
-    expect(extractPin(content, "ghcr\\.io/storagebase/storagebase-studio\\s+tag:\\s*(\\d+\\.\\d+\\.\\d+)", "kubero")).toBe(
-      "0.9.27",
-    );
+    expect(
+      extractPin(content, "ghcr\\.io/storagebase/storagebase-studio\\s+tag:\\s*(\\d+\\.\\d+\\.\\d+)", "kubero"),
+    ).toBe("0.9.27");
   });
 });
 
@@ -741,7 +747,10 @@ describe("CLI (subprocess against temp fixtures)", () => {
   function fixtureWithLocalPin(sla: string, pinned: string): string {
     const root = makeFixture("0.9.53", channelsYaml(localRow(sla)));
     mkdirSync(join(root, "deploy/railway"), { recursive: true });
-    writeFileSync(join(root, "deploy/railway/template.json"), `{"image": "ghcr.io/storagebase/storagebase-studio:${pinned}"}`);
+    writeFileSync(
+      join(root, "deploy/railway/template.json"),
+      `{"image": "ghcr.io/storagebase/storagebase-studio:${pinned}"}`,
+    );
     return root;
   }
 

@@ -442,7 +442,9 @@ describe("POST /api/auth/login", () => {
     });
 
     test("refuses a code that has already been spent (RFC 6238 replay guard)", async () => {
-      expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE })).status).toBe(200);
+      expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE })).status).toBe(
+        200,
+      );
 
       const replay = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE });
       const data = await parseResponseJSON<MfaBody>(replay);

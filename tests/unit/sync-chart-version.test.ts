@@ -362,7 +362,11 @@ describe("packagedChartChanges", () => {
 
   test("drops .helmignore'd ci values and empty lines", () => {
     expect(
-      packagedChartChanges(["charts/storagebase-studio/ci/default-values.yaml", "", "charts/storagebase-studio/values.yaml"]),
+      packagedChartChanges([
+        "charts/storagebase-studio/ci/default-values.yaml",
+        "",
+        "charts/storagebase-studio/values.yaml",
+      ]),
     ).toEqual(["charts/storagebase-studio/values.yaml"]);
   });
 });
@@ -731,7 +735,10 @@ describe("operator embedded chart copy (PR #156)", () => {
 
   test("listChartFiles skips the vendored charts dir", () => {
     const root = makeRoot();
-    expect(listChartFiles(join(root, "charts/storagebase-studio"))).toEqual(["Chart.yaml", "templates/deployment.yaml"]);
+    expect(listChartFiles(join(root, "charts/storagebase-studio"))).toEqual([
+      "Chart.yaml",
+      "templates/deployment.yaml",
+    ]);
   });
 
   test("identical copies produce no violations", () => {

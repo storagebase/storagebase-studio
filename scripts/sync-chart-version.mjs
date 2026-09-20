@@ -120,7 +120,9 @@ export function parseChart(chartYaml) {
 }
 
 export function parseImageTag(chartYaml) {
-  const tags = [...chartYaml.matchAll(/^\s*image:\s*ghcr\.io\/storagebase\/storagebase-studio:(\S+)\s*$/gm)].map((m) => m[1]);
+  const tags = [...chartYaml.matchAll(/^\s*image:\s*ghcr\.io\/storagebase\/storagebase-studio:(\S+)\s*$/gm)].map(
+    (m) => m[1],
+  );
   if (tags.length === 0) {
     throw new Error(`${CHART_YAML}: could not find the artifacthub.io/images image tag`);
   }

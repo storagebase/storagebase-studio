@@ -189,7 +189,8 @@ describe("AWS AMI first boot", () => {
     // silent and permanent until the buyer reboots. The plan writes the edge
     // from both ends; one is enough for the guarantee.
     const declared =
-      /Before=storagebase-studio\.service/.test(firstbootUnit) || /After=[^\n]*storagebase-firstboot\.service/.test(studioUnit);
+      /Before=storagebase-studio\.service/.test(firstbootUnit) ||
+      /After=[^\n]*storagebase-firstboot\.service/.test(studioUnit);
     expect(declared).toBe(true);
   });
 
@@ -310,7 +311,9 @@ describe("AWS AMI banner and MOTD", () => {
   });
 
   test("the banner is written once, never rewritten on a later boot", () => {
-    const writers = shippedFiles.filter((file) => /> ?\/etc\/storagebase-studio\.info/.test(fs.readFileSync(file, "utf8")));
+    const writers = shippedFiles.filter((file) =>
+      /> ?\/etc\/storagebase-studio\.info/.test(fs.readFileSync(file, "utf8")),
+    );
     expect(writers.map((file) => path.basename(file))).toEqual(["storagebase-banner"]);
   });
 
