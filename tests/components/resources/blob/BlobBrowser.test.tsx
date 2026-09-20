@@ -114,7 +114,9 @@ describe("BlobBrowser", () => {
     });
     const uploadCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("api/resources/blob/upload"));
     expect(uploadCall).toBeDefined();
-    const body = JSON.parse((uploadCall?.[1] as RequestInit).body as string) as Record<string, unknown>;
+    if (uploadCall === undefined) throw new Error("expected upload call");
+    expect(uploadCall).toBeDefined();
+    const body = JSON.parse((uploadCall[1] as RequestInit).body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ bucket: "fixture-blobs", name: "new.txt" });
     expect(typeof body.contentBase64).toBe("string");
     expect(screen.getByText("Uploaded new.txt.")).toBeDefined();

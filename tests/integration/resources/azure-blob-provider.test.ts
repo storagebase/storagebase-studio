@@ -93,10 +93,10 @@ class FakeContainerClient {
   async exists() {
     return this.name === "fixture";
   }
-  listBlobsByHierarchy(_delimiter: string, options?: { prefix?: string }) {
-    const self = this;
+  listBlobsByHierarchy = (_delimiter: string, options?: { prefix?: string }) => {
     return {
-      byPage(_settings?: { maxPageSize?: number }) {
+      byPage: (_settings?: { maxPageSize?: number }) => {
+        const containerName = this.name;
         return {
           [Symbol.asyncIterator]() {
             let done = false;
@@ -104,7 +104,7 @@ class FakeContainerClient {
               async next() {
                 if (done) return { done: true, value: undefined };
                 done = true;
-                if (self.name !== "fixture") throw azureError(404, "", "ContainerNotFound");
+                if (containerName !== "fixture") throw azureError(404, "", "ContainerNotFound");
                 const prefix = options?.prefix ?? "";
                 if (prefix !== "" && prefix !== "nested/") {
                   return {

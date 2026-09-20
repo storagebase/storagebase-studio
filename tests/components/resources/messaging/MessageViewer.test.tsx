@@ -88,7 +88,9 @@ describe("MessageViewer", () => {
       expect(props.onChanged).toHaveBeenCalledTimes(1);
     });
     const publishCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("message/publish"));
-    const body = JSON.parse((publishCall?.[1] as RequestInit).body as string) as Record<string, unknown>;
+    expect(publishCall).toBeDefined();
+    if (publishCall === undefined) throw new Error("expected publish call");
+    const body = JSON.parse((publishCall[1] as RequestInit).body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ destination: "topic/fixture-events", body: "hello-new" });
     expect(screen.getByText("Published.")).toBeDefined();
   });
@@ -152,7 +154,9 @@ describe("MessageViewer", () => {
       expect(props.onChanged).toHaveBeenCalledTimes(1);
     });
     const publishCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("message/publish"));
-    const body = JSON.parse((publishCall?.[1] as RequestInit).body as string) as Record<string, unknown>;
+    expect(publishCall).toBeDefined();
+    if (publishCall === undefined) throw new Error("expected publish call");
+    const body = JSON.parse((publishCall[1] as RequestInit).body as string) as Record<string, unknown>;
     expect(body).toMatchObject({
       destination: "exchange/fixture.events",
       attributes: { routingKey: "orders.created" },
