@@ -44,7 +44,9 @@ let amqpModule: AmqpModule | null = null;
 async function loadAmqp(): Promise<AmqpModule> {
   if (amqpModule) return amqpModule;
   try {
-    amqpModule = await import("amqplib");
+    // Same ruling as the kafka loader above: amqplib requires node:net and
+    // only ever loads server-side.
+    amqpModule = await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "amqplib");
     return amqpModule;
   } catch {
     throw new ResourceConfigError(

@@ -44,7 +44,10 @@ let kafkaModule: KafkaModule | null = null;
 async function loadKafka(): Promise<KafkaModule> {
   if (kafkaModule) return kafkaModule;
   try {
-    kafkaModule = await import("kafkajs");
+    // Kept out of the browser bundle like the sqlite builtins: kafkajs
+    // requires node:net/tls, and providers only ever load server-side
+    // (serverExternalPackages keeps the require at runtime).
+    kafkaModule = await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "kafkajs");
     return kafkaModule;
   } catch {
     throw new ResourceConfigError(
