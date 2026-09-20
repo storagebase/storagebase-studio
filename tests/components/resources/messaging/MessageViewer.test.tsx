@@ -173,4 +173,35 @@ describe("MessageViewer", () => {
       expect(screen.getByText("No messages.")).toBeDefined();
     });
   });
+
+  test("a failed browse surfaces the server sentence", async () => {
+    mockRoutes({
+      "api/resources/message/browse": { json: { message: "coordinator gone" }, status: 502 },
+    });
+    render(<MessageViewer {...props} node={topicNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("message-viewer-error")).toBeDefined();
+    });
+    expect(screen.getByText("coordinator gone")).toBeDefined();
+  });
+
+  test("a failed publish surfaces the server sentence and keeps the draft", async () => {
+    mockRoutes({
+      "api/resources/message/publish": { json: { message: "read-only" }, status: 403 },
+    });
+    render(<MessageViewer {...props} node={topicNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("message-viewer-message")).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText("Publish a message"), { target: { value: "kept-draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("message-viewer-error")).toBeDefined();
+    });
+    expect(props.onChanged).not.toHaveBeenCalled();
+  });
 });

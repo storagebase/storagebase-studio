@@ -176,6 +176,17 @@ describe("KafkaProvider", () => {
     expect(config.clientId).toContain("res-1");
     await provider.disconnect();
     expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("health answers through the topic listing", async () => {
+    const provider = new KafkaProvider(connection);
+    expect((await provider.getHealth()).status).toBe("healthy");
+  });
+
+  test("a parent address answers empty — topics have no children", async () => {
+    const provider = new KafkaProvider(connection);
+    expect(await provider.listNodes("topic/fixture-events")).toEqual({ nodes: [], truncated: false });
   });
 
   test("lists topics without the internal ones", async () => {

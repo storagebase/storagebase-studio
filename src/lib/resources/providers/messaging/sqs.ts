@@ -29,20 +29,16 @@ import type { BrowseMessagesPage, MessagingOperations } from "../../operations";
  * when the caller names one, `"storagebase"` otherwise.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type SqsModule = typeof import("@aws-sdk/client-sqs");
 
-let sqsModule: SqsModule | null = null;
-
-async function loadSqs(): Promise<SqsModule> {
-  if (sqsModule) return sqsModule;
-  try {
-    sqsModule = await import("@aws-sdk/client-sqs");
-    return sqsModule;
-  } catch {
-    throw new ResourceConfigError(
-      "AWS SDK (@aws-sdk/client-sqs) is not available in this environment. Install it with: bun add @aws-sdk/client-sqs",
-    );
-  }
+function loadSqs(): Promise<SqsModule> {
+  return loadResourceSdk<SqsModule>(
+    "@aws-sdk/client-sqs",
+    "AWS SDK (@aws-sdk/client-sqs)",
+    "bun add @aws-sdk/client-sqs",
+  );
 }
 
 export const SQS_BROWSE_LIMIT = 100;

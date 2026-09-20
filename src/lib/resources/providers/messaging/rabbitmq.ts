@@ -1,4 +1,5 @@
 import { BaseResourceProvider } from "../../base-provider";
+import { loadResourceSdk } from "../../sdk-loader";
 import { registerResourceProviderLoader } from "../../registry";
 import {
   ResourceConfigError,
@@ -40,23 +41,16 @@ interface AmqpClient {
   connect(url: string): Promise<AmqpConnection>;
 }
 
-let amqpClient: AmqpClient | null = null;
-
-async function loadAmqp(): Promise<AmqpClient> {
-  if (amqpClient) return amqpClient;
-  try {
-    // Same ruling as the kafka loader above: amqplib requires node:net and
-    // only ever loads server-side. The double cast is the documented cost of
-    // widening without @types/amqplib (see the structural interfaces above):
-    // there are no declarations to resolve against by design.
-    const sdk = (await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "amqplib")) as unknown as AmqpClient;
-    amqpClient = sdk;
-    return sdk;
-  } catch {
-    throw new ResourceConfigError(
-      "AMQP client (amqplib) is not available in this environment. Install it with: bun add amqplib",
-    );
-  }
+function loadAmqp(): Promise<AmqpClient> {
+  // Literal specifier, not the helper default: knip resolves usage statically
+  // and cannot follow the helper's variable import, while the bundlers must
+  // still leave this out of the client graph (node-only SDK, server routes).
+  return loadResourceSdk<AmqpClient>(
+    "amqplib",
+    "AMQP client (amqplib)",
+    "bun add amqplib",
+    () => import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "amqplib") as unknown as Promise<AmqpClient>,
+  );
 }
 
 export const RABBITMQ_BROWSE_LIMIT = 100;
@@ -81,7 +75,12 @@ interface AmqpChannel {
   checkExchange(exchange: string): Promise<unknown>;
   get(queue: string, options?: { noAck?: boolean }): Promise<false | AmqpMessage>;
   nack(message: AmqpMessage, allUpTo?: boolean, requeue?: boolean): void;
-  publish(exchange: string, routingKey: string, content: Uint8Array, options?: { headers?: Record<string, string> }): boolean;
+  publish(
+    exchange: string,
+    routingKey: string,
+    content: Uint8Array,
+    options?: { headers?: Record<string, string> },
+  ): boolean;
   purgeQueue(queue: string): Promise<{ messageCount: number }>;
   close(): Promise<void>;
   on(event: string, listener: () => void): void;
@@ -131,15 +130,20 @@ export class RabbitMQProvider extends BaseResourceProvider implements MessagingO
     if (!this.config.connectionString && !this.config.endpoint) {
       throw new ResourceConfigError('A RabbitMQ connection requires a "connectionString" or an "endpoint" host');
     }
+    // Scheme-checked here, not at dial time: a non-AMQP string is a record
+    // error (400), never a dial failure (502).
+    if (this.config.connectionString) {
+      const protocol = this.config.connectionString.split("://")[0];
+      if (protocol !== "amqp" && protocol !== "amqps") {
+        throw new ResourceConfigError('RabbitMQ connectionString must start with "amqp://" or "amqps://"');
+      }
+    }
   }
 
   /** Parse once, at use, so constructor validation stays cheap and total. */
   private addressing(): AmqpAddressing {
     if (this.config.connectionString) {
       const parsed = new URL(this.config.connectionString);
-      if (parsed.protocol !== "amqp:" && parsed.protocol !== "amqps:") {
-        throw new ResourceConfigError('RabbitMQ connectionString must start with "amqp://" or "amqps://"');
-      }
       const host = parsed.hostname || "localhost";
       return {
         url: this.config.connectionString,

@@ -37,23 +37,12 @@ import type { BrowseMessagesPage, MessagingOperations } from "../../operations";
  * M-future, documented in docs/resources/kafka.md rather than smuggled.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type KafkaModule = typeof import("kafkajs");
 
-let kafkaModule: KafkaModule | null = null;
-
-async function loadKafka(): Promise<KafkaModule> {
-  if (kafkaModule) return kafkaModule;
-  try {
-    // Kept out of the browser bundle like the sqlite builtins: kafkajs
-    // requires node:net/tls, and providers only ever load server-side
-    // (serverExternalPackages keeps the require at runtime).
-    kafkaModule = await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "kafkajs");
-    return kafkaModule;
-  } catch {
-    throw new ResourceConfigError(
-      "Kafka client (kafkajs) is not available in this environment. Install it with: bun add kafkajs",
-    );
-  }
+function loadKafka(): Promise<KafkaModule> {
+  return loadResourceSdk<KafkaModule>("kafkajs", "Kafka client (kafkajs)", "bun add kafkajs");
 }
 
 export const KAFKA_BROWSE_LIMIT = 100;

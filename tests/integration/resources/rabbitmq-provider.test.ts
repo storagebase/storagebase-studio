@@ -159,6 +159,24 @@ describe("RabbitMQProvider", () => {
     expect(FakeConnection.lastUrl).toBe("amqp://probe:probe@localhost:5672/%2f");
     await provider.disconnect();
     expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("health answers through a channel open-close", async () => {
+    const provider = new RabbitMQProvider(connection);
+    expect((await provider.getHealth()).status).toBe("healthy");
+  });
+
+  test("a bare endpoint defaults to guest credentials", async () => {
+    const provider = new RabbitMQProvider({ ...connection, connectionString: undefined, endpoint: "broker:5672" });
+    await provider.connect();
+    expect(FakeConnection.lastUrl).toBe("amqp://guest:guest@broker:5672");
+  });
+
+  test("a non-AMQP connection string is refused before dialing", async () => {
+    expect(() => new RabbitMQProvider({ ...connection, connectionString: "https://broker:5672/%2f" })).toThrow(
+      ResourceConfigError,
+    );
   });
 
   test("a refusing broker surfaces as a connection error", async () => {
@@ -173,6 +191,12 @@ describe("RabbitMQProvider", () => {
     const page = await provider.listNodes(null);
     expect(page.nodes.map((node) => node.id).sort()).toEqual(["exchange/fixture.events", "queue/fixture.orders"]);
     expect(page.nodes[0]).toMatchObject({ kind: "exchange", hasChildren: false });
+  });
+
+  test("listDestinations answers the same roots as the tree", async () => {
+    const provider = new RabbitMQProvider(connection);
+    const page = await provider.listDestinations();
+    expect(page.nodes.map((node) => node.id).sort()).toEqual(["exchange/fixture.events", "queue/fixture.orders"]);
   });
 
   test("browses with requeue and computed previews", async () => {
@@ -230,6 +254,29 @@ describe("RabbitMQProvider", () => {
 
     const error = await provider.purgeQueue("exchange/fixture.events").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ResourceOperationUnsupportedError);
+  });
+
+  test("purging a missing queue is a 404", async () => {
+    const provider = new RabbitMQProvider(connection);
+    const error = await provider.purgeQueue("queue/nope").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceNotFoundError);
+  });
+
+  test("publishing to a missing exchange is a 404", async () => {
+    const provider = new RabbitMQProvider(connection);
+    const error = await provider.publishMessage("exchange/nope", "x").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceNotFoundError);
+  });
+
+  test("a management API refusal fails the tree with its URL", async () => {
+    mockGlobalFetch({
+      "api/exchanges": { json: { message: "forbidden" }, status: 403 },
+      "api/queues": { json: [] },
+    });
+    const provider = new RabbitMQProvider(connection);
+    const error = await provider.listNodes(null).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect((error as Error).message).toContain("http://localhost:15672");
   });
 
   test("capabilities declare the full messaging surface", () => {

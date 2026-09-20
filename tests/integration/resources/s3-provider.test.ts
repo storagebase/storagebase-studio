@@ -84,6 +84,31 @@ function toStream(text: string): ReadableStream<Uint8Array> {
   });
 }
 
+/**
+ * A node-style async-iterable body — what the SDK actually answers in this
+ * runtime. The provider must convert it to the contract's web stream rather
+ * than passing it through (a web ReadableStream would fail this shape check
+ * loudly in the wrong direction: silently handing the caller an unreadable).
+ */
+function nodeStyleBody(text: string): unknown {
+  return nodeStyleBytes(new TextEncoder().encode(text));
+}
+
+function nodeStyleBytes(bytes: Uint8Array): unknown {
+  return {
+    [Symbol.asyncIterator]() {
+      let done = false;
+      return {
+        async next() {
+          if (done) return { done: true, value: undefined };
+          done = true;
+          return { done: false, value: bytes };
+        },
+      };
+    },
+  };
+}
+
 class FakeS3Client {
   static lastConfig: unknown = null;
   destroyed = false;
@@ -112,8 +137,30 @@ class FakeS3Client {
         if (command.input.Key !== "hello.txt") throw s3Error(undefined, 404, "UnknownError");
         return { ContentLength: 18, LastModified: new Date("2026-09-19T21:40:48.000Z"), ContentType: "text/plain" };
       case "GetObjectCommand": {
-        if (command.input.Key !== "hello.txt") throw s3Error("NoSuchKey", 404, "The specified key does not exist");
-        return { Body: toStream("hello storagebase\n"), ContentType: "text/plain", ContentLength: 18 };
+        if (
+          command.input.Key !== "hello.txt" &&
+          command.input.Key !== "photo.png" &&
+          command.input.Key !== "blob.bin" &&
+          command.input.Key !== "long.txt"
+        ) {
+          throw s3Error("NoSuchKey", 404, "The specified key does not exist");
+        }
+        if (command.input.Key === "photo.png") {
+          return { Body: nodeStyleBody("PNGDATA"), ContentType: "image/png", ContentLength: 7 };
+        }
+        if (command.input.Key === "blob.bin") {
+          // Raw invalid UTF-8: TextEncoder would launder these into valid
+          // output, so the bytes are built directly to prove binary detection.
+          return {
+            Body: nodeStyleBytes(new Uint8Array([0xff, 0xfe, 0x00, 0x41])),
+            ContentType: "application/octet-stream",
+            ContentLength: 4,
+          };
+        }
+        if (command.input.Key === "long.txt") {
+          return { Body: nodeStyleBody("x".repeat(100)), ContentType: "text/plain", ContentLength: 100 };
+        }
+        return { Body: nodeStyleBody("hello storagebase\n"), ContentType: "text/plain", ContentLength: 18 };
       }
       case "PutObjectCommand":
         return {};
@@ -170,6 +217,16 @@ describe("S3Provider", () => {
     expect(provider.isConnected()).toBe(true);
     await provider.disconnect();
     expect(provider.isConnected()).toBe(false);
+    // A double disconnect stays silent.
+    await provider.disconnect();
+    expect(provider.isConnected()).toBe(false);
+  });
+
+  test("health answers through the bucket listing", async () => {
+    const provider = new S3Provider(connection);
+    const health = await provider.getHealth();
+    expect(health.status).toBe("healthy");
+    expect(health.latencyMs).toBeDefined();
   });
 
   test("an unreachable endpoint fails connect as unreachable, not degraded", async () => {
@@ -250,6 +307,35 @@ describe("S3Provider", () => {
       const error = await call().catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ResourceNotFoundError);
     }
+  });
+
+  test("previews images, binaries and truncated bodies by kind", async () => {
+    const provider = new S3Provider(connection);
+    const image = await provider.previewBlob("fixture-blobs", "photo.png", 64);
+    expect(image).toMatchObject({ kind: "image", truncated: false, contentType: "image/png" });
+    expect(image.text).toBeUndefined();
+
+    const binary = await provider.previewBlob("fixture-blobs", "blob.bin", 64);
+    expect(binary.kind).toBe("binary");
+
+    const long = await provider.previewBlob("fixture-blobs", "long.txt", 10);
+    expect(long).toMatchObject({ kind: "text", truncated: true });
+    expect(long.text).toHaveLength(10);
+  });
+
+  test("a download stream can be cancelled mid-read", async () => {
+    const provider = new S3Provider(connection);
+    const download = await provider.downloadBlob("fixture-blobs", "hello.txt");
+    // Cancelling drives the converter's cancel arm (iterator teardown),
+    // which a full read never reaches.
+    await download.body.cancel();
+    expect(provider).toBeInstanceOf(S3Provider);
+  });
+
+  test("upload to a missing bucket is a 404", async () => {
+    const provider = new S3Provider(connection);
+    const error = await provider.uploadBlob("no-bucket", "x.txt", toStream("x")).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceNotFoundError);
   });
 
   test("upload returns fresh meta and delete removes an existing object", async () => {

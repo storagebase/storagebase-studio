@@ -28,10 +28,14 @@ class FakeCredential {
 
 class FakeSecretClient {
   static lastArgs: unknown = null;
-  constructor(url: string, credential: FakeCredential) {
+  constructor(
+    private readonly url: string,
+    credential: FakeCredential,
+  ) {
     FakeSecretClient.lastArgs = { url, credential };
   }
   async *listPropertiesOfSecrets() {
+    if (this.url.includes("localhost:1")) throw new Error("connect ECONNREFUSED 127.0.0.1:1");
     for (const [name, secret] of Object.entries(secrets)) {
       if (secret.deleted) continue;
       yield { name, enabled: true, updatedOn: new Date("2026-09-19T23:40:58.000Z") };
@@ -118,6 +122,19 @@ describe("AzureKeyVaultProvider", () => {
     expect(provider.isConnected()).toBe(true);
     expect(FakeSecretClient.lastArgs).toMatchObject({ url: "https://myvault.vault.azure.net" });
     await provider.disconnect();
+    expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("health answers through the secret listing", async () => {
+    const provider = new AzureKeyVaultProvider(connection);
+    expect((await provider.getHealth()).status).toBe("healthy");
+  });
+
+  test("a refusing endpoint surfaces as a connection error", async () => {
+    const provider = new AzureKeyVaultProvider({ ...connection, endpoint: "http://localhost:1" });
+    const error = await provider.connect().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
     expect(provider.isConnected()).toBe(false);
   });
 

@@ -167,4 +167,19 @@ describe("message routes", () => {
     expect((await postPurge(req as never)).status).toBe(401);
     expect(mockGetOrCreateResourceProvider).not.toHaveBeenCalled();
   });
+
+  test("an undeclared operation is a 400 the route decides", async () => {
+    mockGetOrCreateResourceProvider.mockImplementationOnce(async () => ({
+      ...fakeMessaging,
+      getCapabilities: () => ({ ...fakeMessaging.getCapabilities(), operations: ["tree"] }),
+    }));
+    const req = createMockRequest("/api/resources/message/publish", {
+      method: "POST",
+      body: { connection, destination: "topic/t", body: "x" },
+    });
+    const res = await postPublish(req as never);
+    expect(res.status).toBe(400);
+    const data = await parseResponseJSON<{ code: string }>(res);
+    expect(data.code).toBe("RESOURCE_OPERATION_UNSUPPORTED");
+  });
 });

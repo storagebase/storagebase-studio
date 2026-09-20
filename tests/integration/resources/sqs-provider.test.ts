@@ -183,6 +183,18 @@ describe("SqsProvider", () => {
     expect(FakeSQSClient.lastConfig).toMatchObject({ region: "us-east-1", endpoint: "http://localhost:4567" });
     await provider.disconnect();
     expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("health answers through the queue listing", async () => {
+    const provider = new SqsProvider(connection);
+    expect((await provider.getHealth()).status).toBe("healthy");
+  });
+
+  test("queue URLs pass through resolution untouched", async () => {
+    const provider = new SqsProvider(connection);
+    const page = await provider.browseMessages("http://localhost:4567/000000000000/fixture-events", 10);
+    expect(page.messages).toHaveLength(10);
   });
 
   test("lists queues by bare name", async () => {

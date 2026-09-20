@@ -218,4 +218,33 @@ describe("ResourceTree", () => {
     });
     expect(screen.getByText("a.jpg")).toBeDefined();
   });
+
+  test("a failing child level reports inline with a retry", async () => {
+    mockGlobalFetch({
+      "api/resources/tree": async (req: Request) => {
+        const body = (await req.json()) as { parent?: string };
+        if (body.parent) return { status: 500, json: { message: "prefix unreadable" } };
+        return { json: rootsPage };
+      },
+    });
+
+    render(<ResourceTree connection={connection} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("photos")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("photos").closest("button") as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("resource-tree-error")).toBeDefined();
+    });
+    expect(screen.getByText("prefix unreadable")).toBeDefined();
+    // The failed level keeps its expander: retry re-reads without collapsing.
+    fireEvent.click(screen.getByTestId("resource-tree-retry"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("resource-tree-error")).toBeDefined();
+    });
+  });
 });
