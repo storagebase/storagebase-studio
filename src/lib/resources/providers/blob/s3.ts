@@ -19,20 +19,12 @@ import type { BlobDownload, BlobObjectMeta, BlobOperations, BlobPreview } from "
  * place.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type S3Module = typeof import("@aws-sdk/client-s3");
 
-let s3Module: S3Module | null = null;
-
-async function loadS3(): Promise<S3Module> {
-  if (s3Module) return s3Module;
-  try {
-    s3Module = await import("@aws-sdk/client-s3");
-    return s3Module;
-  } catch {
-    throw new ResourceConfigError(
-      "AWS SDK (@aws-sdk/client-s3) is not available in this environment. Install it with: bun add @aws-sdk/client-s3",
-    );
-  }
+function loadS3(): Promise<S3Module> {
+  return loadResourceSdk<S3Module>("@aws-sdk/client-s3", "AWS SDK (@aws-sdk/client-s3)", "bun add @aws-sdk/client-s3");
 }
 
 /** Objects per tree level — the bound the page's `truncated` flag reports. */

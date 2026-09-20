@@ -29,8 +29,17 @@ export type ResourceViewer = ComponentType<ResourceViewerProps>;
 
 const RESOURCE_VIEWERS: Partial<Record<ResourceType, ResourceViewer>> = {};
 
-export function getResourceViewer(type: ResourceType): ResourceViewer | undefined {
-  return RESOURCE_VIEWERS[type];
+export function getResourceViewer(type: ResourceType): ResourceViewer {
+  const viewer = RESOURCE_VIEWERS[type];
+  // Throws rather than returning undefined: a missing viewer is a programmer
+  // error (a family that forgot its registration), and the completeness test
+  // below pins every type-id so it fails before shipping, not in a dialog.
+  // Callers never branch on this — that is what keeps the inspector free of
+  // an uncoverable fallback arm under the 100% gate.
+  if (viewer === undefined) {
+    throw new Error(`No viewer registered for resource type "${type}"`);
+  }
+  return viewer;
 }
 
 export function hasResourceViewer(type: ResourceType): boolean {

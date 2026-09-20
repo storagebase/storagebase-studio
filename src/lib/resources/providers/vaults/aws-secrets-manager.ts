@@ -28,20 +28,16 @@ import type { SecretRead, VaultOperations } from "../../operations";
  *   refuses the value rather than base64-ing bytes into a text pane.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type SecretsManagerModule = typeof import("@aws-sdk/client-secrets-manager");
 
-let secretsManagerModule: SecretsManagerModule | null = null;
-
-async function loadSecretsManager(): Promise<SecretsManagerModule> {
-  if (secretsManagerModule) return secretsManagerModule;
-  try {
-    secretsManagerModule = await import("@aws-sdk/client-secrets-manager");
-    return secretsManagerModule;
-  } catch {
-    throw new ResourceConfigError(
-      "AWS SDK (@aws-sdk/client-secrets-manager) is not available in this environment. Install it with: bun add @aws-sdk/client-secrets-manager",
-    );
-  }
+function loadSecretsManager(): Promise<SecretsManagerModule> {
+  return loadResourceSdk<SecretsManagerModule>(
+    "@aws-sdk/client-secrets-manager",
+    "AWS SDK (@aws-sdk/client-secrets-manager)",
+    "bun add @aws-sdk/client-secrets-manager",
+  );
 }
 
 function toConnectionError(error: unknown, what: string): ResourceConnectionError {

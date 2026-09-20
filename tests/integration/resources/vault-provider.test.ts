@@ -149,6 +149,35 @@ describe("VaultProvider", () => {
     expect(await provider.getHealth()).toMatchObject({ status: "healthy" });
     await provider.disconnect();
     expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("a sealed vault is degraded, not healthy and not failed", async () => {
+    const sealedFetch = mock(async () => jsonResponse(200, { initialized: true, sealed: true }));
+    globalThis.fetch = sealedFetch as unknown as typeof fetch;
+    try {
+      const provider = new VaultProvider(connection);
+      expect(await provider.getHealth()).toMatchObject({ status: "degraded" });
+    } finally {
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+    }
+  });
+
+  test("a failing health read fails the probe", async () => {
+    globalThis.fetch = (async () => jsonResponse(500, { errors: ["boom"] })) as unknown as typeof fetch;
+    try {
+      const provider = new VaultProvider(connection);
+      const error = await provider.getHealth().catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ResourceConnectionError);
+    } finally {
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+    }
+  });
+
+  test("a path without a mount is a 404", async () => {
+    const provider = new VaultProvider(connection);
+    const error = await provider.readSecret("noslash").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceNotFoundError);
   });
 
   test("lists only kv-v2 mounts", async () => {
@@ -209,6 +238,30 @@ describe("VaultProvider", () => {
 
     const error = await provider.deleteSecret("storagebase/plain").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ResourceNotFoundError);
+  });
+
+  test("server-side failures carry the route's sentence", async () => {
+    const failing = mock(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
+      if (url.pathname === "/v1/sys/health" || url.pathname === "/v1/sys/mounts") {
+        return fetchMock(input as string, {});
+      }
+      return jsonResponse(500, { errors: ["storage backend failure"] });
+    });
+    globalThis.fetch = failing as unknown as typeof fetch;
+    try {
+      const provider = new VaultProvider(connection);
+      for (const call of [
+        () => provider.readSecret("storagebase/fixture"),
+        () => provider.writeSecret("storagebase/fixture", "x"),
+        () => provider.deleteSecret("storagebase/fixture"),
+      ]) {
+        const error = await call().catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(ResourceConnectionError);
+      }
+    } finally {
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+    }
   });
 
   test("capabilities and labels are type-driven", () => {

@@ -27,20 +27,16 @@ import type { SecretRead, VaultOperations } from "../../operations";
  *   names the window in its confirm so the click promises exactly this.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type KmsModule = typeof import("@aws-sdk/client-kms");
 
-let kmsModule: KmsModule | null = null;
-
-async function loadKms(): Promise<KmsModule> {
-  if (kmsModule) return kmsModule;
-  try {
-    kmsModule = await import("@aws-sdk/client-kms");
-    return kmsModule;
-  } catch {
-    throw new ResourceConfigError(
-      "AWS SDK (@aws-sdk/client-kms) is not available in this environment. Install it with: bun add @aws-sdk/client-kms",
-    );
-  }
+function loadKms(): Promise<KmsModule> {
+  return loadResourceSdk<KmsModule>(
+    "@aws-sdk/client-kms",
+    "AWS SDK (@aws-sdk/client-kms)",
+    "bun add @aws-sdk/client-kms",
+  );
 }
 
 function toConnectionError(error: unknown, what: string): ResourceConnectionError {

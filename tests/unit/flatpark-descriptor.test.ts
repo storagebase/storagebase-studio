@@ -152,7 +152,9 @@ describe("org.storagebase.Studio.yml manifest (#241)", () => {
 
   test("runs the wrapper, not the shell binary directly", () => {
     expect(manifest.command).toBe("storagebase-studio");
-    expect(module0["build-commands"]).toContain("install -Dm755 storagebase-studio-wrapper /app/bin/storagebase-studio");
+    expect(module0["build-commands"]).toContain(
+      "install -Dm755 storagebase-studio-wrapper /app/bin/storagebase-studio",
+    );
   });
 
   test("keeps the managed extra-data markers FlatPark's bot rewrites between", () => {
@@ -379,7 +381,10 @@ describe("release wiring for the pinned artifact (#241)", () => {
   test("the Flathub manifest tolerates both sidecar names across the rename", () => {
     // Flathub's checker can re-render this template against a release from
     // before 0.9.62, whose AppImage still carries the old name.
-    const tmpl = fs.readFileSync(path.join(__dirname, "../../packaging/flatpak/org.storagebase.Studio.yml.tmpl"), "utf8");
+    const tmpl = fs.readFileSync(
+      path.join(__dirname, "../../packaging/flatpak/org.storagebase.Studio.yml.tmpl"),
+      "utf8",
+    );
     expect(tmpl).toContain("for candidate in storagebase-studio-node node; do");
   });
 });

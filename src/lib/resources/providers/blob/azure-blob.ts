@@ -23,34 +23,21 @@ import { Readable } from "node:stream";
  * (`container/<name>/<blob-or-prefix>`) under the same `splitNodeId` ruling.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type BlobModule = typeof import("@azure/storage-blob");
 type IdentityModule = typeof import("@azure/identity");
 
-let blobModule: BlobModule | null = null;
-let identityModule: IdentityModule | null = null;
-
-async function loadBlob(): Promise<BlobModule> {
-  if (blobModule) return blobModule;
-  try {
-    blobModule = await import("@azure/storage-blob");
-    return blobModule;
-  } catch {
-    throw new ResourceConfigError(
-      "Azure SDK (@azure/storage-blob) is not available in this environment. Install it with: bun add @azure/storage-blob",
-    );
-  }
+function loadBlob(): Promise<BlobModule> {
+  return loadResourceSdk<BlobModule>(
+    "@azure/storage-blob",
+    "Azure SDK (@azure/storage-blob)",
+    "bun add @azure/storage-blob",
+  );
 }
 
-async function loadIdentity(): Promise<IdentityModule> {
-  if (identityModule) return identityModule;
-  try {
-    identityModule = await import("@azure/identity");
-    return identityModule;
-  } catch {
-    throw new ResourceConfigError(
-      "Azure SDK (@azure/identity) is not available in this environment. Install it with: bun add @azure/identity",
-    );
-  }
+function loadIdentity(): Promise<IdentityModule> {
+  return loadResourceSdk<IdentityModule>("@azure/identity", "Azure SDK (@azure/identity)", "bun add @azure/identity");
 }
 
 export const AZURE_BLOB_LIST_LIMIT = 1000;

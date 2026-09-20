@@ -155,4 +155,44 @@ describe("SecretViewer", () => {
     });
     expect(screen.getByText("sealed")).toBeDefined();
   });
+
+  test("a failed save surfaces the server sentence and keeps the draft", async () => {
+    mockRoutes({
+      "api/resources/secret/write": { json: { message: "denied" }, status: 403 },
+    });
+    render(<SecretViewer {...props} node={secretNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("secret-viewer-value")).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText("New value"), { target: { value: "kept-draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("secret-viewer-error")).toBeDefined();
+    });
+    expect(props.onChanged).not.toHaveBeenCalled();
+  });
+
+  test("a failed delete surfaces the server sentence and stays open", async () => {
+    mockRoutes({
+      "api/resources/secret/delete": { json: { message: "denied" }, status: 403 },
+    });
+    render(<SecretViewer {...props} node={secretNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("secret-viewer-value")).toBeDefined();
+    });
+
+    const deleteButton = screen.getByTestId("secret-viewer-delete");
+    fireEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("secret-viewer-error")).toBeDefined();
+    });
+    expect(props.onChanged).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
 });

@@ -23,34 +23,21 @@ import type { SecretRead, VaultOperations } from "../../operations";
  * D31 only in volume.
  */
 
+import { loadResourceSdk } from "../../sdk-loader";
+
 type SecretsModule = typeof import("@azure/keyvault-secrets");
 type IdentityModule = typeof import("@azure/identity");
 
-let secretsModule: SecretsModule | null = null;
-let identityModule: IdentityModule | null = null;
-
-async function loadSecrets(): Promise<SecretsModule> {
-  if (secretsModule) return secretsModule;
-  try {
-    secretsModule = await import("@azure/keyvault-secrets");
-    return secretsModule;
-  } catch {
-    throw new ResourceConfigError(
-      "Azure SDK (@azure/keyvault-secrets) is not available in this environment. Install it with: bun add @azure/keyvault-secrets",
-    );
-  }
+function loadSecrets(): Promise<SecretsModule> {
+  return loadResourceSdk<SecretsModule>(
+    "@azure/keyvault-secrets",
+    "Azure SDK (@azure/keyvault-secrets)",
+    "bun add @azure/keyvault-secrets",
+  );
 }
 
-async function loadIdentity(): Promise<IdentityModule> {
-  if (identityModule) return identityModule;
-  try {
-    identityModule = await import("@azure/identity");
-    return identityModule;
-  } catch {
-    throw new ResourceConfigError(
-      "Azure SDK (@azure/identity) is not available in this environment. Install it with: bun add @azure/identity",
-    );
-  }
+function loadIdentity(): Promise<IdentityModule> {
+  return loadResourceSdk<IdentityModule>("@azure/identity", "Azure SDK (@azure/identity)", "bun add @azure/identity");
 }
 
 function toConnectionError(error: unknown, what: string): ResourceConnectionError {

@@ -21,9 +21,21 @@ mock.module("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 
+let capturedDialogProps: Record<string, unknown> = {};
+
 mock.module("@/components/ui/dialog", () => ({
-  Dialog: ({ open, children }: { open?: boolean; children: React.ReactNode }) =>
-    open ? React.createElement("div", { "data-testid": "dialog" }, children) : null,
+  Dialog: ({
+    open,
+    children,
+    onOpenChange,
+  }: {
+    open?: boolean;
+    children: React.ReactNode;
+    onOpenChange?: (open: boolean) => void;
+  }) => {
+    capturedDialogProps = { open, onOpenChange };
+    return open ? React.createElement("div", { "data-testid": "dialog" }, children) : null;
+  },
   DialogContent: ({ children }: { children: React.ReactNode }) =>
     React.createElement("div", { "data-testid": "dialog-content" }, children),
   DialogTitle: ({ children }: { children: React.ReactNode }) => React.createElement("h2", null, children),
@@ -32,8 +44,8 @@ mock.module("@/components/ui/dialog", () => ({
   DialogTrigger: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// The inspector imports the real blob viewer barrel (self-registration, like
-// production); kafka has no viewer, which is exactly what the fallback test needs.
+// The inspector imports the real viewer barrels (self-registration, like
+// production); the completeness test below pins every type to a viewer.
 import { ResourceInspector } from "@/components/resources/ResourceInspector";
 import { hasResourceViewer } from "@/components/resources/viewer-registry";
 import { RESOURCE_TYPES } from "@/lib/resources/types";
@@ -89,19 +101,38 @@ describe("ResourceInspector", () => {
     expect(screen.queryByTestId("resource-inspector-fallback")).toBeNull();
   });
 
-  test("every resource type resolves a viewer — no reachable fallback", () => {
-    // All ten type-ids registered a viewer with their family; the inspector's
-    // fallback branch stays as defense for future ids, but nothing reachable
-    // may hit it. RESOURCE_TYPES is the union's only list, so this fails when
-    // a family forgets a registration.
+  test("every resource type resolves a viewer — getResourceViewer never misses", () => {
+    // All ten type-ids registered a viewer with their family; a miss throws
+    // instead of rendering nothing, so this fails when a family forgets a
+    // registration. RESOURCE_TYPES is the union's only list.
     for (const type of RESOURCE_TYPES) {
       expect(hasResourceViewer(type), type).toBe(true);
     }
   });
 
-  test("renders nothing without a connection and node", () => {
+  test("renders an empty dialog without a connection and node", () => {
+    // The shell never mounts this state (it gates on both), so the contract
+    // is only "renders without crashing and shows no viewer".
     render(<ResourceInspector connection={null} node={null} {...props} />);
     expect(screen.queryByTestId("blob-browser")).toBeNull();
-    expect(screen.queryByTestId("resource-inspector-fallback")).toBeNull();
+    expect(screen.getByTestId("dialog")).toBeDefined();
+  });
+
+  test("dismissing the dialog calls back", () => {
+    const onClose = mock(() => {});
+    mockGlobalFetch({
+      "api/resources/blob/meta": {
+        json: { id: "x", name: "hello.txt", sizeBytes: 18, lastModified: null, contentType: "text/plain" },
+      },
+      "api/resources/blob/preview": {
+        json: { kind: "text", text: "hello", truncated: false, contentType: "text/plain" },
+      },
+    });
+    render(<ResourceInspector connection={s3Connection} node={objectNode} onClose={onClose} onChanged={() => {}} />);
+
+    const onOpenChange = capturedDialogProps.onOpenChange as (open: boolean) => void;
+    expect(typeof onOpenChange).toBe("function");
+    onOpenChange(false);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

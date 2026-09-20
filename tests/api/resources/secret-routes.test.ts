@@ -165,4 +165,19 @@ describe("secret routes", () => {
     expect((await postDelete(req as never)).status).toBe(401);
     expect(mockDeleteSecret).not.toHaveBeenCalled();
   });
+
+  test("an undeclared operation is a 400 the route decides", async () => {
+    mockGetOrCreateResourceProvider.mockImplementationOnce(async () => ({
+      ...fakeVault,
+      getCapabilities: () => ({ ...fakeVault.getCapabilities(), operations: ["tree"] }),
+    }));
+    const req = createMockRequest("/api/resources/secret/write", {
+      method: "POST",
+      body: { connection, path: "storagebase/new", value: "x" },
+    });
+    const res = await postWrite(req as never);
+    expect(res.status).toBe(400);
+    const data = await parseResponseJSON<{ code: string }>(res);
+    expect(data.code).toBe("RESOURCE_OPERATION_UNSUPPORTED");
+  });
 });

@@ -122,7 +122,9 @@ describe("renderFlatpakManifest", () => {
       expect(checker?.url).toBe("https://api.github.com/repos/storagebase/storagebase-studio/releases/latest");
       // Release tags in this repo carry no "v" prefix, so no jq stripping.
       expect(checker?.["version-query"]).toBe(".tag_name");
-      expect(checker?.["url-query"]).toContain(`storagebase-studio-desktop-" + $version + "-linux-${assetArch}.AppImage`);
+      expect(checker?.["url-query"]).toContain(
+        `storagebase-studio-desktop-" + $version + "-linux-${assetArch}.AppImage`,
+      );
     }
   });
 
@@ -131,7 +133,11 @@ describe("renderFlatpakManifest", () => {
       .modules[0].sources.map((source) => source.path)
       .filter(Boolean);
     expect(paths).toEqual(
-      expect.arrayContaining(["storagebase-studio.sh", "org.storagebase.Studio.desktop", "org.storagebase.Studio.metainfo.xml"]),
+      expect.arrayContaining([
+        "storagebase-studio.sh",
+        "org.storagebase.Studio.desktop",
+        "org.storagebase.Studio.metainfo.xml",
+      ]),
     );
   });
 

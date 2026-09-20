@@ -92,6 +92,45 @@ describe("ResourceConnectionForm", () => {
     expect(screen.getByLabelText("Access Key ID").getAttribute("type")).not.toBe("password");
   });
 
+  test("switching types swaps the field list", () => {
+    registerResourceProviderLoader("azure-blob", async () => {
+      throw new Error("never loaded by the form");
+    });
+
+    render(<ResourceConnectionForm {...formProps} />);
+
+    expect(screen.getByLabelText("Region")).toBeDefined();
+    fireEvent.click(screen.getByText("Azure Blob Storage"));
+
+    expect(screen.queryByLabelText("Region")).toBeNull();
+    expect(screen.getByLabelText("Endpoint")).toBeDefined();
+    expect(screen.getByLabelText("Client Secret")).toBeDefined();
+  });
+
+  test("degraded and failed probes render warning and error tones", async () => {
+    mockGlobalFetch({
+      "api/resources/test": { json: { success: true, degraded: true, message: "no health surface" } },
+    });
+    render(<ResourceConnectionForm {...formProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Test Connection" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("resource-connection-test-result").getAttribute("data-tone")).toBe("warning");
+    });
+
+    mockGlobalFetch({
+      "api/resources/test": { json: { success: false, degraded: false, message: "refused" } },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test Connection" }));
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("resource-connection-test-result");
+      expect(banner.getAttribute("data-tone")).toBe("error");
+      expect(within(banner).getByText("refused")).toBeDefined();
+    });
+  });
+
   test("kafka shows only its endpoint field", () => {
     registerResourceProviderLoader("kafka", async () => {
       throw new Error("never loaded by the form");

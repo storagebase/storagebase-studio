@@ -167,6 +167,23 @@ describe("useResourceConnectionForm", () => {
     expect(result.current.testResult?.message).toBe("Network error - could not reach server");
   });
 
+  test("connect reports a network error when fetch throws", async () => {
+    mockGlobalFetch({
+      "api/resources/test": () => {
+        throw new Error("down");
+      },
+    });
+    const { result } = renderHook(() => useResourceConnectionForm(defaultProps));
+
+    await act(async () => {
+      await result.current.handleConnect();
+    });
+
+    expect(result.current.testResult?.tone).toBe("error");
+    expect(result.current.testResult?.message).toBe("Network error - could not reach server");
+    expect(defaultProps.onConnect).not.toHaveBeenCalled();
+  });
+
   test("connect saves on success and stamps id, default name, environment color", async () => {
     mockGlobalFetch({
       "api/resources/test": { json: { success: true, degraded: false, message: "Connected", latencyMs: 7 } },

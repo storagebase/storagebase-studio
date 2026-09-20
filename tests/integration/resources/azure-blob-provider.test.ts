@@ -27,6 +27,26 @@ function toStream(text: string): ReadableStream<Uint8Array> {
   });
 }
 
+/**
+ * A node-style async-iterable body — what the SDK actually answers. The
+ * provider converts it to the contract's web stream; a web stream here would
+ * leave that conversion uncovered.
+ */
+function nodeStyleBytes(bytes: Uint8Array): unknown {
+  return {
+    [Symbol.asyncIterator]() {
+      let done = false;
+      return {
+        async next() {
+          if (done) return { done: true, value: undefined };
+          done = true;
+          return { done: false, value: bytes };
+        },
+      };
+    },
+  };
+}
+
 function azureError(statusCode: number, message: string, code?: string) {
   const error = new Error(message) as Error & { statusCode: number; code?: string };
   error.statusCode = statusCode;
@@ -47,7 +67,7 @@ const FIXTURE_BLOBS = [
 ];
 
 const capturedServiceArgs: Array<{ url: string; credential: string }> = [];
-const uploaded: Array<{ container: string; name: string }> = [];
+const uploaded: Array<{ container: string; name: string; bytes?: string }> = [];
 const deleted: Array<{ container: string; name: string }> = [];
 
 class FakeCredential {
@@ -60,7 +80,21 @@ class FakeBlobClient {
     private readonly name: string,
   ) {}
   async getProperties() {
-    if (this.name !== "hello.txt") throw azureError(404, "");
+    if (
+      this.name !== "hello.txt" &&
+      this.name !== "photo.png" &&
+      this.name !== "blob.bin" &&
+      this.name !== "nobody.txt"
+    ) {
+      throw azureError(404, "");
+    }
+    if (this.name === "photo.png") {
+      return {
+        contentLength: 7,
+        contentType: "image/png",
+        lastModified: new Date("2026-09-20T00:41:02.000Z"),
+      };
+    }
     return {
       contentLength: 18,
       contentType: "application/octet-stream",
@@ -68,11 +102,37 @@ class FakeBlobClient {
     };
   }
   async download(offset?: number, count?: number) {
-    if (this.name !== "hello.txt") throw azureError(404, "");
+    if (
+      this.name !== "hello.txt" &&
+      this.name !== "nobody.txt" &&
+      this.name !== "photo.png" &&
+      this.name !== "blob.bin"
+    ) {
+      throw azureError(404, "");
+    }
+    if (this.name === "nobody.txt") {
+      // Answers 200 with no body: the provider's guard, not a 404.
+      return { contentType: "application/octet-stream", contentLength: 0 };
+    }
+    if (this.name === "photo.png") {
+      return {
+        readableStreamBody: nodeStyleBytes(new TextEncoder().encode("PNGDATA")),
+        contentType: "image/png",
+        contentLength: 7,
+      };
+    }
+    if (this.name === "blob.bin") {
+      return {
+        readableStreamBody: nodeStyleBytes(new Uint8Array([0xff, 0xfe, 0x00, 0x41])),
+        contentType: "application/octet-stream",
+        contentLength: 4,
+      };
+    }
     // Full downloads pass no range; previews pass (0, limit+1). The count is
-    // recorded so tests can tell the two apart.
+    // recorded so tests can tell the two apart. The body is node-style, like
+    // the SDK answers, so the provider's conversion is what gets exercised.
     return {
-      readableStreamBody: toStream("hello storagebase\n"),
+      readableStreamBody: nodeStyleBytes(new TextEncoder().encode("hello storagebase\n")),
       contentType: "application/octet-stream",
       contentLength: 18,
       contentRange: "bytes 0-17/18",
@@ -128,15 +188,29 @@ class FakeContainerClient {
         };
       },
     };
-  }
+  };
   getBlobClient(name: string) {
     return new FakeBlobClient(this.name, name);
   }
   getBlockBlobClient(name: string) {
     const container = this.name;
     return {
-      async uploadStream(_stream: unknown) {
-        uploaded.push({ container, name });
+      async uploadStream(stream: unknown) {
+        // Consumed, not ignored: the provider converts the contract's web
+        // stream to node here, and an unread stream would leave that
+        // conversion uncovered while asserting nothing about the bytes.
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+          chunks.push(chunk);
+        }
+        const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const body = new Uint8Array(total);
+        let offset = 0;
+        for (const chunk of chunks) {
+          body.set(chunk, offset);
+          offset += chunk.length;
+        }
+        uploaded.push({ container, name, bytes: new TextDecoder().decode(body) });
       },
     };
   }
@@ -260,6 +334,34 @@ describe("AzureBlobProvider", () => {
     });
   });
 
+  test("disconnect clears and health answers through the container listing", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    await provider.connect();
+    expect(provider.isConnected()).toBe(true);
+    expect((await provider.getHealth()).status).toBe("healthy");
+    await provider.disconnect();
+    expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
+  test("upload to a missing container is a 404", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    const error = await provider.uploadBlob("no-container", "x.txt", toStream("x")).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceNotFoundError);
+  });
+
+  test("previews images and binaries by kind, and guards bodiless downloads", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    const image = await provider.previewBlob("fixture", "photo.png", 64);
+    expect(image).toMatchObject({ kind: "image", truncated: false, contentType: "image/png" });
+
+    const binary = await provider.previewBlob("fixture", "blob.bin", 64);
+    expect(binary.kind).toBe("binary");
+
+    const bodiless = await provider.downloadBlob("fixture", "nobody.txt").catch((e: unknown) => e);
+    expect(bodiless).toBeInstanceOf(ResourceConnectionError);
+  });
+
   test("lists containers as root nodes with a measured truncation flag", async () => {
     const provider = new AzureBlobProvider(keyConnection);
     const page = await provider.listNodes(null);
@@ -318,10 +420,17 @@ describe("AzureBlobProvider", () => {
     const provider = new AzureBlobProvider(keyConnection);
     const meta = await provider.uploadBlob("fixture", "hello.txt", toStream("hello storagebase\n"));
     expect(meta.name).toBe("hello.txt");
-    expect(uploaded).toEqual([{ container: "fixture", name: "hello.txt" }]);
+    expect(uploaded).toEqual([{ container: "fixture", name: "hello.txt", bytes: "hello storagebase\n" }]);
 
     await provider.deleteBlob("fixture", "hello.txt");
     expect(deleted).toEqual([{ container: "fixture", name: "hello.txt" }]);
+  });
+
+  test("a download stream can be cancelled mid-read", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    const download = await provider.downloadBlob("fixture", "hello.txt");
+    await download.body.cancel();
+    expect(provider).toBeInstanceOf(AzureBlobProvider);
   });
 
   test("deleting a missing blob is a 404", async () => {

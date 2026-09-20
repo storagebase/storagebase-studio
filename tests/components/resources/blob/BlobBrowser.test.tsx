@@ -166,6 +166,105 @@ describe("BlobBrowser", () => {
     expect(props.onClose).not.toHaveBeenCalled();
   });
 
+  test("a failed metadata read surfaces the server sentence", async () => {
+    mockRoutes({
+      "api/resources/blob/meta": { json: { message: "gone" }, status: 404 },
+    });
+    render(<BlobBrowser {...props} node={objectNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-error")).toBeDefined();
+    });
+    expect(screen.getByText("gone")).toBeDefined();
+  });
+
+  test("a failed preview surfaces the server sentence", async () => {
+    mockRoutes({
+      "api/resources/blob/preview": { json: { message: "unreadable" }, status: 500 },
+    });
+    render(<BlobBrowser {...props} node={objectNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-error")).toBeDefined();
+    });
+    expect(screen.getByText("unreadable")).toBeDefined();
+  });
+
+  test("a failed download surfaces the server sentence", async () => {
+    mockRoutes({
+      "api/resources/blob/download": { json: { message: "denied" }, status: 403 },
+    });
+    render(<BlobBrowser {...props} node={objectNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-preview")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-error")).toBeDefined();
+    });
+    expect(screen.getByText("denied")).toBeDefined();
+  });
+
+  test("a failed upload surfaces the server sentence", async () => {
+    mockRoutes({
+      "api/resources/blob/upload": { json: { message: "quota" }, status: 507 },
+    });
+    render(<BlobBrowser {...props} node={containerNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-child")).toBeDefined();
+    });
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["x"], "f.txt")] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-error")).toBeDefined();
+    });
+    expect(screen.getByText("quota")).toBeDefined();
+    expect(props.onChanged).not.toHaveBeenCalled();
+  });
+
+  test("download saves the bytes through an object URL", async () => {
+    mockRoutes();
+    const createObjectURL = mock(() => "blob:mock-url");
+    const revokeObjectURL = mock(() => {});
+    const anchorClick = mock(() => {});
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const originalCreateElement = document.createElement.bind(document);
+    URL.createObjectURL = createObjectURL as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL as unknown as typeof URL.revokeObjectURL;
+    const createElementSpy = mock((tag: string) => {
+      const element = originalCreateElement(tag);
+      if (tag === "a") element.click = anchorClick as unknown as () => void;
+      return element;
+    });
+    document.createElement = createElementSpy as unknown as typeof document.createElement;
+    try {
+      render(<BlobBrowser {...props} node={objectNode} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("blob-browser-preview")).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+      await waitFor(() => {
+        expect(createObjectURL).toHaveBeenCalledTimes(1);
+      });
+      expect(anchorClick).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+    } finally {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+      document.createElement = originalCreateElement;
+    }
+  });
+
   test("binary and image previews name their kind instead of dumping bytes", async () => {
     mockRoutes({
       "api/resources/blob/preview": {

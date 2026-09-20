@@ -50,8 +50,13 @@ function kmsError(name: string, message: string) {
 }
 
 class FakeKMSClient {
+  private readonly endpoint: string | undefined;
+  constructor(config: { endpoint?: string }) {
+    this.endpoint = config.endpoint;
+  }
   destroy() {}
   async send(command: { commandName: string; input: Record<string, unknown> }): Promise<unknown> {
+    if (this.endpoint === "http://localhost:1") throw new Error("connect ECONNREFUSED 127.0.0.1:1");
     sentCalls.push({ command: command.commandName, input: command.input });
     switch (command.commandName) {
       case "ListKeysCommand":
@@ -102,8 +107,13 @@ class FakeKMSClient {
 }
 
 class FakeSecretsManagerClient {
+  private readonly endpoint: string | undefined;
+  constructor(config: { endpoint?: string }) {
+    this.endpoint = config.endpoint;
+  }
   destroy() {}
   async send(command: { commandName: string; input: Record<string, unknown> }): Promise<unknown> {
+    if (this.endpoint === "http://localhost:1") throw new Error("connect ECONNREFUSED 127.0.0.1:1");
     sentCalls.push({ command: command.commandName, input: command.input });
     switch (command.commandName) {
       case "ListSecretsCommand":
@@ -201,6 +211,16 @@ describe("AwsKmsProvider", () => {
     expect(() => new AwsKmsProvider({ ...kmsConnection, region: undefined })).toThrow(ResourceConfigError);
   });
 
+  test("connect probes, health answers, disconnect clears", async () => {
+    const provider = new AwsKmsProvider(kmsConnection);
+    await provider.connect();
+    expect(provider.isConnected()).toBe(true);
+    expect((await provider.getHealth()).status).toBe("healthy");
+    await provider.disconnect();
+    expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
+  });
+
   test("lists keys as roots", async () => {
     const provider = new AwsKmsProvider(kmsConnection);
     const page = await provider.listNodes(null);
@@ -237,6 +257,13 @@ describe("AwsKmsProvider", () => {
     expect(error).toBeInstanceOf(ResourceNotFoundError);
   });
 
+  test("a refusing endpoint surfaces as a connection error", async () => {
+    const provider = new AwsKmsProvider({ ...kmsConnection, endpoint: "http://localhost:1" });
+    const error = await provider.connect().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect(provider.isConnected()).toBe(false);
+  });
+
   test("capabilities declare the mapped vault surface", () => {
     const provider = new AwsKmsProvider(kmsConnection);
     expect(provider.getCapabilities().operations).toEqual(["tree", "secret.read", "secret.write", "secret.delete"]);
@@ -248,6 +275,16 @@ describe("AwsSecretsManagerProvider", () => {
   beforeEach(() => {
     seed();
     sentCalls.length = 0;
+  });
+
+  test("connect probes, health answers, disconnect clears", async () => {
+    const provider = new AwsSecretsManagerProvider(smConnection);
+    await provider.connect();
+    expect(provider.isConnected()).toBe(true);
+    expect((await provider.getHealth()).status).toBe("healthy");
+    await provider.disconnect();
+    expect(provider.isConnected()).toBe(false);
+    await provider.disconnect();
   });
 
   test("registers itself and resolves through the factory", async () => {
@@ -295,6 +332,13 @@ describe("AwsSecretsManagerProvider", () => {
     const provider = new AwsSecretsManagerProvider(smConnection);
     await provider.deleteSecret("storagebase/fixture");
     expect("storagebase/fixture" in smSecrets).toBe(false);
+  });
+
+  test("a refusing endpoint surfaces as a connection error", async () => {
+    const provider = new AwsSecretsManagerProvider({ ...smConnection, endpoint: "http://localhost:1" });
+    const error = await provider.connect().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect(provider.isConnected()).toBe(false);
   });
 
   test("capabilities declare the vault surface", () => {
