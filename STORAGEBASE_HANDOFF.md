@@ -153,9 +153,9 @@ at npmjs.com/org/storagebase and never paste tokens into chat again (use env var
 4. Land families (blob, messaging, vault) with triads; read paths before writes.
 5. M5 release chain; re-apply `rename-patch.sh` on every upstream merge per `docs/UPSTREAM_SYNC.md`.
 
-## 10. M2-UI slice status (2026-09-20, branch `feat/resource-ui-slice`)
+## 10. M2-UI slice status (2026-09-20, merged to `main`)
 
-Implemented, committed, unmerged. Commits on top of `7e78c7e2`:
+Implemented and merged. Commits are in `main` history (see section 11):
 
 - Audit: `resource_operation` event + `resource_denied/not_found/conflict/unsupported/failed` reasons.
 - `useResourceConnectionForm` hook + `ResourceConnectionForm` + `ConnectionModal` category tabs
@@ -169,3 +169,32 @@ Full gate (`format`, `typecheck`, `knip`, `test`, `build`, `build:lib`, `attw`) 
 log. Merge order per section 6: A → UI slice → families → C anytime. Remaining M2-adjacent work
 not in the slice: persisted active-resource id, resource favorites/ordering, `onResourceNodeClick`
 viewers (arrive with families).
+
+## 11. Families + M5 completion status (2026-09-20, all merged to `main`)
+
+- **Blob** (`feat/blob-family`): s3 + azure-blob providers (live-anchored MinIO/Azurite),
+  `blob/{meta,download,preview,upload,delete}` routes (writes audited), BlobBrowser
+  viewer + inspector mounting, `accountKey` auth for Azurite, wire-relatives table.
+- **Messaging** (`feat/messaging`): kafka/rabbitmq/sqs providers (live-anchored),
+  `message/{browse,publish,purge}` routes, MessageViewer. Kafka purge refused;
+  consumer-group peek with measured totals; SQS visibility-zero + microsecond
+  tolerance; RabbitMQ management-derived tree + requeue peek.
+- **Vaults** (`feat/vaults`): all 5 type-ids (Vault/OpenBao share one REST module),
+  `secret/{read,write,delete}` routes (reads audited as deliberate exception),
+  masked SecretViewer. KMS key-metadata mapping with alias rotation.
+- **A** (SDK deps), **B** (fixture stack + live-pass docs), **M5** (scripted
+  identifier rename `scripts/rename-fork.mjs` + drift guard + CI check).
+- Fixture fixes along the way: kafka KRaft controller listeners + RF=1 group
+  topics, kafka 3.9.0 pin (kafkajs cannot fetch from 4.x), localstack:3 pin,
+  MinIO quay.io refs, Vault 1.21 pin, OpenBao validated.
+- Kafka debugging notes that generalize: `consumer.run()` resolves on start
+  (wait for the target, don't await completion); never await `stop()` inside
+  `eachMessage` (deadlock with the batch); fetch responses arriving while
+  fetchers stop means the stop raced the delivery.
+- Known pre-existing failures on this machine (identical on clean `main`):
+  node:sqlite missing (bun 1.2.13), Bun.YAML missing (snap test), launcher
+  startup-URL tests, live-DB integration tests (no servers), mongodb/mssql providers.
+- Final gates on `main`: `format`, `typecheck`, `knip`, `lint` (0 errors) green;
+  `build`, `build:lib`, `attw` green; scoped coverage over all 41 resource
+  files reports zero uncovered lines; full-suite reds are exactly the
+  pre-existing set above (verified file-by-file against baseline, 2026-09-20).
