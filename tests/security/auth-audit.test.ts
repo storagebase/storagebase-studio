@@ -10,7 +10,10 @@ import { AuthConfigError } from "@/lib/auth-errors";
  */
 
 const mockGetSession = mock(
-  async (): Promise<{ role: string; username: string } | null> => ({ role: "admin", username: "admin@storagebase.org" }),
+  async (): Promise<{ role: string; username: string } | null> => ({
+    role: "admin",
+    username: "admin@storagebase.org",
+  }),
 );
 const mockLogout = mock(async () => {});
 const mockLogin = mock(async () => {});

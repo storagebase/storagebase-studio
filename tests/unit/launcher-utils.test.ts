@@ -374,7 +374,10 @@ describe("preservePayloadData", () => {
 
     preservePayloadData(payloadDir, staging);
 
-    expect(fs.readdirSync(path.join(staging, "data")).sort()).toEqual(["auth-bootstrap.json", "storagebase-storage.db"]);
+    expect(fs.readdirSync(path.join(staging, "data")).sort()).toEqual([
+      "auth-bootstrap.json",
+      "storagebase-storage.db",
+    ]);
   });
 
   test("is a no-op on first extraction (no previous payload directory)", () => {

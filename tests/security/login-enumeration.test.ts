@@ -124,7 +124,9 @@ describe("the rate limiter tells an attacker nothing either", () => {
       expect((await attempt({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.1")).status).toBe(401);
     }
 
-    const sixth = await POST(loginRequest({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.1") as never);
+    const sixth = await POST(
+      loginRequest({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.1") as never,
+    );
 
     expect(sixth.status).toBe(429);
     expect(sixth.headers.get("retry-after")).toBeTruthy();
@@ -144,7 +146,9 @@ describe("the rate limiter tells an attacker nothing either", () => {
       await attempt({ email: "admin@storagebase.org", password: "typo" }, "198.51.100.3");
     }
 
-    expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" }, "198.51.100.3")).status).toBe(200);
+    expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" }, "198.51.100.3")).status).toBe(
+      200,
+    );
 
     for (let i = 0; i < 5; i += 1) {
       expect((await attempt({ email: "admin@storagebase.org", password: "typo" }, "198.51.100.3")).status).toBe(401);

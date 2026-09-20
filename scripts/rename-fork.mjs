@@ -62,6 +62,11 @@ export const KEEP_TOKENS = [
   /@libredb\/libredb/g,
   /libredb-platform/g,
   /LIBREDB_[A-Z_]+/g,
+  // The `libredb` database engine type-id as a bare quoted literal. Release
+  // identifiers never spell exactly this (they all carry a suffix), so the
+  // quotes make the engine the only match — measured: marketplace-copy's
+  // `type !== "libredb"` filter corrupted to `"storagebase"` without it.
+  /(["'])libredb\1/g,
 ];
 
 /** Directories (repo-relative) the rename walks. Engine runtime and docs prose stay out. */
@@ -95,7 +100,14 @@ export const SCOPE_FILES = [
 
 /** Filenames that never rewrite, however tempting. */
 /** @type {RegExp[]} */
-export const EXCLUDE_FILES = [/bun\.lock$/, /\.snap$/, /\.sum$/, /package-lock\.json$/, /yarn\.lock$/, /rename-fork\.mjs$/];
+export const EXCLUDE_FILES = [
+  /bun\.lock$/,
+  /\.snap$/,
+  /\.sum$/,
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /rename-fork\.mjs$/,
+];
 
 /** @param {number} index */
 const PLACEHOLDER = (index) => `__STORAGEBASE_KEEP_${index}__`;
@@ -174,32 +186,32 @@ function run(root, check) {
   let changed = 0;
   const upstreamReview = [];
 
-for (const file of listFiles(root)) {
-  const before = readFileSync(file, "utf8");
-  const after = before
-    .split("\n")
-    .map((line) => applyPairs(line))
-    .join("\n");
-  if (after !== before) {
-    changed += 1;
-    if (!check) writeFileSync(file, after);
+  for (const file of listFiles(root)) {
+    const before = readFileSync(file, "utf8");
+    const after = before
+      .split("\n")
+      .map((line) => applyPairs(line))
+      .join("\n");
+    if (after !== before) {
+      changed += 1;
+      if (!check) writeFileSync(file, after);
+    }
+    if (/github\.com\/libredb\//.test(after)) {
+      upstreamReview.push(relative(root, file));
+    }
   }
-  if (/github\.com\/libredb\//.test(after)) {
-    upstreamReview.push(relative(root, file));
-  }
-}
 
-const moved = renamePaths(root, check);
+  const moved = renamePaths(root, check);
 
-if (check) {
-  if (changed > 0 || moved.length > 0) {
-    console.error(`rename-fork: ${changed} files and ${moved.length} paths would change; run without --check`);
-    process.exit(1);
+  if (check) {
+    if (changed > 0 || moved.length > 0) {
+      console.error(`rename-fork: ${changed} files and ${moved.length} paths would change; run without --check`);
+      process.exit(1);
+    }
+    console.log("rename-fork: clean");
+  } else {
+    console.log(`rename-fork: rewrote ${changed} files, moved ${moved.length} paths`);
   }
-  console.log("rename-fork: clean");
-} else {
-  console.log(`rename-fork: rewrote ${changed} files, moved ${moved.length} paths`);
-}
   if (upstreamReview.length > 0) {
     console.log("UPSTREAM_URLS_REVIEW (github.com/libredb survivors — confirm each means upstream):");
     for (const file of [...new Set(upstreamReview)].sort()) console.log(`  ${file}`);

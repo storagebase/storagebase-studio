@@ -16,9 +16,7 @@ describe("rename-fork mapping", () => {
     expect(applyPairs("image: ghcr.io/libredb/libredb-studio:0.16.0")).toBe(
       "image: ghcr.io/storagebase/storagebase-studio:0.16.0",
     );
-    expect(applyPairs("  name: libredbstudios.storagebase.org")).toBe(
-      "  name: storagebasestudios.storagebase.org",
-    );
+    expect(applyPairs("  name: libredbstudios.storagebase.org")).toBe("  name: storagebasestudios.storagebase.org");
     expect(applyPairs("kind: LibreDBStudio")).toBe("kind: StorageBaseStudio");
     expect(applyPairs("winget install LibreDB.Studio")).toBe("winget install StorageBase.Studio");
     expect(applyPairs("chart: helm-charts/libredb-studio")).toBe("chart: helm-charts/storagebase-studio");
@@ -27,7 +25,11 @@ describe("rename-fork mapping", () => {
 
   test("kept tokens survive on lines that also rename", () => {
     // The engine dependency is not our identifier, even beside ones that are.
-    expect(applyPairs('npm i @libredb/studio @libredb/libredb')).toBe('npm i @storagebase/studio @libredb/libredb');
+    expect(applyPairs("npm i @libredb/studio @libredb/libredb")).toBe("npm i @storagebase/studio @libredb/libredb");
+    // The engine type-id as a bare literal is not a release identifier either.
+    expect(applyPairs('type !== "libredb" && !explainCapable.includes(type)')).toBe(
+      'type !== "libredb" && !explainCapable.includes(type)',
+    );
     // Env names stay upstream-compatible per fork policy; URLs repoint.
     expect(applyPairs("Set LIBREDB_AGENT_ENABLED=false, see https://github.com/libredb/libredb-studio")).toBe(
       "Set LIBREDB_AGENT_ENABLED=false, see https://github.com/storagebase/storagebase-studio",
@@ -69,7 +71,18 @@ describe("rename-fork mapping", () => {
   });
 
   test("scope covers the release surface and nothing engine-owned", () => {
-    for (const directory of ["bin", "charts", "operator", "packaging", "snap", "desktop", "distribution", "deploy", ".github", "scripts"]) {
+    for (const directory of [
+      "bin",
+      "charts",
+      "operator",
+      "packaging",
+      "snap",
+      "desktop",
+      "distribution",
+      "deploy",
+      ".github",
+      "scripts",
+    ]) {
       expect(SCOPE_DIRS).toContain(directory);
     }
     expect(SCOPE_FILES).toContain("package.json");
