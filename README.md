@@ -109,6 +109,7 @@ And nothing is held back. Single sign-on, ER diagrams, the AI features and the N
 ### Why StorageBase Studio?
 - **Deploys next to the data**: container, Helm chart, Rancher, OpenShift operator, one-click PaaS template, or embedded via npm.
 - **Sixteen engines, one interface**: PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino, Cassandra.
+- **Ten more resource types beyond databases**: blob storage (S3, Azure Blob), messaging (Kafka, RabbitMQ, SQS) and key vaults (HashiCorp Vault, OpenBao, Azure Key Vault, AWS Secrets Manager, AWS KMS) — same connection dialog, sidebar tree and audit trail. See [Beyond Databases](#beyond-databases--blob-storage-messaging--key-vaults).
 - **Runs where you are**: browser, phone, Windows, MacOS, Linux desktop.
 - **A read-only agent, with your own model**: state a question, and the run drafts SQL, reads the results, and writes a report whose claims cite them. Gemini, OpenAI, or a local Ollama with open-source models.
 - **Nothing behind a wall**: RBAC, OIDC single sign-on, query audit trail, and ER diagrams all ship under MIT.
@@ -281,6 +282,18 @@ Standalone application only: the embedded `@storagebase/studio` package carries 
 > All SQL databases share: schema explorer, ER diagrams, schema diff & migration, display masking (preview), monitoring dashboard, and connection string import. Druid, Elasticsearch, OpenSearch and Trino are each the exception twice over: their HTTP SQL APIs have no URI convention this build can parse, so they are configured by host and port only, and a generated migration names the limitation instead of emitting column-modification DDL against an engine whose SQL contains none — as it also does for Couchbase's schemaless collections. An ER diagram over a search cluster draws boxes and no edges: an index declares no foreign keys and the engine's model has none to declare, which the provider states as `declaresForeignKeys: false` rather than leaving to be guessed from an empty list.
 
 > **Provider reference docs:** each database has an in-depth reference (design, connection, query format, monitoring, limitations) under [`docs/providers/`](docs/providers/README.md). For the provider architecture see [`docs/DATABASE_PROVIDERS.md`](docs/DATABASE_PROVIDERS.md), and to add a new database see [`docs/ADDING_A_PROVIDER.md`](docs/ADDING_A_PROVIDER.md).
+
+## Beyond Databases — Blob Storage, Messaging & Key Vaults
+
+Beyond the sixteen engines above, StorageBase Studio connects ten resource types in three families — the fork's own surface, verified live against MinIO, Azurite, Kafka, RabbitMQ, LocalStack, Vault and OpenBao fixtures (`resources-compose.yml`):
+
+| Family | Types | What you can do |
+| :--- | :--- | :--- |
+| **Blob Storage** | Amazon S3 (plus MinIO, R2, Spaces through the S3 endpoint override), Azure Blob Storage | Browse buckets and containers, preview text and images, download, upload, delete |
+| **Messaging** | Apache Kafka, RabbitMQ, Amazon SQS | Browse topics and queues, peek messages, publish, purge queues |
+| **Key Vaults** | HashiCorp Vault, OpenBao, Azure Key Vault, AWS Secrets Manager, AWS KMS | Read secrets masked until revealed, write, delete — every access audited |
+
+The same connection dialog (per-type tabs), sidebar tree and audit trail serve both worlds. Where a service cannot do something, the product says so instead of failing: Kafka has no purge operation and refuses it outright, SQS peeks receive with visibility zero (messages reappear immediately), and KMS key material — unreadable by design — reads as key metadata. Per-type design, connection, operations and limitation docs live under [`docs/resources/`](docs/resources/README.md).
 
 ---
 
