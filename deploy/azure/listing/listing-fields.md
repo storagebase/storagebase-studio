@@ -1,4 +1,4 @@
-# Partner Center listing fields — LibreDB Studio (Azure Application)
+# Partner Center listing fields — StorageBase Studio (Azure Application)
 
 Single source of truth for every text field in the offer listing. Copy these
 into Partner Center verbatim. Character limits are enforced by tests/unit/build-azure-package.test.ts
@@ -10,8 +10,8 @@ spaces too).
 
 | Field | Value |
 |---|---|
-| Offer ID | `libredb-studio` (immutable — double-check before saving) |
-| Offer alias | `LibreDB Studio (Azure Application)` |
+| Offer ID | `storagebase-studio` (immutable — double-check before saving) |
+| Offer alias | `StorageBase Studio (Azure Application)` |
 
 ## Properties (§7.2)
 
@@ -26,7 +26,7 @@ spaces too).
 **Name** (limit 200):
 
 <!-- limit:200 -->
-LibreDB Studio
+StorageBase Studio
 
 **Search results summary** (limit 100):
 
@@ -47,20 +47,20 @@ the limit is asserted by the unit test.
 2. `database client`
 3. `PostgreSQL`
 
-**Privacy policy link:** `https://libredb.org/privacy-policy`
+**Privacy policy link:** `https://storagebase.org/privacy-policy`
 
 **Useful links:**
 
 | Name | URL |
 |---|---|
-| Documentation | `https://github.com/libredb/libredb-studio#readme` |
-| Deployment & configuration guide | `https://github.com/libredb/libredb-studio/blob/main/docs/DISTRIBUTION.md` |
-| Release notes | `https://github.com/libredb/libredb-studio/releases` |
-| Report an issue | `https://github.com/libredb/libredb-studio/issues` |
-| Security policy | `https://github.com/libredb/libredb-studio/blob/main/SECURITY.md` |
+| Documentation | `https://github.com/storagebase/storagebase-studio#readme` |
+| Deployment & configuration guide | `https://github.com/storagebase/storagebase-studio/blob/main/docs/DISTRIBUTION.md` |
+| Release notes | `https://github.com/storagebase/storagebase-studio/releases` |
+| Report an issue | `https://github.com/storagebase/storagebase-studio/issues` |
+| Security policy | `https://github.com/storagebase/storagebase-studio/blob/main/SECURITY.md` |
 
 **Contact information** (portal-only, not stored here): support contact
-(name + phone + email, support website `https://github.com/libredb/libredb-studio/issues`)
+(name + phone + email, support website `https://github.com/storagebase/storagebase-studio/issues`)
 and engineering contact (name + phone + email; never shown publicly).
 
 ## Media (assets/ — to be produced)
@@ -85,9 +85,9 @@ Planned captions:
 | Plan ID | `single-vm` |
 | Plan name | `Single virtual machine` |
 | Plan type | Solution template |
-| Plan summary | Deploys LibreDB Studio on one Ubuntu 24.04 LTS virtual machine with automatic HTTPS. You pay only for the Azure resources. |
+| Plan summary | Deploys StorageBase Studio on one Ubuntu 24.04 LTS virtual machine with automatic HTTPS. You pay only for the Azure resources. |
 | Version | from `deploy/azure/package-version.txt` |
-| Package file | `dist/azure/libredb-studio-azure-<version>.zip` |
+| Package file | `dist/azure/storagebase-studio-azure-<version>.zip` |
 
 ## Notes for certification (§7.8)
 

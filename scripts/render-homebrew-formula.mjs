@@ -3,7 +3,7 @@
  * Render the Homebrew formula template (issue #111).
  *
  * Fills {{VERSION}} and the per-platform {{SHA256_*}} placeholders in
- * packaging/homebrew/libredb-studio.rb.tmpl from the SHA256SUMS file that the
+ * packaging/homebrew/storagebase-studio.rb.tmpl from the SHA256SUMS file that the
  * release workflow attaches to the GitHub release. Fails loudly when a
  * platform digest is missing or a placeholder would survive rendering - a
  * half-rendered formula must never reach the tap.

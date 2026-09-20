@@ -16,11 +16,11 @@
 #
 #   channel   tarball | npx | docker | deb | rpm | snap | homebrew | all
 #   artifact  channel-specific:
-#     tarball   path to libredb-studio-standalone-*.tar.gz
-#               (default: newest dist/libredb-studio-standalone-*.tar.gz)
+#     tarball   path to storagebase-studio-standalone-*.tar.gz
+#               (default: newest dist/storagebase-studio-standalone-*.tar.gz)
 #     npx       same tarball (booted through bin/studio.js --archive)
 #     docker    image reference (default: build a local image tagged
-#               libredb-studio:channel-e2e)
+#               storagebase-studio:channel-e2e)
 #     deb/rpm   path to the .deb/.rpm package (no default; SKIP when absent)
 #     snap      path to the .snap file (no default; SKIP when absent)
 #     homebrew  path to a rendered formula .rb (darwin only; SKIP otherwise)
@@ -60,9 +60,9 @@ BASE_PORT=${CHANNEL_E2E_PORT:-3140}
 
 # Fixed auth env — mirrors playwright.config.ts webServer.env.
 export JWT_SECRET="test-jwt-secret-for-e2e-tests-32ch"
-export ADMIN_EMAIL="admin@libredb.org"
+export ADMIN_EMAIL="admin@storagebase.org"
 export ADMIN_PASSWORD="test-admin"
-export USER_EMAIL="user@libredb.org"
+export USER_EMAIL="user@storagebase.org"
 export USER_PASSWORD="test-user"
 
 AUTH_ENV=(
@@ -99,15 +99,15 @@ cleanup() {
     DOCKER_CONTAINER=""
   fi
   if [ "$SNAP_INSTALLED" = "true" ]; then
-    sudo snap remove libredb-studio >/dev/null 2>&1 || true
+    sudo snap remove storagebase-studio >/dev/null 2>&1 || true
     SNAP_INSTALLED=false
   fi
   if [ "$DEB_INSTALLED" = "true" ]; then
-    sudo dpkg -r libredb-studio >/dev/null 2>&1 || true
+    sudo dpkg -r storagebase-studio >/dev/null 2>&1 || true
     DEB_INSTALLED=false
   fi
   if [ "$BREW_INSTALLED" = "true" ]; then
-    brew uninstall libredb-studio >/dev/null 2>&1 || true
+    brew uninstall storagebase-studio >/dev/null 2>&1 || true
     BREW_INSTALLED=false
   fi
   if [ -n "$WORK" ]; then
@@ -155,7 +155,7 @@ run_playwright() { # run_playwright <channel> <base-url>
 }
 
 default_tarball() {
-  ls -t "$ROOT_DIR"/dist/libredb-studio-standalone-*.tar.gz 2>/dev/null | head -1 || true
+  ls -t "$ROOT_DIR"/dist/storagebase-studio-standalone-*.tar.gz 2>/dev/null | head -1 || true
 }
 
 # ------------------------------------------------------------------------------
@@ -221,7 +221,7 @@ channel_docker() {
   command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 || { skip_or_fail docker "docker daemon not available"; return; }
   local image=${1:-}
   if [ -z "$image" ]; then
-    image="libredb-studio:channel-e2e"
+    image="storagebase-studio:channel-e2e"
     log docker "no image given - building $image from the repo Dockerfile"
     docker build -t "$image" "$ROOT_DIR" >/dev/null
   fi
@@ -230,7 +230,7 @@ channel_docker() {
   mkdir -p "$WORK/data"
   chmod 777 "$WORK/data"
   local port=$((BASE_PORT + 2)) base="http://127.0.0.1:$((BASE_PORT + 2))"
-  DOCKER_CONTAINER="libredb-channel-e2e"
+  DOCKER_CONTAINER="storagebase-channel-e2e"
   docker rm -f "$DOCKER_CONTAINER" >/dev/null 2>&1 || true
   log docker "running $image"
   docker run -d --name "$DOCKER_CONTAINER" \
@@ -251,7 +251,7 @@ channel_docker() {
 # installing (no root needed): the wrapper honors LIBREDB_STUDIO_HOME.
 run_extracted_linux_tree() { # <channel> <tree-root> <port>
   local channel=$1 tree=$2 port=$3 base="http://127.0.0.1:$3"
-  local home="$tree/usr/lib/libredb-studio"
+  local home="$tree/usr/lib/storagebase-studio"
   [ -f "$home/server.js" ] || { echo "FAIL [$channel]: extracted package lacks $home/server.js" >&2; exit 1; }
   mkdir -p "$WORK/data"
   env "${AUTH_ENV[@]}" \
@@ -259,7 +259,7 @@ run_extracted_linux_tree() { # <channel> <tree-root> <port>
     NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
     PORT="$port" \
     STORAGE_PROVIDER=sqlite STORAGE_SQLITE_PATH="$WORK/data/storage.db" \
-    "$tree/usr/bin/libredb-studio" >"$WORK/server.log" 2>&1 &
+    "$tree/usr/bin/storagebase-studio" >"$WORK/server.log" 2>&1 &
   SERVER_PID=$!
   wait_health "$channel" "$base" "$WORK/server.log"
   wait_seed_file "$channel" "$WORK/data/sample-employees.db"
@@ -282,7 +282,7 @@ channel_deb() {
     sudo env "${AUTH_ENV[@]}" \
       PORT="$port" HOSTNAME=127.0.0.1 \
       STORAGE_PROVIDER=sqlite STORAGE_SQLITE_PATH="$WORK/data/storage.db" \
-      libredb-studio >"$WORK/server.log" 2>&1 &
+      storagebase-studio >"$WORK/server.log" 2>&1 &
     SERVER_PID=$!
     SERVER_SUDO=true
     wait_health deb "http://127.0.0.1:$port" "$WORK/server.log"
@@ -331,7 +331,7 @@ channel_snap() {
   WORK=$(mktemp -d)
   # The snap's app env pins PORT=3000/HOSTNAME=127.0.0.1 — port 3000 must be
   # free. Plain TCP probe: ANY occupant must trigger the skip, not just
-  # another libredb-studio answering on /api/db/health.
+  # another storagebase-studio answering on /api/db/health.
   if (exec 3<>/dev/tcp/127.0.0.1/3000) 2>/dev/null; then
     exec 3>&- 3<&- || true
     skip_or_fail snap "port 3000 is already in use"
@@ -343,13 +343,13 @@ channel_snap() {
   # The auto-started daemon booted with zero-config credentials; run our own
   # foreground instance with the fixed test env instead (snap run inherits
   # the calling environment for vars the snap does not pin).
-  sudo snap stop libredb-studio >/dev/null 2>&1 || true
-  sudo rm -f /var/snap/libredb-studio/current/sample-employees.db /var/snap/libredb-studio/current/libredb-storage.db 2>/dev/null || true
-  sudo env "${AUTH_ENV[@]}" snap run libredb-studio >"$WORK/server.log" 2>&1 &
+  sudo snap stop storagebase-studio >/dev/null 2>&1 || true
+  sudo rm -f /var/snap/storagebase-studio/current/sample-employees.db /var/snap/storagebase-studio/current/storagebase-storage.db 2>/dev/null || true
+  sudo env "${AUTH_ENV[@]}" snap run storagebase-studio >"$WORK/server.log" 2>&1 &
   SERVER_PID=$!
   SERVER_SUDO=true
   wait_health snap "http://127.0.0.1:3000" "$WORK/server.log"
-  wait_seed_file snap "/var/snap/libredb-studio/current/sample-employees.db" sudo
+  wait_seed_file snap "/var/snap/storagebase-studio/current/sample-employees.db" sudo
   run_playwright snap "http://127.0.0.1:3000"
   record snap PASS
   cleanup
@@ -368,7 +368,7 @@ channel_homebrew() {
   env "${AUTH_ENV[@]}" \
     PORT="$port" \
     STORAGE_PROVIDER=sqlite STORAGE_SQLITE_PATH="$WORK/data/storage.db" \
-    libredb-studio >"$WORK/server.log" 2>&1 &
+    storagebase-studio >"$WORK/server.log" 2>&1 &
   SERVER_PID=$!
   wait_health homebrew "$base" "$WORK/server.log"
   wait_seed_file homebrew "$WORK/data/sample-employees.db"

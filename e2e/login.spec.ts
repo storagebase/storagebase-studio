@@ -17,7 +17,7 @@ test.describe("Login Flow", () => {
   });
 
   test("admin login redirects to /admin", async ({ page }) => {
-    await page.locator('input[type="email"]').fill("admin@libredb.org");
+    await page.locator('input[type="email"]').fill("admin@storagebase.org");
     await page.locator('input[type="password"]').fill("test-admin");
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL("**/admin**");
@@ -25,7 +25,7 @@ test.describe("Login Flow", () => {
   });
 
   test("user login redirects to /", async ({ page }) => {
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL("/");
@@ -33,7 +33,7 @@ test.describe("Login Flow", () => {
   });
 
   test("wrong password shows error", async ({ page }) => {
-    await page.locator('input[type="email"]').fill("admin@libredb.org");
+    await page.locator('input[type="email"]').fill("admin@storagebase.org");
     await page.locator('input[type="password"]').fill("wrong-password");
     await page.getByRole("button", { name: /sign in/i }).click();
     // Should stay on login page
@@ -48,7 +48,7 @@ test.describe("Login Flow", () => {
 
   test("authenticated admin accessing /login redirects to /admin", async ({ page }) => {
     // Login as admin first
-    await page.locator('input[type="email"]').fill("admin@libredb.org");
+    await page.locator('input[type="email"]').fill("admin@storagebase.org");
     await page.locator('input[type="password"]').fill("test-admin");
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL("**/admin**");
@@ -60,7 +60,7 @@ test.describe("Login Flow", () => {
 
   test("authenticated user accessing /login redirects to /", async ({ page }) => {
     // Login as user first
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL("/");
@@ -76,7 +76,7 @@ test.describe("Login Flow", () => {
   });
 
   test("user role cannot access /admin", async ({ page }) => {
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL("/");

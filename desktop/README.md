@@ -1,9 +1,9 @@
-# LibreDB Studio desktop shell
+# StorageBase Studio desktop shell
 
-A Tauri v2 window around the standalone LibreDB Studio server. The shell adds no
+A Tauri v2 window around the standalone StorageBase Studio server. The shell adds no
 features: it starts the same `node server.js` payload every other channel ships,
 waits for it to become healthy, logs the local user in and shows the app. Issue
-[#232](https://github.com/libredb/libredb-studio/issues/232); the design it
+[#232](https://github.com/storagebase/storagebase-studio/issues/232); the design it
 implements is [`docs/DESKTOP_WRAPPER_SPIKE.md`](../docs/DESKTOP_WRAPPER_SPIKE.md)
 (issue #115).
 
@@ -35,7 +35,7 @@ desktop/
 2. A background thread picks a free loopback port and spawns
    `node server.js` from the bundled payload with `STORAGE_PROVIDER=sqlite` and
    `STORAGE_SQLITE_PATH` inside the per-user data directory
-   (`$XDG_DATA_HOME/org.libredb.Studio` on Linux, `~/.var/app/org.libredb.Studio/data/...`
+   (`$XDG_DATA_HOME/org.storagebase.Studio` on Linux, `~/.var/app/org.storagebase.Studio/data/...`
    inside Flatpak).
 3. It polls `GET /api/db/health` until it answers 200 (30 s budget).
 4. It reads the admin password the server's zero-config first run (#109) wrote to
@@ -100,8 +100,8 @@ cd desktop/src-tauri && cargo test
 ## Packaging
 
 - **AppImage and GUI .deb:** one `scripts/build-desktop-appimage.sh` run produces
-  both `libredb-studio-desktop-<version>-linux-<arch>.AppImage` and
-  `libredb-studio-desktop_<version>_<debarch>.deb`, each with a `.sha256`
+  both `storagebase-studio-desktop-<version>-linux-<arch>.AppImage` and
+  `storagebase-studio-desktop_<version>_<debarch>.deb`, each with a `.sha256`
   sidecar. `--smoke` checks the .deb's layout and boots the bundled server out of
   the extracted AppDir (no display needed) to prove the bundle is complete.
   Release CI runs it per architecture in
@@ -136,7 +136,7 @@ cd desktop/src-tauri && cargo test
   refuses any floating label. The same applies to AppImageHub, whose review CI
   runs the submitted AppImage on 22.04. arm64 is still on 24.04-arm; see REL2 in
   [`docs/BACKLOG.md`](../docs/BACKLOG.md).
-- **The bundled Node sidecar is named `libredb-studio-node`, not `node`.** The
+- **The bundled Node sidecar is named `storagebase-studio-node`, not `node`.** The
   .deb installs it into the real `/usr/bin`, where `node` is owned by the distro
   `nodejs` package and dpkg would refuse the install. `externalBin` in
   `tauri.conf.json`, `NODE_BIN` in the build script and `NODE_BIN` in

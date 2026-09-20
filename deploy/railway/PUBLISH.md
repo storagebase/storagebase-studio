@@ -1,4 +1,4 @@
-# Publishing the LibreDB Studio Railway Template
+# Publishing the StorageBase Studio Railway Template
 
 A Railway **marketplace template** is built in the visual template editor, not
 from a repo file. This is the exact checklist to create and publish it. The
@@ -13,8 +13,8 @@ values to enter are in [`template.json`](./template.json).
 
 - In the editor, click **+ New** (top-right), or open the command palette
   (`⌘K` / `Ctrl+K`) → **+ New Service** → **Docker Image**.
-- Image: `ghcr.io/libredb/libredb-studio:0.14.1` (pinned — never `:latest`).
-- Rename the service to `libredb-studio`.
+- Image: `ghcr.io/storagebase/storagebase-studio:0.14.1` (pinned — never `:latest`).
+- Rename the service to `storagebase-studio`.
 
 ## 3. Variables
 
@@ -27,13 +27,13 @@ The `${{ secret(...) }}` values are auto-generated per deploy.
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `JWT_SECRET` | `${{ secret(48) }}` | Secret key used to sign login session tokens. Auto-generated — keep it. |
-| `ADMIN_EMAIL` | `admin@libredb.org` | Login email for the ADMIN account (full access incl. maintenance tools). |
+| `ADMIN_EMAIL` | `admin@storagebase.org` | Login email for the ADMIN account (full access incl. maintenance tools). |
 | `ADMIN_PASSWORD` | `${{ secret(16) }}` | Password for the admin account. Auto-generated; find it in Variables after deploy. |
-| `USER_EMAIL` | `user@libredb.org` | Login email for the standard, query-only account. |
+| `USER_EMAIL` | `user@storagebase.org` | Login email for the standard, query-only account. |
 | `USER_PASSWORD` | `${{ secret(16) }}` | Password for the standard user. Auto-generated; find it in Variables after deploy. |
 | `NEXT_PUBLIC_AUTH_PROVIDER` | `local` | Auth mode: 'local' (email/password). Set 'oidc' for SSO (needs the OIDC_* optional vars). |
 | `STORAGE_PROVIDER` | `sqlite` | Server-side storage for saved connections & settings: 'local' (browser only, no server persistence) \| 'sqlite' (file on the volume) \| 'postgres' (multi-node). Keep 'sqlite'. |
-| `STORAGE_SQLITE_PATH` | `/app/data/libredb-storage.db` | SQLite file path on the mounted volume (/app/data). Keep the default. |
+| `STORAGE_SQLITE_PATH` | `/app/data/storagebase-storage.db` | SQLite file path on the mounted volume (/app/data). Keep the default. |
 | `PORT` | `3000` | Port the app listens on. Must match the HTTP Proxy Port. Leave as 3000. |
 
 ### Optional variables (add via "+ New Variable" and mark **Optional**)
@@ -62,7 +62,7 @@ The `${{ secret(...) }}` values are auto-generated per deploy.
 - **Deploy** — set **Healthcheck Path** to `/api/db/health` (Restart Policy
   `On Failure` is a sensible default).
 - **Volume** — NOT in the Settings panel. Close the settings modal, then on the
-  editor **canvas right-click the `libredb-studio` service → Attach Volume**, and
+  editor **canvas right-click the `storagebase-studio` service → Attach Volume**, and
   set the mount path to `/app/data`.
 
 ## 5. Create the template
@@ -74,16 +74,16 @@ The `${{ secret(...) }}` values are auto-generated per deploy.
 
 - Deploy the unlisted template into a throwaway project.
 - Open the public domain; confirm `/api/db/health` is green and the login page loads.
-- Log in as `admin@libredb.org` with the generated `ADMIN_PASSWORD` (Variables tab).
+- Log in as `admin@storagebase.org` with the generated `ADMIN_PASSWORD` (Variables tab).
 - Add a saved connection, then **Redeploy** the service and confirm the
   connection is still there (SQLite volume persistence).
 
 ## 7. Publish
 
 - Click **Publish** (or Workspace → Templates → **Publish** next to it).
-- Fill the form: display name **LibreDB Studio**, a short description (≤75 chars,
+- Fill the form: display name **StorageBase Studio**, a short description (≤75 chars,
   e.g. `Open-source web SQL IDE with AI — PostgreSQL, MySQL, Mongo, Redis & more`),
-  tags from `template.json`, the logo (`libredb-studio.png`), category
+  tags from `template.json`, the logo (`storagebase-studio.png`), category
   Database/Developer Tools.
 - **Template Overview** (the long marketplace README field): paste the contents
   of [`TEMPLATE_OVERVIEW.md`](./TEMPLATE_OVERVIEW.md).
@@ -99,7 +99,7 @@ The `${{ secret(...) }}` values are auto-generated per deploy.
   - root `README.md` (the `## ⚡ One-Click Deploy` section)
   - `deploy/railway/README.md`
 - Current published link:
-  `https://railway.com/deploy/libredb-studio?referralCode=libredb&utm_medium=integration&utm_source=template&utm_campaign=generic`
+  `https://railway.com/deploy/storagebase-studio?referralCode=storagebase&utm_medium=integration&utm_source=template&utm_campaign=generic`
 
 ## Maintaining the template
 

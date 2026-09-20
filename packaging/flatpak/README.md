@@ -1,6 +1,6 @@
-# Flathub packaging (org.libredb.Studio)
+# Flathub packaging (org.storagebase.Studio)
 
-> **Status: dormant. LibreDB Studio is not on Flathub, and this is not being pursued.**
+> **Status: dormant. StorageBase Studio is not on Flathub, and this is not being pursued.**
 > The submission ([flathub/flathub#9538](https://github.com/flathub/flathub/pull/9538)) was
 > declined on 2026-07-30 under Flathub's [generative AI
 > policy](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy): the
@@ -15,23 +15,23 @@
 > desktop artifact. Read the checklist below as a record of how the submission was made, not as a
 > to-do - a resubmission would have to clear the from-source requirement as well.
 
-The manifest and metadata for publishing the LibreDB Studio desktop app on
+The manifest and metadata for publishing the StorageBase Studio desktop app on
 [Flathub](https://flathub.org). Issue
-[#232](https://github.com/libredb/libredb-studio/issues/232).
+[#232](https://github.com/storagebase/storagebase-studio/issues/232).
 
 | File | Role |
 |---|---|
-| `org.libredb.Studio.yml.tmpl` | Flatpak manifest template; `{{VERSION}}` / `{{SHA256_*}}` filled by `scripts/render-flatpak-manifest.mjs` |
-| `org.libredb.Studio.metainfo.xml` | AppStream metadata for the store listing |
-| `org.libredb.Studio.desktop` | desktop entry installed as `${FLATPAK_ID}.desktop` |
-| `libredb-studio.sh` | `/app/bin/libredb-studio`, the `command:` the manifest declares |
+| `org.storagebase.Studio.yml.tmpl` | Flatpak manifest template; `{{VERSION}}` / `{{SHA256_*}}` filled by `scripts/render-flatpak-manifest.mjs` |
+| `org.storagebase.Studio.metainfo.xml` | AppStream metadata for the store listing |
+| `org.storagebase.Studio.desktop` | desktop entry installed as `${FLATPAK_ID}.desktop` |
+| `storagebase-studio.sh` | `/app/bin/storagebase-studio`, the `command:` the manifest declares |
 
 ## How it works
 
 The manifest repacks the AppImage that release CI publishes: it downloads the
 release asset, runs `--appimage-extract`, drops the AppImage's bundled WebKit
 helper processes (the GNOME runtime provides its own), installs the app tree
-under `/app/libredb-studio` and adds our app-id-named desktop entry, metainfo and
+under `/app/storagebase-studio` and adds our app-id-named desktop entry, metainfo and
 icons. Flathub's External Data Checker follows the `x-checker-data` blocks and
 opens a version-bump pull request when a new release appears.
 
@@ -65,17 +65,17 @@ more grant it themselves:
 
 ```bash
 # Local Postgres over its unix socket
-flatpak override --user --filesystem=/run/postgresql:ro org.libredb.Studio
+flatpak override --user --filesystem=/run/postgresql:ro org.storagebase.Studio
 # Local MySQL/MariaDB over its unix socket
-flatpak override --user --filesystem=/var/run/mysqld:ro org.libredb.Studio
+flatpak override --user --filesystem=/var/run/mysqld:ro org.storagebase.Studio
 # Opening SQLite database files kept in a specific directory
-flatpak override --user --filesystem=~/databases org.libredb.Studio
+flatpak override --user --filesystem=~/databases org.storagebase.Studio
 # Revert
-flatpak override --user --reset org.libredb.Studio
+flatpak override --user --reset org.storagebase.Studio
 ```
 
 Application state (SQLite storage, generated admin credentials, tab layout) lives
-in `~/.var/app/org.libredb.Studio/`.
+in `~/.var/app/org.storagebase.Studio/`.
 
 ## Build and test locally
 
@@ -87,10 +87,10 @@ flatpak install -y flathub org.flatpak.Builder org.gnome.Platform//50 org.gnome.
 scripts/build-desktop-appimage.sh dist --smoke
 
 # 3. Render the manifest against that local AppImage, lint, build, install
-scripts/build-flatpak-local.sh dist/libredb-studio-desktop-<version>-linux-x64.AppImage --install
+scripts/build-flatpak-local.sh dist/storagebase-studio-desktop-<version>-linux-x64.AppImage --install
 
 # 4. Run it
-flatpak run org.libredb.Studio
+flatpak run org.storagebase.Studio
 ```
 
 Step 3 lints the *release* manifest (URLs and checksums as Flathub will see them)
@@ -103,30 +103,30 @@ release exists still exercises what Flathub will build. Outputs land in
 Kept as a record. Nothing here is scheduled; see the status note at the top.
 
 1. Ship a release whose assets include
-   `libredb-studio-desktop-<version>-linux-x64.AppImage` and the `arm64` one
+   `storagebase-studio-desktop-<version>-linux-x64.AppImage` and the `arm64` one
    (the AppImage job in `.github/workflows/release-artifacts.yml`).
-2. Add a `<release>` entry for that version to `org.libredb.Studio.metainfo.xml`.
+2. Add a `<release>` entry for that version to `org.storagebase.Studio.metainfo.xml`.
    Flathub requires a `releases` list, and the External Data Checker does not
    maintain it - only the manifest sources.
 3. Render the manifest for that version:
    ```bash
-   gh release download <version> --pattern 'libredb-studio-desktop-*.AppImage.sha256' --dir dist
+   gh release download <version> --pattern 'storagebase-studio-desktop-*.AppImage.sha256' --dir dist
    cat dist/*.sha256 > dist/appimage-sums.txt
    node scripts/render-flatpak-manifest.mjs \
-     packaging/flatpak/org.libredb.Studio.yml.tmpl dist/appimage-sums.txt <version> \
-     dist/org.libredb.Studio.yml
+     packaging/flatpak/org.storagebase.Studio.yml.tmpl dist/appimage-sums.txt <version> \
+     dist/org.storagebase.Studio.yml
    ```
 4. Fork [flathub/flathub](https://github.com/flathub/flathub), branch off
    `new-pr`, and add the rendered manifest, the metainfo, the desktop entry and
-   `libredb-studio.sh` at the repository root. Open the PR against base branch
-   `new-pr`, titled `Add org.libredb.Studio`, and explain the AppImage repack
+   `storagebase-studio.sh` at the repository root. Open the PR against base branch
+   `new-pr`, titled `Add org.storagebase.Studio`, and explain the AppImage repack
    choice in the description. See
    [docs.flathub.org/docs/for-app-authors/submission](https://docs.flathub.org/docs/for-app-authors/submission).
-5. After the app repository (`flathub/org.libredb.Studio`) is created, request
+5. After the app repository (`flathub/org.storagebase.Studio`) is created, request
    domain verification in the Flathub developer portal. It issues a per-app token
    that has to be published, one per line, at
-   `https://libredb.org/.well-known/org.flathub.VerifiedApps.txt` (served by
-   libredb-website). The token only exists after submission, so this is a
+   `https://storagebase.org/.well-known/org.flathub.VerifiedApps.txt` (served by
+   storagebase-website). The token only exists after submission, so this is a
    follow-up step, not a prerequisite.
 6. Keep this directory and the Flathub repository in sync: this is the source of
    truth, Flathub holds the rendered copy. Only Flathub org actions and
@@ -136,7 +136,7 @@ Kept as a record. Nothing here is scheduled; see the status note at the top.
 ## Not to be confused with packaging/flatpark
 
 [`packaging/flatpark/`](../flatpark/) is a second, independent Flatpak channel
-(issue [#241](https://github.com/libredb/libredb-studio/issues/241)). It targets
+(issue [#241](https://github.com/storagebase/storagebase-studio/issues/241)). It targets
 the [FlatPark](https://flatpark.org/) remote, which does not build anything: it
 pins the GUI `.deb` as `extra-data` and the user's own machine downloads and
 unpacks it at install time. Flathub, by contrast, repacks the **AppImage** at
@@ -145,6 +145,6 @@ model, different review policy - so the two manifests are deliberately separate
 files rather than one shared template.
 
 One shared constraint: from 0.9.62 the bundled Node sidecar inside the AppImage
-is named `libredb-studio-node` rather than `node` (the GUI `.deb` cannot claim
+is named `storagebase-studio-node` rather than `node` (the GUI `.deb` cannot claim
 `/usr/bin/node`). The manifest template here accepts either name, so it still
 builds against an AppImage from before the rename.

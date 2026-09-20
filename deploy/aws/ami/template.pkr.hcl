@@ -9,12 +9,12 @@ packer {
 
 variable "version" {
   type        = string
-  description = "LibreDB Studio release tag (e.g. 0.14.0) — AMI name and version title."
+  description = "StorageBase Studio release tag (e.g. 0.14.0) — AMI name and version title."
 }
 
 variable "image_ref" {
   type        = string
-  description = "Digest-pinned app image, e.g. ghcr.io/libredb/libredb-studio@sha256:... Resolved by the workflow."
+  description = "Digest-pinned app image, e.g. ghcr.io/storagebase/storagebase-studio@sha256:... Resolved by the workflow."
 
   # A tag would let the image under a buyer's instance change after the scan that
   # approved it, and an empty value would substitute cleanly into the unit file
@@ -67,11 +67,11 @@ source "amazon-ebs" "ubuntu" {
   # `force_deregister` would also clear the collision, and is deliberately left
   # off: it deregisters the AMI carrying that name, which may be the one AWS is
   # reading for a version request that is still under review.
-  ami_name = "libredb-studio-${var.version}-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+  ami_name = "storagebase-studio-${var.version}-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
   # ASCII only, like every buyer-visible string. The tail is the listing
   # description's first sentence verbatim, because the AMI product checklist
   # asks the two to match.
-  ami_description = "LibreDB Studio ${var.version} - Open-source SQL IDE for cloud-native teams."
+  ami_description = "StorageBase Studio ${var.version} - Open-source SQL IDE for cloud-native teams."
 
   # Instances launched from this AMI require IMDSv2.
   imds_support = "v2.0"
@@ -91,13 +91,13 @@ source "amazon-ebs" "ubuntu" {
   ssh_clear_authorized_keys = true
 
   tags = {
-    Name       = "libredb-studio-${var.version}"
+    Name       = "storagebase-studio-${var.version}"
     AppVersion = var.version
     AppImage   = var.image_ref
     BuiltBy    = "packer"
   }
   snapshot_tags = {
-    Name = "libredb-studio-${var.version}"
+    Name = "storagebase-studio-${var.version}"
   }
 }
 
@@ -133,12 +133,12 @@ build {
   # and a directory upload needs its destination to exist — stage under /tmp,
   # then install with the right owner and mode in 02-configure.sh.
   provisioner "shell" {
-    inline = ["mkdir -p /tmp/libredb-files"]
+    inline = ["mkdir -p /tmp/storagebase-files"]
   }
 
   provisioner "file" {
     source      = "files/"
-    destination = "/tmp/libredb-files/"
+    destination = "/tmp/storagebase-files/"
   }
 
   provisioner "shell" {

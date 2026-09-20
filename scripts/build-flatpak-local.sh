@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Build and install the LibreDB Studio Flatpak from a LOCAL AppImage (issue #232).
+# Build and install the StorageBase Studio Flatpak from a LOCAL AppImage (issue #232).
 #
 # The manifest that ships to Flathub points at a released AppImage asset. This
 # script renders the same manifest against an AppImage you just built, so the
 # repack can be built, linted and run end to end before anything is released:
 #
 #   scripts/build-desktop-appimage.sh dist --smoke
-#   scripts/build-flatpak-local.sh dist/libredb-studio-desktop-<version>-linux-x64.AppImage --install
-#   flatpak run org.libredb.Studio
+#   scripts/build-flatpak-local.sh dist/storagebase-studio-desktop-<version>-linux-x64.AppImage --install
+#   flatpak run org.storagebase.Studio
 #
 # Usage: scripts/build-flatpak-local.sh <appimage> [--install]
 #
@@ -19,8 +19,8 @@
 #   flatpak install -y flathub org.flatpak.Builder org.gnome.Platform//50 org.gnome.Sdk//50
 #
 # Outputs (all git-ignored) land under build/flatpak/:
-#   org.libredb.Studio.yml        manifest with the release URLs - what is linted
-#   org.libredb.Studio.local.yml  same manifest pointed at your local AppImage
+#   org.storagebase.Studio.yml        manifest with the release URLs - what is linted
+#   org.storagebase.Studio.local.yml  same manifest pointed at your local AppImage
 #   build-dir/ repo/ state/       flatpak-builder working directories
 # ==============================================================================
 
@@ -58,7 +58,7 @@ if ! flatpak info org.flatpak.Builder > /dev/null 2>&1; then
   exit 1
 fi
 
-APP_ID=org.libredb.Studio
+APP_ID=org.storagebase.Studio
 FLATPAK_DIR="$ROOT_DIR/packaging/flatpak"
 BUILD_DIR="$ROOT_DIR/build/flatpak"
 VERSION=$(node -p "require('./package.json').version")
@@ -82,7 +82,7 @@ echo "==> Rendering manifests for ${VERSION} (${FLATPAK_ARCH})"
 SUMS="$BUILD_DIR/appimage-sums.txt"
 : > "$SUMS"
 for arch in x64 arm64; do
-  ASSET="libredb-studio-desktop-${VERSION}-linux-${arch}.AppImage"
+  ASSET="storagebase-studio-desktop-${VERSION}-linux-${arch}.AppImage"
   if [ "$(basename "$APPIMAGE")" = "$ASSET" ]; then
     sha256sum "$APPIMAGE" | sed "s|  .*|  ${ASSET}|" >> "$SUMS"
   else
@@ -98,7 +98,7 @@ node scripts/render-flatpak-manifest.mjs \
 # flatpak-builder resolves `path:` sources relative to the manifest and the build
 # runs sandboxed, so every local source - launcher, desktop entry, metainfo and
 # the AppImage itself - sits next to the rendered manifest.
-cp "$FLATPAK_DIR/libredb-studio.sh" "$FLATPAK_DIR/${APP_ID}.desktop" \
+cp "$FLATPAK_DIR/storagebase-studio.sh" "$FLATPAK_DIR/${APP_ID}.desktop" \
   "$FLATPAK_DIR/${APP_ID}.metainfo.xml" "$BUILD_DIR/"
 cp "$APPIMAGE" "$BUILD_DIR/$(basename "$APPIMAGE")"
 

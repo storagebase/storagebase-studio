@@ -1,0 +1,55 @@
+# systemd unit for StorageBase Studio, installed by the .deb/.rpm packages
+# (issue #112). Configuration goes in /etc/storagebase-studio/env; state
+# (SQLite storage, generated auth credentials) lives in
+# /var/lib/storagebase-studio, owned by the DynamicUser service account.
+[Unit]
+Description=StorageBase Studio - web-based SQL IDE
+Documentation=https://github.com/storagebase/storagebase-studio
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=storagebase-studio
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# Local-first: bind to loopback by default. Expose the service explicitly by
+# setting HOSTNAME=0.0.0.0 in /etc/storagebase-studio/env (the EnvironmentFile
+# below overrides these defaults) or by fronting it with a reverse proxy.
+Environment=HOSTNAME=127.0.0.1
+Environment=STORAGE_PROVIDER=sqlite
+Environment=STORAGE_SQLITE_PATH=/var/lib/storagebase-studio/storagebase-storage.db
+# Operator overrides (PORT, JWT_SECRET, LLM_*, ...). Read by systemd as
+# root before privileges drop; missing file is fine (leading -).
+EnvironmentFile=-/etc/storagebase-studio/env
+ExecStart=/usr/bin/storagebase-studio
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the service only needs to listen on its port and write its
+# state directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/storagebase-studio
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+# V8's JIT needs writable-executable memory; keep this off (explicitly).
+MemoryDenyWriteExecute=no
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

@@ -91,7 +91,7 @@ describe("control 1.6 — a password alone does not open a TOTP-protected accoun
   });
 
   test("the correct password on its own creates no session", async () => {
-    const res = await attempt({ email: "admin@libredb.org", password: PASSWORD });
+    const res = await attempt({ email: "admin@storagebase.org", password: PASSWORD });
 
     expect(res.status).toBe(401);
     expect(mockLogin).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ describe("control 1.6 — a password alone does not open a TOTP-protected accoun
 
   test("a guessed code creates no session", async () => {
     for (const guess of ["000000", "111111", "287081"]) {
-      const res = await attempt({ email: "admin@libredb.org", password: PASSWORD, totp: guess });
+      const res = await attempt({ email: "admin@storagebase.org", password: PASSWORD, totp: guess });
       expect(res.status).toBe(401);
     }
 
@@ -107,10 +107,10 @@ describe("control 1.6 — a password alone does not open a TOTP-protected accoun
   });
 
   test("an accepted code cannot be presented a second time", async () => {
-    const first = await attempt({ email: "admin@libredb.org", password: PASSWORD, totp: CODE });
+    const first = await attempt({ email: "admin@storagebase.org", password: PASSWORD, totp: CODE });
     expect(first.status).toBe(200);
 
-    const replay = await attempt({ email: "admin@libredb.org", password: PASSWORD, totp: CODE });
+    const replay = await attempt({ email: "admin@storagebase.org", password: PASSWORD, totp: CODE });
 
     expect(replay.status).toBe(401);
     expect((await read(replay)).message).toBe("Invalid authentication code");
@@ -118,19 +118,19 @@ describe("control 1.6 — a password alone does not open a TOTP-protected accoun
   });
 
   test("the replay guard survives the skew window that made the code replayable", async () => {
-    expect((await attempt({ email: "admin@libredb.org", password: PASSWORD, totp: CODE })).status).toBe(200);
+    expect((await attempt({ email: "admin@storagebase.org", password: PASSWORD, totp: CODE })).status).toBe(200);
 
     // One step later the same code is still within the accepted window - which is exactly the
     // interval a captured code would otherwise stay usable for.
     nowSpy.mockReturnValue(FROZEN_NOW + 30_000);
-    const replay = await attempt({ email: "admin@libredb.org", password: PASSWORD, totp: CODE });
+    const replay = await attempt({ email: "admin@storagebase.org", password: PASSWORD, totp: CODE });
 
     expect(replay.status).toBe(401);
     expect(mockLogin).toHaveBeenCalledTimes(1);
   });
 
   test("the second-factor reply stays unreachable without the password (control 1.5 holds)", async () => {
-    const wrongPassword = await read(await attempt({ email: "admin@libredb.org", password: "guess" }));
+    const wrongPassword = await read(await attempt({ email: "admin@storagebase.org", password: "guess" }));
     const unknownEmail = await read(await attempt({ email: "nobody@example.com", password: "guess" }));
 
     // Byte-identical, and neither admits that this deployment has a second factor at all.
@@ -142,7 +142,7 @@ describe("control 1.6 — a password alone does not open a TOTP-protected accoun
   test("an account with no secret configured is unaffected", async () => {
     delete process.env.ADMIN_TOTP_SECRET;
 
-    const res = await attempt({ email: "admin@libredb.org", password: PASSWORD });
+    const res = await attempt({ email: "admin@storagebase.org", password: PASSWORD });
 
     expect(res.status).toBe(200);
     expect(mockLogin).toHaveBeenCalledTimes(1);

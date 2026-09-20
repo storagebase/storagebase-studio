@@ -1,7 +1,7 @@
-# Environment for the libredb-studio systemd service (issue #112).
-# Loaded by the unit via EnvironmentFile=-/etc/libredb-studio/env.
+# Environment for the storagebase-studio systemd service (issue #112).
+# Loaded by the unit via EnvironmentFile=-/etc/storagebase-studio/env.
 # Format: KEY=value, one per line (no "export", no shell expansion).
-# Apply changes with: systemctl restart libredb-studio
+# Apply changes with: systemctl restart storagebase-studio
 #
 # Port and bind address (defaults: 3000, loopback only - set
 # HOSTNAME=0.0.0.0 to expose the service on the network).
@@ -10,14 +10,14 @@
 #
 # Authentication. When unset, the zero-config first run generates JWT_SECRET
 # and ADMIN_PASSWORD, persists them in
-# /var/lib/libredb-studio/auth-bootstrap.json, and prints the admin password
-# once to the journal: journalctl -u libredb-studio
+# /var/lib/storagebase-studio/auth-bootstrap.json, and prints the admin password
+# once to the journal: journalctl -u storagebase-studio
 # Set AUTH_BOOTSTRAP=off to require explicit values instead.
 #AUTH_BOOTSTRAP=off
 #JWT_SECRET=change-me-to-a-random-32-char-string
-#ADMIN_EMAIL=admin@libredb.org
+#ADMIN_EMAIL=admin@storagebase.org
 #ADMIN_PASSWORD=
-#USER_EMAIL=user@libredb.org
+#USER_EMAIL=user@storagebase.org
 #USER_PASSWORD=
 #
 # Two-factor authentication (TOTP), optional and per account. Base32, at least

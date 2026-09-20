@@ -8,7 +8,7 @@
 
 services:
   - type: web
-    name: libredb-studio
+    name: storagebase-studio
     runtime: docker
     dockerfilePath: ./Dockerfile
     # Health check endpoint (matches the Dockerfile HEALTHCHECK and fly.toml).
@@ -75,7 +75,7 @@ services:
       # - key: STORAGE_PROVIDER
       #   value: sqlite
       # - key: STORAGE_SQLITE_PATH
-      #   value: /app/data/libredb-storage.db
+      #   value: /app/data/storagebase-storage.db
       #
       # Alternatively, provision a managed Postgres in this Blueprint
       # (`databases:` list) and set STORAGE_PROVIDER=postgres with
@@ -85,6 +85,6 @@ services:
     # Persistent disk for the SQLite store above. Paid instances only;
     # uncomment together with the STORAGE_* vars.
     # disk:
-    #   name: libredb-data
+    #   name: storagebase-data
     #   mountPath: /app/data
     #   sizeGB: 1

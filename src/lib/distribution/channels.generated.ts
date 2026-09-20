@@ -20,7 +20,7 @@ export const LIVE_CHANNELS: readonly ShowcaseChannel[] = [
   { id: "github-release", label: "GitHub Releases", group: "packages" },
   { id: "docker-ghcr", label: "Docker image (GHCR)", group: "containers" },
   { id: "docker-hub-mirror", label: "Docker Hub mirror", group: "containers" },
-  { id: "npm", label: "npm @libredb/studio", group: "packages" },
+  { id: "npm", label: "npm @storagebase/studio", group: "packages" },
   { id: "helm", label: "Helm chart", group: "kubernetes" },
   { id: "homebrew", label: "Homebrew tap", group: "packages" },
   { id: "snap", label: "Snap Store", group: "packages" },

@@ -31,7 +31,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
 
 const MAIN_ENABLED = ["--set", "route.main.enabled=true", "--set", "route.main.parentRefs[0].name=gw"];
 
@@ -80,7 +80,7 @@ function onlyRoute(args: string[]): RenderedManifest {
   return rendered[0];
 }
 
-describe("charts/libredb-studio route baseline (#362)", () => {
+describe("charts/storagebase-studio route baseline (#362)", () => {
   test("default values render no route at all", () => {
     expect(routes([])).toHaveLength(0);
   });
@@ -89,16 +89,16 @@ describe("charts/libredb-studio route baseline (#362)", () => {
     const route = onlyRoute(MAIN_ENABLED);
     expect(route.apiVersion).toBe("gateway.networking.k8s.io/v1");
     expect(route.kind).toBe("HTTPRoute");
-    expect(route.metadata.name).toBe("release-under-test-libredb-studio");
+    expect(route.metadata.name).toBe("release-under-test-storagebase-studio");
     expect(route.metadata.labels).toMatchObject({
-      "app.kubernetes.io/name": "libredb-studio",
+      "app.kubernetes.io/name": "storagebase-studio",
       "app.kubernetes.io/instance": "release-under-test",
       "app.kubernetes.io/managed-by": "Helm",
     });
     expect(route.spec?.parentRefs).toEqual([{ name: "gw" }]);
     const rule = route.spec?.rules?.[0];
     expect(rule?.backendRefs?.[0]).toMatchObject({
-      name: "release-under-test-libredb-studio",
+      name: "release-under-test-storagebase-studio",
       port: 80,
       kind: "Service",
     });
@@ -106,7 +106,7 @@ describe("charts/libredb-studio route baseline (#362)", () => {
   });
 });
 
-describe("charts/libredb-studio route shared labels and annotations (#366 item 1)", () => {
+describe("charts/storagebase-studio route shared labels and annotations (#366 item 1)", () => {
   test("top-level route.labels and route.annotations land on an enabled route", () => {
     const route = onlyRoute([
       ...MAIN_ENABLED,
@@ -168,13 +168,13 @@ describe("charts/libredb-studio route shared labels and annotations (#366 item 1
   test("a truthy `enabled` under route.labels still renders no -labels route", () => {
     const run = helmTemplate([...MAIN_ENABLED, "--set-string", "route.labels.enabled=true"]);
     expect(run.exitCode).toBe(0);
-    expect(run.stdout).not.toContain("release-under-test-libredb-studio-labels");
+    expect(run.stdout).not.toContain("release-under-test-storagebase-studio-labels");
   });
 
   test("a truthy `enabled` under route.annotations still renders no -annotations route", () => {
     const run = helmTemplate([...MAIN_ENABLED, "--set-string", "route.annotations.enabled=true"]);
     expect(run.exitCode).toBe(0);
-    expect(run.stdout).not.toContain("release-under-test-libredb-studio-annotations");
+    expect(run.stdout).not.toContain("release-under-test-storagebase-studio-annotations");
   });
 
   // Helm's `merge` mutates its destination, so a shared map taken straight from
@@ -201,7 +201,7 @@ describe("charts/libredb-studio route shared labels and annotations (#366 item 1
   // duplicate YAML mapping key, which the API server rejects outright.
   test("a chart label cannot be overwritten or duplicated by route.labels", () => {
     const args = [...MAIN_ENABLED, "--set", "route.labels.app\\.kubernetes\\.io/name=hijacked"];
-    expect(onlyRoute(args).metadata.labels?.["app.kubernetes.io/name"]).toBe("libredb-studio");
+    expect(onlyRoute(args).metadata.labels?.["app.kubernetes.io/name"]).toBe("storagebase-studio");
     // Rendered in isolation so the count cannot pick up the Deployment/Service
     // selector labels: the key must appear once, not once per source.
     const routeOnly = helmTemplate([...args, "-s", "templates/route.yaml"]).stdout;
@@ -210,7 +210,7 @@ describe("charts/libredb-studio route shared labels and annotations (#366 item 1
   });
 });
 
-describe("charts/libredb-studio route parentRefs guard (#366 item 2)", () => {
+describe("charts/storagebase-studio route parentRefs guard (#366 item 2)", () => {
   test("an enabled route with no parentRefs fails the render, naming what to set", () => {
     const run = helmTemplate(["--set", "route.main.enabled=true"]);
     expect(run.exitCode).not.toBe(0);
@@ -240,7 +240,7 @@ describe("charts/libredb-studio route parentRefs guard (#366 item 2)", () => {
   });
 });
 
-describe("charts/libredb-studio route block edge cases", () => {
+describe("charts/storagebase-studio route block edge cases", () => {
   // The shared labels/annotations are read before the range, so an unguarded
   // dereference of a null `route` aborts the whole chart, not just this template.
   test("a null route block renders the rest of the chart and emits no route", () => {
@@ -251,7 +251,7 @@ describe("charts/libredb-studio route block edge cases", () => {
   });
 });
 
-describe("charts/libredb-studio route kind constraint (#366 item 3)", () => {
+describe("charts/storagebase-studio route kind constraint (#366 item 3)", () => {
   test("kind=GRPCRoute fails schema validation", () => {
     const run = helmTemplate([...MAIN_ENABLED, "--set", "route.main.kind=GRPCRoute"]);
     expect(run.exitCode).not.toBe(0);
@@ -269,7 +269,7 @@ describe("charts/libredb-studio route kind constraint (#366 item 3)", () => {
   });
 });
 
-describe("charts/libredb-studio multiple routes and httpsRedirect (#362)", () => {
+describe("charts/storagebase-studio multiple routes and httpsRedirect (#362)", () => {
   test("a second named route renders with the -extra name suffix", () => {
     const rendered = routes([
       ...MAIN_ENABLED,
@@ -279,8 +279,8 @@ describe("charts/libredb-studio multiple routes and httpsRedirect (#362)", () =>
       "route.extra.parentRefs[0].name=gw-extra",
     ]);
     expect(rendered.map((route) => route.metadata.name).sort()).toEqual([
-      "release-under-test-libredb-studio",
-      "release-under-test-libredb-studio-extra",
+      "release-under-test-storagebase-studio",
+      "release-under-test-storagebase-studio-extra",
     ]);
     const extra = rendered.find((route) => route.metadata.name.endsWith("-extra"));
     expect(extra?.spec?.parentRefs).toEqual([{ name: "gw-extra" }]);

@@ -27,7 +27,7 @@ If applicable, add screenshots to help explain your problem.
 ## Environment
 Please provide the following information:
 
-- **LibreDB Studio Version**: (e.g., 0.5.4)
+- **StorageBase Studio Version**: (e.g., 0.5.4)
 - **Browser**: (e.g., Chrome 120, Firefox 121, Safari 17)
 - **OS**: (e.g., macOS 14, Windows 11, Ubuntu 22.04)
 - **Node.js/Bun Version**: (e.g., Bun 1.4.2, Node.js 24.16.0)

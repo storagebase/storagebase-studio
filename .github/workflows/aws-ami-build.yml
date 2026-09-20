@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release tag to ship - must exist on ghcr.io/libredb/libredb-studio (e.g. 0.14.1). Leave empty to use package.json, which builds while the AWS channel is live in distribution/channels.yaml; while it is not live a version is REQUIRED and an empty run stands down.'
+        description: 'Release tag to ship - must exist on ghcr.io/storagebase/storagebase-studio (e.g. 0.14.1). Leave empty to use package.json, which builds while the AWS channel is live in distribution/channels.yaml; while it is not live a version is REQUIRED and an empty run stands down.'
         required: false
         type: string
 
@@ -99,11 +99,11 @@ jobs:
             echo "::notice::aws-marketplace is '${CHANNEL_STATUS:-absent}' in distribution/channels.yaml - building because a version was named explicitly"
           fi
 
-          # Chart releases (libredb-studio-<chart version>) emit release:published
+          # Chart releases (storagebase-studio-<chart version>) emit release:published
           # too and are not product releases. npm-publish.yml and
           # docker-build-push.yml filter them the same way.
           case "$RELEASE_TAG" in
-            libredb-studio-*) stand_down "chart release $RELEASE_TAG" ;;
+            storagebase-studio-*) stand_down "chart release $RELEASE_TAG" ;;
           esac
 
           VERSION="$INPUT_VERSION"
@@ -176,7 +176,7 @@ jobs:
         run: |
           for attempt in $(seq 1 60); do
             DIGEST="$(docker buildx imagetools inspect \
-              "ghcr.io/libredb/libredb-studio:${VERSION}" --format '{{.Manifest.Digest}}' 2>/dev/null || true)"
+              "ghcr.io/storagebase/storagebase-studio:${VERSION}" --format '{{.Manifest.Digest}}' 2>/dev/null || true)"
             [ -n "$DIGEST" ] && break
             echo "image not on ghcr yet (attempt $attempt/60), waiting"
             sleep 30
@@ -187,7 +187,7 @@ jobs:
             echo "::error::digest resolution failed for ${VERSION}, got: $DIGEST"
             exit 1
           fi
-          echo "IMAGE_REF=ghcr.io/libredb/libredb-studio@${DIGEST}" >> "$GITHUB_ENV"
+          echo "IMAGE_REF=ghcr.io/storagebase/storagebase-studio@${DIGEST}" >> "$GITHUB_ENV"
 
       - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
@@ -242,7 +242,7 @@ jobs:
             echo "| Ingestion role | \`${INGESTION_ROLE_ARN}\` |"
             echo
             echo "### Next steps in the portal"
-            echo "1. AWS Marketplace Management Portal -> Server products -> LibreDB Studio."
+            echo "1. AWS Marketplace Management Portal -> Server products -> StorageBase Studio."
             echo "2. Request changes -> Update versions -> Test 'Add version' with the AMI ID above to run a scan without creating a version."
             echo "3. When the scan passes, Add new version: OS Ubuntu 24.04, OS user \`ubuntu\`, scanning port 22, endpoint http / / 3000."
             echo "4. Do not deregister this AMI or delete its snapshot while the version request is under review."

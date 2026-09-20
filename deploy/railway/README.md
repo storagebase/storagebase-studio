@@ -1,9 +1,9 @@
-# LibreDB Studio — Railway One-Click Template
+# StorageBase Studio — Railway One-Click Template
 
-This folder is the **source of truth** for deploying LibreDB Studio on
+This folder is the **source of truth** for deploying StorageBase Studio on
 [Railway](https://railway.com) as a one-click marketplace template.
 
-> Tracking issue: [libredb-studio#174](https://github.com/libredb/libredb-studio/issues/174)
+> Tracking issue: [storagebase-studio#174](https://github.com/storagebase/storagebase-studio/issues/174)
 
 | File | Purpose |
 |------|---------|
@@ -11,11 +11,11 @@ This folder is the **source of truth** for deploying LibreDB Studio on
 | `README.md` | This file — install + post-install instructions. |
 | `PUBLISH.md` | Step-by-step checklist to create and publish the template in Railway's template editor. |
 | `TEMPLATE_OVERVIEW.md` | Marketplace overview/README pasted into the publish form's "Template Overview" field. |
-| `libredb-studio.png` | 256×256 app logo. |
+| `storagebase-studio.png` | 256×256 app logo. |
 
 > **Why no `railway.json` in the repo?** Railway config-as-code only controls how
 > a **GitHub repo** source is *built*. Our template uses the prebuilt
-> **Docker image** `ghcr.io/libredb/libredb-studio`, so every runtime setting
+> **Docker image** `ghcr.io/storagebase/storagebase-studio`, so every runtime setting
 > lives in the service definition (captured in `template.json`), not in a repo
 > config file. A `railway.toml` would only cause a redundant rebuild of an image
 > CI already publishes.
@@ -24,14 +24,14 @@ This folder is the **source of truth** for deploying LibreDB Studio on
 
 Click the button to deploy from the Railway template marketplace:
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/libredb-studio?referralCode=libredb&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/storagebase-studio?referralCode=storagebase&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-Or browse the Railway template marketplace and search **LibreDB Studio**.
+Or browse the Railway template marketplace and search **StorageBase Studio**.
 
 ## Deploy (manual — works today, before publishing)
 
 Railway dashboard → **New Project**, then in the project view click **+ New → Docker Image** →
-enter `ghcr.io/libredb/libredb-studio:0.14.1`, then configure the service to
+enter `ghcr.io/storagebase/storagebase-studio:0.14.1`, then configure the service to
 match [`template.json`](./template.json):
 
 - **Networking:** enable a public domain, target port `3000`.
@@ -42,7 +42,7 @@ match [`template.json`](./template.json):
 
 ## What the template does
 
-- Runs `ghcr.io/libredb/libredb-studio` (pinned version, never `:latest`) on
+- Runs `ghcr.io/storagebase/storagebase-studio` (pinned version, never `:latest`) on
   container HTTP port `3000`.
 - Auto-generates a strong `JWT_SECRET` and admin/user passwords via Railway's
   `secret()` function.
@@ -55,9 +55,9 @@ match [`template.json`](./template.json):
 
 After deploy, open the service's public domain and log in:
 
-- **Admin** (full access incl. maintenance tools): `admin@libredb.org` + the
+- **Admin** (full access incl. maintenance tools): `admin@storagebase.org` + the
   generated `ADMIN_PASSWORD`.
-- **User** (query execution only): `user@libredb.org` + the generated
+- **User** (query execution only): `user@storagebase.org` + the generated
   `USER_PASSWORD`.
 
 Find the generated passwords in the Railway service's **Variables** tab.
@@ -71,7 +71,7 @@ on Railway:
 2. Railway provisions it and exposes `DATABASE_URL`, `PGHOST`, `PGPORT`,
    `PGUSER`, `PGPASSWORD`, `PGDATABASE` (find them on the database service's
    **Variables** tab).
-3. In LibreDB Studio, add a connection using those values
+3. In StorageBase Studio, add a connection using those values
    (host / port / database / user / password). You can now query it.
 
 ## Post-install options
@@ -85,4 +85,4 @@ Add these variables on the Studio service to extend the deployment:
 - **AI** — `LLM_PROVIDER` (`gemini` | `openai` | `ollama` | `custom`),
   `LLM_API_KEY`, `LLM_MODEL`, `LLM_API_URL`.
 
-More details and docs: https://github.com/libredb/libredb-studio
+More details and docs: https://github.com/storagebase/storagebase-studio

@@ -8,8 +8,8 @@
         "name": "vmName",
         "type": "Microsoft.Common.TextBox",
         "label": "Virtual machine name",
-        "defaultValue": "libredb-studio",
-        "toolTip": "Name of the virtual machine that will run LibreDB Studio.",
+        "defaultValue": "storagebase-studio",
+        "toolTip": "Name of the virtual machine that will run StorageBase Studio.",
         "constraints": {
           "required": true,
           "regex": "^[a-z][a-z0-9-]{1,38}[a-z0-9]$",
@@ -52,7 +52,7 @@
             "name": "vmSize",
             "type": "Microsoft.Compute.SizeSelector",
             "label": "Virtual machine size",
-            "toolTip": "LibreDB Studio runs comfortably on 2 vCPU / 4 GB RAM.",
+            "toolTip": "StorageBase Studio runs comfortably on 2 vCPU / 4 GB RAM.",
             "recommendedSizes": [ "Standard_B2s", "Standard_B2ms", "Standard_D2s_v5" ],
             "options": { "hideDiskTypeFilter": false },
             "osPlatform": "Linux",
@@ -73,7 +73,7 @@
             "subLabel": "GB",
             "defaultValue": 64,
             "showStepMarkers": false,
-            "toolTip": "LibreDB Studio keeps its SQLite storage on the OS disk.",
+            "toolTip": "StorageBase Studio keeps its SQLite storage on the OS disk.",
             "constraints": { "required": false },
             "visible": true
           },
@@ -92,14 +92,14 @@
       },
       {
         "name": "appConfig",
-        "label": "LibreDB Studio",
+        "label": "StorageBase Studio",
         "elements": [
           {
             "name": "appAdminEmail",
             "type": "Microsoft.Common.TextBox",
             "label": "Application administrator email",
             "defaultValue": "",
-            "toolTip": "The email address you will sign in to LibreDB Studio with.",
+            "toolTip": "The email address you will sign in to StorageBase Studio with.",
             "constraints": {
               "required": true,
               "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
@@ -110,7 +110,7 @@
             "name": "appAdminPassword",
             "type": "Microsoft.Common.PasswordBox",
             "label": { "password": "Application administrator password", "confirmPassword": "Confirm password" },
-            "toolTip": "Password for the LibreDB Studio administrator account (not the VM account).",
+            "toolTip": "Password for the StorageBase Studio administrator account (not the VM account).",
             "constraints": {
               "required": true,
               "regex": "^[A-Za-z0-9!@#%^*_+=.,:?-]{12,64}$",

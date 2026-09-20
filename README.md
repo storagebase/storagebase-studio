@@ -45,19 +45,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/libredb/libredb-studio"><img src="https://img.shields.io/github/stars/libredb/libredb-studio?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/storagebase/storagebase-studio"><img src="https://img.shields.io/github/stars/storagebase/storagebase-studio?style=social" alt="GitHub stars"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://deepwiki.com/libredb/libredb-studio"><img src="https://img.shields.io/badge/Docs-DeepWiki-blue?logo=gitbook" alt="DeepWiki Docs"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 <p align="center">
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16"></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React 19"></a>
-  <a href="https://hub.docker.com/r/libredb/libredb-studio?tag=latest"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker" alt="Docker Support"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/badge/Kubernetes-Compatible-326CE5?logo=kubernetes" alt="Kubernetes Compatible"></a>
 </p>
 
 <p align="center">
@@ -75,10 +69,10 @@ Run a full Database Editor in one command, no clone, no build:
 
 ```bash
 # Docker (recommended)
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # or with Node.js 24+ (no Docker)
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 Then open **http://localhost:3000**. On first run, the admin password is printed to the log (zero-config).
@@ -106,7 +100,7 @@ The test instance comes with a pre-configured PostgreSQL database via [Seed Conn
 
 You create a Postgres on a managed platform. It is ready in forty seconds. Then you want to look inside it — so you open a port to the internet, dig an SSH tunnel, or install a desktop client on every machine that needs one.
 
-StorageBase Studio goes the other way. It deploys next to the data: a container, a Helm chart, an operator, a one-click template on your PaaS, or `npm i @libredb/studio` inside your own product. Nothing has to face outward.
+StorageBase Studio goes the other way. It deploys next to the data: a container, a Helm chart, an operator, a one-click template on your PaaS, or `npm i @storagebase/studio` inside your own product. Nothing has to face outward.
 
 Sixteen engines share one interface — PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra — with the same explorer everywhere, and ER diagrams, schema diff and monitoring wherever the engine has something to report. Three of the sixteen are read-only because their own SQL is: Druid, Elasticsearch and OpenSearch have no `UPDATE` and no `CREATE TABLE` in the grammar at all, so those controls are reported as unsupported instead of failing when used. Cassandra is the newest, and the one that reports the least on purpose: it publishes no row count and no size that is true, so the object browser shows neither rather than showing a number that is wrong — the estimate it does publish counts partitions from flushed files, and it read 143 for a 500-row table. Trino is the other odd one: it is a query engine rather than a database, so it declares no keys and no indexes and reports the bytes as belonging to the systems behind its connectors.
 
@@ -123,10 +117,6 @@ And nothing is held back. Single sign-on, ER diagrams, the AI features and the N
   <img src="public/screenshots/connection-modal.png" alt="Multi-Database Connection Manager" width="100%" />
   <br/><em>Connect to PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino, Cassandra, Redis, SQLite, DuckDB, or libSQL with SSL/TLS and SSH Tunnel support.</em>
 </p>
-
----
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/libredb/libredb-studio)
 
 ---
 
@@ -195,7 +185,7 @@ what comes back, and finishes by composing a report whose every claim cites the 
   as a configured model without one, and then the AI is on. What the agent sends is
   [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md).
 
-Standalone application only: the embedded `@libredb/studio` package carries no agent surface.
+Standalone application only: the embedded `@storagebase/studio` package carries no agent surface.
 **Guide:** [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) · **What leaves the machine:**
 [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) · **Behaviour and limits:**
 [`docs/AGENT.md`](docs/AGENT.md) · **Which local model to run:**
@@ -318,18 +308,18 @@ Standalone application only: the embedded `@libredb/studio` package carries no a
 
   | Channel | Command | Notes |
   | :--- | :--- | :--- |
-  | **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` | Zero-config: the admin password is printed to the log on first run |
-  | **Helm (Kubernetes)** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` | Zero-config: first-run admin credentials are printed to the pod log |
-  | **npx** | `npx @libredb/studio` | Linux/macOS/Windows, Node 24+ (24 LTS is the reference runtime); downloads the release server archive |
-  | **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` | `brew trust` is required once (Homebrew 6+; run `brew update` if unknown) |
-  | **deb / rpm** | `sudo dpkg -i libredb-studio_<version>_amd64.deb` | Attached to each GitHub release; systemd service included |
-  | **Snap** | `sudo snap install libredb-studio` | Zero-config: the admin password is printed to `sudo snap logs libredb-studio` on first run — [Snap Store listing](https://snapcraft.io/libredb-studio) |
-  | **winget (Windows)** | `winget install LibreDB.Studio` | Portable zip with a bundled Node.js runtime; run `libredb-studio` — [listed in the winget community repository](https://github.com/microsoft/winget-pkgs/tree/master/manifests/l/LibreDB/Studio) |
-  | **Chocolatey (Windows)** | `choco install libredb-studio` | Same standalone zip — [listed in the Chocolatey community repository](https://community.chocolatey.org/packages/libredb-studio); the first push (0.9.59) cleared moderation on 2026-08-24, and every release publishes automatically since ([#114](https://github.com/libredb/libredb-studio/issues/114)) |
-  | **Portable zip (Windows)** | `.\libredb-studio.exe` | Download from [GitHub Releases](https://github.com/libredb/libredb-studio/releases); bundled Node runtime, no package manager needed |
-  | **Desktop app (Linux, AppImage)** | `chmod +x libredb-studio-desktop-<version>-linux-x64.AppImage && ./libredb-studio-desktop-<version>-linux-x64.AppImage` | Native window, no browser tab and no login prompt; the server runs as a local sidecar. For a sandboxed build, use the Flatpak row below ([#232](https://github.com/libredb/libredb-studio/issues/232)) |
-  | **Desktop app (Debian/Ubuntu)** | `sudo apt install ./libredb-studio-desktop-<version>_amd64.deb` | Same desktop app, installed into the menu; needs no FUSE and takes WebKitGTK from the distribution. Not the server package — that one is `libredb-studio_<version>_<arch>.deb` |
-  | **Desktop app (Flatpak)** | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` | Sandboxed desktop app from the [FlatPark](https://flatpark.org/) remote — no filesystem access at all; databases are reached over TCP. Developer-approved listing ([#241](https://github.com/libredb/libredb-studio/issues/241)) |
+  | **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` | Zero-config: the admin password is printed to the log on first run |
+  | **Helm (Kubernetes)** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` | Zero-config: first-run admin credentials are printed to the pod log |
+  | **npx** | `npx @storagebase/studio` | Linux/macOS/Windows, Node 24+ (24 LTS is the reference runtime); downloads the release server archive |
+  | **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` | `brew trust` is required once (Homebrew 6+; run `brew update` if unknown) |
+  | **deb / rpm** | `sudo dpkg -i storagebase-studio_<version>_amd64.deb` | Attached to each GitHub release; systemd service included |
+  | **Snap** | `sudo snap install storagebase-studio` | Zero-config: the admin password is printed to `sudo snap logs storagebase-studio` on first run — [Snap Store listing](https://snapcraft.io/storagebase-studio) |
+  | **winget (Windows)** | `winget install StorageBase.Studio` | Portable zip with a bundled Node.js runtime; run `storagebase-studio` — [listed in the winget community repository](https://github.com/microsoft/winget-pkgs/tree/master/manifests/l/StorageBase/Studio) |
+  | **Chocolatey (Windows)** | `choco install storagebase-studio` | Same standalone zip — [listed in the Chocolatey community repository](https://community.chocolatey.org/packages/storagebase-studio); the first push (0.9.59) cleared moderation on 2026-08-24, and every release publishes automatically since ([#114](https://github.com/storagebase/storagebase-studio/issues/114)) |
+  | **Portable zip (Windows)** | `.\storagebase-studio.exe` | Download from [GitHub Releases](https://github.com/storagebase/storagebase-studio/releases); bundled Node runtime, no package manager needed |
+  | **Desktop app (Linux, AppImage)** | `chmod +x storagebase-studio-desktop-<version>-linux-x64.AppImage && ./storagebase-studio-desktop-<version>-linux-x64.AppImage` | Native window, no browser tab and no login prompt; the server runs as a local sidecar. For a sandboxed build, use the Flatpak row below ([#232](https://github.com/storagebase/storagebase-studio/issues/232)) |
+  | **Desktop app (Debian/Ubuntu)** | `sudo apt install ./storagebase-studio-desktop-<version>_amd64.deb` | Same desktop app, installed into the menu; needs no FUSE and takes WebKitGTK from the distribution. Not the server package — that one is `storagebase-studio_<version>_<arch>.deb` |
+  | **Desktop app (Flatpak)** | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` | Sandboxed desktop app from the [FlatPark](https://flatpark.org/) remote — no filesystem access at all; databases are reached over TCP. Developer-approved listing ([#241](https://github.com/storagebase/storagebase-studio/issues/241)) |
 
   > Homebrew, deb/rpm, Snap, the Windows portable zip, winget/Chocolatey, the desktop AppImage and Debian package, and the npx launcher consume standalone artifacts attached to each GitHub release. Full per-channel guide — commands, configuration, systemd usage, and the Docker image tag model — in [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md). Channel coverage scorecard (live / pending, by platform and category) — [`docs/CHANNELS.md`](docs/CHANNELS.md).
 
@@ -339,23 +329,23 @@ Standalone application only: the embedded `@libredb/studio` package carries no a
 
 ```bash
 docker run \
-  --name libredb-studio \
+  --name storagebase-studio \
   -p 3000:3000 \
-  -e ADMIN_EMAIL=admin@libredb.org \
-  -e ADMIN_PASSWORD=LibreDB.2026 \
-  -e USER_EMAIL=user@libredb.org \
-  -e USER_PASSWORD=LibreDB.2026 \
+  -e ADMIN_EMAIL=admin@storagebase.org \
+  -e ADMIN_PASSWORD=StorageBase.2026 \
+  -e USER_EMAIL=user@storagebase.org \
+  -e USER_PASSWORD=StorageBase.2026 \
   -e JWT_SECRET=change-me-to-a-random-32-char-string \
-  ghcr.io/libredb/libredb-studio:latest
+  ghcr.io/storagebase/storagebase-studio:latest
 ```
 
-  > **Registry**: `ghcr.io/libredb/libredb-studio` is the primary image (no pull rate limits — preferred for Kubernetes/CI). The same image is also mirrored to Docker Hub as [`libredb/libredb-studio`](https://hub.docker.com/r/libredb/libredb-studio?tag=latest) for convenience.
+  > **Registry**: `ghcr.io/storagebase/storagebase-studio` is the primary image (no pull rate limits — preferred for Kubernetes/CI). The same image is also mirrored to Docker Hub as [`storagebase/storagebase-studio`](https://hub.docker.com/r/storagebase/storagebase-studio?tag=latest) for convenience.
 
   > **IPv6**: the container picks its own bind address at startup and prefers `::`, which serves IPv4 and IPv6 through one socket — so an IPv6-only host needs no flags. It falls back to `0.0.0.0` where the namespace has no usable IPv6, and logs which it chose. Add `-e HOSTNAME=0.0.0.0` to pin it to IPv4 — details, and the Kubernetes equivalent, in [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md#network-exposure-bind-address).
 
-  Open [http://localhost:3000](http://localhost:3000) and login with `admin@libredb.org` / `LibreDB.2026`.
+  Open [http://localhost:3000](http://localhost:3000) and login with `admin@storagebase.org` / `StorageBase.2026`.
 
-  > **Auth env vars (local provider):** `ADMIN_PASSWORD` and `JWT_SECRET` are only required when `AUTH_BOOTSTRAP=off`; otherwise both are generated on first start (see [Zero-config first run](#zero-config-first-run) below). `USER_EMAIL` / `USER_PASSWORD` are optional; omit them to run admin-only (no default user password is ever assumed). `ADMIN_EMAIL` defaults to `admin@libredb.org`. Using OIDC (`NEXT_PUBLIC_AUTH_PROVIDER=oidc`)? None of these are needed.
+  > **Auth env vars (local provider):** `ADMIN_PASSWORD` and `JWT_SECRET` are only required when `AUTH_BOOTSTRAP=off`; otherwise both are generated on first start (see [Zero-config first run](#zero-config-first-run) below). `USER_EMAIL` / `USER_PASSWORD` are optional; omit them to run admin-only (no default user password is ever assumed). `ADMIN_EMAIL` defaults to `admin@storagebase.org`. Using OIDC (`NEXT_PUBLIC_AUTH_PROVIDER=oidc`)? None of these are needed.
 
   > **Tip**: Add `-e LLM_PROVIDER=gemini -e LLM_API_KEY=your_key -e LLM_MODEL=gemini-2.5-flash` to enable AI features.
 
@@ -375,24 +365,24 @@ docker run \
   ### Linux packages (.deb / .rpm)
 
   Native packages for Debian/Ubuntu and RHEL/Fedora (amd64 and arm64) are attached to every
-  [GitHub release](https://github.com/libredb/libredb-studio/releases). They bundle the standalone
+  [GitHub release](https://github.com/storagebase/storagebase-studio/releases). They bundle the standalone
   server together with a private Node.js runtime (nothing else to install) and register a systemd service:
 
 ```bash
 # Debian / Ubuntu
-sudo dpkg -i libredb-studio_<version>_amd64.deb
+sudo dpkg -i storagebase-studio_<version>_amd64.deb
 
 # RHEL / Fedora / Rocky
-sudo rpm -i libredb-studio-<version>.x86_64.rpm
+sudo rpm -i storagebase-studio-<version>.x86_64.rpm
 
 # Start the service (first run prints the generated admin password to the journal)
-sudo systemctl enable --now libredb-studio
-journalctl -u libredb-studio
+sudo systemctl enable --now storagebase-studio
+journalctl -u storagebase-studio
 ```
 
-  Configuration lives in `/etc/libredb-studio/env` (loaded by the unit; see the commented template
-  installed there), state (SQLite storage and generated credentials) in `/var/lib/libredb-studio`.
-  The `libredb-studio` command can also be run directly without systemd. Full details for this and
+  Configuration lives in `/etc/storagebase-studio/env` (loaded by the unit; see the commented template
+  installed there), state (SQLite storage and generated credentials) in `/var/lib/storagebase-studio`.
+  The `storagebase-studio` command can also be run directly without systemd. Full details for this and
   every other channel: [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md).
 
   ### Prerequisites
@@ -402,8 +392,8 @@ journalctl -u libredb-studio
   ### Quick Start (Local)
   1. **Clone & Install**
      ```bash
-     git clone https://github.com/libredb/libredb-studio.git
-     cd libredb-studio
+     git clone https://github.com/storagebase/storagebase-studio.git
+     cd storagebase-studio
      bun install
      ```
 
@@ -411,9 +401,9 @@ journalctl -u libredb-studio
        Create a `.env.local` file:
        ```env
        # Authentication (email/password)
-       ADMIN_EMAIL=admin@libredb.org
+       ADMIN_EMAIL=admin@storagebase.org
        ADMIN_PASSWORD=your_admin_password
-       USER_EMAIL=user@libredb.org
+       USER_EMAIL=user@storagebase.org
        USER_PASSWORD=your_user_password
        JWT_SECRET=your_32_character_random_string
 
@@ -436,23 +426,23 @@ journalctl -u libredb-studio
    ```
    Open [http://localhost:3000](http://localhost:3000)
 
-  ### Embedding in your own app (`@libredb/studio`)
+  ### Embedding in your own app (`@storagebase/studio`)
 
   Studio is published as an npm package as well as a server, so the editor can live inside your own
   product:
 
   ```bash
-  npm i @libredb/studio
+  npm i @storagebase/studio
   ```
 
-  **Adopt Studio's security headers from your own Next.js config.** The `@libredb/studio/security`
+  **Adopt Studio's security headers from your own Next.js config.** The `@storagebase/studio/security`
   subpath publishes the header policy as pure data — `securityHeaders()` returns a plain
   `Record<string, string>`, and the module it comes from imports nothing, so it is safe to load from
   a `next.config.ts` where no path alias and no Studio runtime exist yet:
 
   ```ts
   // next.config.ts
-  import { securityHeaders } from "@libredb/studio/security";
+  import { securityHeaders } from "@storagebase/studio/security";
 
   export default {
     async headers() {
@@ -609,16 +599,16 @@ The nineteenth spec in `e2e/`, `base-path.spec.ts`, is not in that 18: it needs 
 
 Deploy your own instance of StorageBase Studio with a single click on DigitalOcean, Koyeb, Render, Railway, Sealos, CapRover, or Dokploy:
 
- [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=libredb-studio&type=docker&image=ghcr.io%2Flibredb%2Flibredb-studio%3Alatest&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900&env%5BADMIN_EMAIL%5D=admin%40libredb.org&env%5BADMIN_PASSWORD%5D=LibreDB.2026&env%5BJWT_SECRET%5D=replace_with_openssl_rand_base64_32&env%5BLLM_API_KEY%5D=your_GEMINI_API_KEY&env%5BLLM_MODEL%5D=gemini-2.5-flash&env%5BLLM_PROVIDER%5D=gemini&env%5BNEXT_PUBLIC_AUTH_PROVIDER%5D=local&env%5BSTORAGE_PROVIDER%5D=local&env%5BUSER_EMAIL%5D=user%40libredb.org&env%5BUSER_PASSWORD%5D=LibreDB.2026&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)  
- [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/libredb/libredb-studio)  
- [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/libredb-studio?referralCode=libredb&utm_medium=integration&utm_source=template&utm_campaign=generic)  
- [![Deploy on Sealos](https://sealos.io/Deploy-on-Sealos.svg)](https://sealos.io/products/app-store/libredb-studio)  
- [![Deploy on DigitalOcean](https://img.shields.io/badge/Deploy%20on-DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white)](https://marketplace.digitalocean.com/apps/libredb-studio)  
- [![Deploy on CapRover](https://img.shields.io/badge/Deploy%20on-CapRover-2474ed?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/libredb-studio.yml)  
+ [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=storagebase-studio&type=docker&image=ghcr.io%2Fstoragebase%2Fstoragebase-studio%3Alatest&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900&env%5BADMIN_EMAIL%5D=admin%40storagebase.org&env%5BADMIN_PASSWORD%5D=StorageBase.2026&env%5BJWT_SECRET%5D=replace_with_openssl_rand_base64_32&env%5BLLM_API_KEY%5D=your_GEMINI_API_KEY&env%5BLLM_MODEL%5D=gemini-2.5-flash&env%5BLLM_PROVIDER%5D=gemini&env%5BNEXT_PUBLIC_AUTH_PROVIDER%5D=local&env%5BSTORAGE_PROVIDER%5D=local&env%5BUSER_EMAIL%5D=user%40storagebase.org&env%5BUSER_PASSWORD%5D=StorageBase.2026&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)  
+ [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/storagebase/storagebase-studio)  
+ [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/storagebase-studio?referralCode=storagebase&utm_medium=integration&utm_source=template&utm_campaign=generic)  
+ [![Deploy on Sealos](https://sealos.io/Deploy-on-Sealos.svg)](https://sealos.io/products/app-store/storagebase-studio)  
+ [![Deploy on DigitalOcean](https://img.shields.io/badge/Deploy%20on-DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white)](https://marketplace.digitalocean.com/apps/storagebase-studio)  
+ [![Deploy on CapRover](https://img.shields.io/badge/Deploy%20on-CapRover-2474ed?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/storagebase-studio.yml)  
  [![Deploy on Fly.io](https://img.shields.io/badge/Deploy%20on-Fly.io-24175B?style=for-the-badge&logo=flydotio&logoColor=white)](docs/FLY.md)  
  [![Deploy on Dokploy](https://img.shields.io/badge/Deploy%20on-Dokploy-1F2937?style=for-the-badge&logo=docker&logoColor=white)](https://templates.dokploy.com)  
 
-> **DigitalOcean:** the [Marketplace listing](https://marketplace.digitalocean.com/apps/libredb-studio) creates a preconfigured Droplet. Unique admin credentials are generated on first boot; the welcome message (MOTD) tells you where to find them.
+> **DigitalOcean:** the [Marketplace listing](https://marketplace.digitalocean.com/apps/storagebase-studio) creates a preconfigured Droplet. Unique admin credentials are generated on first boot; the welcome message (MOTD) tells you where to find them.
 >
 > **CapRover:** open your CapRover dashboard → **Apps → One-Click Apps/Databases**, search for **StorageBase Studio**, and deploy.
 >
@@ -635,9 +625,9 @@ Deploy your own instance of StorageBase Studio with a single click on DigitalOce
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ADMIN_EMAIL` | ❌ | Admin email (default: `admin@libredb.org`) |
+| `ADMIN_EMAIL` | ❌ | Admin email (default: `admin@storagebase.org`) |
 | `ADMIN_PASSWORD` | ✅(autogenerated) | Admin password; auto-generated on first run unless `AUTH_BOOTSTRAP=off` |
-| `USER_EMAIL` | ❌ | Optional user account email (default: `user@libredb.org`) |
+| `USER_EMAIL` | ❌ | Optional user account email (default: `user@storagebase.org`) |
 | `USER_PASSWORD` | ❌ | Optional; the lower-privilege user account exists only when set |
 | `JWT_SECRET` | ✅(autogenerated) | JWT secret (min 32 chars); auto-generated on first run unless `AUTH_BOOTSTRAP=off`. A shorter value is fatal: the server refuses to start rather than serve a deployment where every login fails |
 | `AUTH_BOOTSTRAP` | ❌ | `off` disables zero-config generation (strict mode; recommended for production) |
@@ -654,7 +644,7 @@ Deploy your own instance of StorageBase Studio with a single click on DigitalOce
 | `LLM_MODEL` | ❌ | Model name (e.g., `gemini-2.5-flash`) |
 | `LLM_API_URL` | ❌ | API URL for `ollama` and `custom`; required for `custom`, defaults to `http://localhost:11434/v1` for `ollama` |
 | `STORAGE_PROVIDER` | ❌ | Storage provider: `local` (default), `sqlite`, or `postgres` |
-| `STORAGE_SQLITE_PATH` | ❌ | SQLite file path (e.g. `/app/data/libredb-storage.db`) |
+| `STORAGE_SQLITE_PATH` | ❌ | SQLite file path (e.g. `/app/data/storagebase-storage.db`) |
 | `STORAGE_POSTGRES_URL` | ❌ | PostgreSQL connection URL (required when `STORAGE_PROVIDER=postgres`) |
 | `SEED_CONFIG_PATH` | ❌ | Path to seed connections YAML config (see [Seed Connections](#seed-connections-pre-configured-databases)) |
 | `SEED_CACHE_TTL_MS` | ❌ | Seed config cache TTL in ms (default: `60000`) |
@@ -665,7 +655,7 @@ Deploy your own instance of StorageBase Studio with a single click on DigitalOce
 
 ## Deployment (DevOps)
 
-For a reverse-proxy path such as `/tools/libredb`, build with `BASE_PATH` and follow the
+For a reverse-proxy path such as `/tools/storagebase`, build with `BASE_PATH` and follow the
 [subpath deployment guide](docs/SUBPATH.md). Prebuilt images use the root path.
 
 > Maintainers: every distribution channel is inventoried in
@@ -675,7 +665,7 @@ For a reverse-proxy path such as `/tools/libredb`, build with `BASE_PATH` and fo
 
 ### Koyeb
 
-1. Use the **Deploy to Koyeb** button under [One-Click Deploy](#one-click-deploy) to run the prebuilt `ghcr.io/libredb/libredb-studio:latest` image.
+1. Use the **Deploy to Koyeb** button under [One-Click Deploy](#one-click-deploy) to run the prebuilt `ghcr.io/storagebase/storagebase-studio:latest` image.
 2. Set a strong `JWT_SECRET` (32+ characters) and real `ADMIN_PASSWORD` / `USER_PASSWORD` in the deploy form before launching. Koyeb cannot auto-generate secrets; the prefilled values are placeholders.
 3. For connections to survive redeploys, set `STORAGE_PROVIDER=postgres` and `STORAGE_POSTGRES_URL` to a Koyeb managed Postgres or Neon connection string. The button defaults to `STORAGE_PROVIDER=local`, which keeps connection metadata in the browser.
 
@@ -686,20 +676,20 @@ See [`deploy/koyeb/`](deploy/koyeb/) for the complete setup and storage options.
 StorageBase Studio is available as a one-click [Railway](https://railway.com) template.
 See [`deploy/railway/`](deploy/railway/) for the template definition, install
 instructions, and the publish checklist. The template runs the prebuilt
-`ghcr.io/libredb/libredb-studio` image with SQLite persistence on a Railway
+`ghcr.io/storagebase/storagebase-studio` image with SQLite persistence on a Railway
 volume. Note: Docker-image templates require a manual version bump on each
 release (same as CapRover).
 
 ### CapRover
 
-StorageBase Studio is published in the official [CapRover One-Click Apps](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/libredb-studio.yml) catalog:
+StorageBase Studio is published in the official [CapRover One-Click Apps](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/storagebase-studio.yml) catalog:
 
 1. **Open your CapRover dashboard** → **Apps → One-Click Apps/Databases**
 2. **Search** for **StorageBase Studio**
 3. **Fill in the variables** (admin/user credentials, `JWT_SECRET`, optional AI/storage settings)
 4. **Deploy!**
 
-The app runs the prebuilt `ghcr.io/libredb/libredb-studio` image. As with Railway, Docker-image templates require a manual version bump on each release.
+The app runs the prebuilt `ghcr.io/storagebase/storagebase-studio` image. As with Railway, Docker-image templates require a manual version bump on each release.
 
 ### Kubero
 
@@ -707,7 +697,7 @@ StorageBase Studio is listed in the official
 [Kubero template catalog](https://www.kubero.dev/templates) (a self-hosted
 "Heroku alternative for Kubernetes"). From your Kubero dashboard, browse
 **Templates**, search **StorageBase Studio**, fill in the credentials / `JWT_SECRET`,
-and deploy. The template runs the prebuilt `ghcr.io/libredb/libredb-studio` image
+and deploy. The template runs the prebuilt `ghcr.io/storagebase/storagebase-studio` image
 with SQLite persistence on a 5Gi volume at `/app/data`. See
 [`deploy/kubero/`](deploy/kubero/) for install and post-install details. As with
 Railway and CapRover, Docker-image templates require a manual version bump on
@@ -738,7 +728,7 @@ StorageBase Studio includes a `render.yaml` Blueprint for one-click deployment:
 
 ### Docker Compose (Self-Hosted)
 
-Use the ready-to-use [`docker-compose.example.yml`](docker-compose.example.yml) — it pulls the published image (`ghcr.io/libredb/libredb-studio:latest`), so no source build is needed. It documents every supported environment variable (auth, OIDC, storage, LLM, seed connections), with the less-common ones commented out.
+Use the ready-to-use [`docker-compose.example.yml`](docker-compose.example.yml) — it pulls the published image (`ghcr.io/storagebase/storagebase-studio:latest`), so no source build is needed. It documents every supported environment variable (auth, OIDC, storage, LLM, seed connections), with the less-common ones commented out.
 
 ```bash
 # 1. Copy the ready-to-use compose file
@@ -758,26 +748,26 @@ This file is platform-neutral and works with PaaS tools that consume a plain `do
 ### Kubernetes (Helm Chart)
 
 ```bash
-helm repo add libredb https://libredb.org/libredb-studio/
-helm install libredb libredb/libredb-studio
+helm repo add storagebase https://storagebase.org/storagebase-studio/
+helm install storagebase storagebase/storagebase-studio
 
 # Retrieve the generated admin credentials from the pod log
-kubectl logs deployment/libredb-libredb-studio | grep -A 4 "generated admin credentials"
+kubectl logs deployment/storagebase-storagebase-studio | grep -A 4 "generated admin credentials"
 ```
 
 Or via OCI registry:
 ```bash
-helm install libredb oci://ghcr.io/libredb/charts/libredb-studio
+helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio
 ```
 
 For production, provide your own secrets instead of relying on generated ones:
 ```bash
-helm install libredb libredb/libredb-studio \
+helm install storagebase storagebase/storagebase-studio \
   --set secrets.jwtSecret=$(openssl rand -base64 32) \
   --set secrets.adminPassword=MyAdmin123
 ```
 
-Features: PostgreSQL subchart, Ingress/TLS, HPA, PDB, NetworkPolicy, ExternalSecrets support. See [charts/libredb-studio/README.md](charts/libredb-studio/README.md) for full documentation.
+Features: PostgreSQL subchart, Ingress/TLS, HPA, PDB, NetworkPolicy, ExternalSecrets support. See [charts/storagebase-studio/README.md](charts/storagebase-studio/README.md) for full documentation.
 
 ### Seed Connections (Pre-Configured Databases)
 
@@ -833,7 +823,7 @@ docker run -v ./seed-connections.yaml:/app/config/seed-connections.yaml:ro \
   -e SEED_CONFIG_PATH=/app/config/seed-connections.yaml \
   -e ANALYTICS_DB_PASSWORD=secret \
   -e DEV_DB_PASSWORD=devsecret \
-  ghcr.io/libredb/libredb-studio:latest
+  ghcr.io/storagebase/storagebase-studio:latest
 ```
 </details>
 
@@ -843,7 +833,7 @@ docker run -v ./seed-connections.yaml:/app/config/seed-connections.yaml:ro \
 ```yaml
 services:
   app:
-    image: ghcr.io/libredb/libredb-studio:latest
+    image: ghcr.io/storagebase/storagebase-studio:latest
     volumes:
       - ./seed-connections.yaml:/app/config/seed-connections.yaml:ro
     environment:
@@ -885,7 +875,7 @@ extraEnvFrom:
 | `defaults` | No | Default values merged into all connections |
 | `connections[].id` | Yes | Unique slug (`[a-z0-9-]+`, max 64 chars) |
 | `connections[].name` | Yes | Display name in UI |
-| `connections[].type` | Yes | `postgres`, `mysql`, `sqlite`, `mongodb`, `redis`, `oracle`, `mssql`, `libredb`, `couchbase`, `clickhouse`, `druid`, `elasticsearch`, `opensearch`, `trino` |
+| `connections[].type` | Yes | `postgres`, `mysql`, `sqlite`, `mongodb`, `redis`, `oracle`, `mssql`, `storagebase`, `couchbase`, `clickhouse`, `druid`, `elasticsearch`, `opensearch`, `trino` |
 | `connections[].roles` | Yes | `["*"]` (everyone), `["admin"]`, `["user"]`, or `["admin", "user"]` |
 | `connections[].managed` | No | `true` = read-only (default), `false` = editable copy for user |
 | `connections[].password` | No | Use `${ENV_VAR}` syntax for secrets |
@@ -923,8 +913,8 @@ extraEnvFrom:
 - [ ] **Phase 17**: Enterprise Collaboration (User Identity, Shared Workspaces, SAML 2.0).
 - [ ] **Phase 18**: Server-Enforced Data Masking (SQL output-lineage, deployment-global policy, fail-closed API masking, alias/aggregate coverage).
 - [x] **Phase 19**: Driver-Free Providers — Couchbase (SQL++ over the Query REST API), the first provider that adds no runtime dependency. Pattern documented in [Adding a Provider](docs/ADDING_A_PROVIDER.md).
-- [x] **Phase 20**: Analytics Databases — ClickHouse ([#264](https://github.com/libredb/libredb-studio/issues/264)) and Apache Druid ([#265](https://github.com/libredb/libredb-studio/issues/265)), both driver-free over HTTP. Druid is read-only by nature — no `UPDATE`, no `DELETE`, no `CREATE TABLE` — so it also demonstrates a provider that reports absent capabilities honestly instead of offering controls that can only fail.
-- [x] **Phase 21**: Federated Query — Apache Trino ([#424](https://github.com/libredb/libredb-studio/issues/424), Phase 2), driver-free over Trino's own client protocol. The product question that held it up is answered: a connection pins **one catalog**, exactly as a PostgreSQL connection pins one database, and the tree stays two levels — fanning `information_schema` across every catalog is unbounded, since `jmx.current` alone publishes one table per MBean. Cross-catalog queries still work in the editor by qualifying names in full. PrestoDB is a separate future type-id; the transport already builds its headers from a dialect prefix so that is a descriptor, not a rewrite.
+- [x] **Phase 20**: Analytics Databases — ClickHouse ([#264](https://github.com/storagebase/storagebase-studio/issues/264)) and Apache Druid ([#265](https://github.com/storagebase/storagebase-studio/issues/265)), both driver-free over HTTP. Druid is read-only by nature — no `UPDATE`, no `DELETE`, no `CREATE TABLE` — so it also demonstrates a provider that reports absent capabilities honestly instead of offering controls that can only fail.
+- [x] **Phase 21**: Federated Query — Apache Trino ([#424](https://github.com/storagebase/storagebase-studio/issues/424), Phase 2), driver-free over Trino's own client protocol. The product question that held it up is answered: a connection pins **one catalog**, exactly as a PostgreSQL connection pins one database, and the tree stays two levels — fanning `information_schema` across every catalog is unbounded, since `jmx.current` alone publishes one table per MBean. Cross-catalog queries still work in the editor by qualifying names in full. PrestoDB is a separate future type-id; the transport already builds its headers from a dialect prefix so that is a descriptor, not a rewrite.
 
 ---
 
@@ -932,8 +922,6 @@ extraEnvFrom:
 
 | Resource | Description |
 |----------|-------------|
-| [DeepWiki](https://deepwiki.com/libredb/libredb-studio) | AI-powered documentation — always up-to-date with the codebase |
-| [SonarCloud](https://sonarcloud.io/project/overview?id=libredb_libredb-studio) | Code quality, security analysis, and technical debt tracking |
 | [API Docs](docs/API_DOCS.md) | Complete REST API reference |
 | [Agent Guide](docs/AGENT_GUIDE.md) | Using the agent: a run, the three workflows, what "answered" means, the budget meter, and the Ollama path |
 | [Agent Data Flow](docs/AGENT_DATA_FLOW.md) | What leaves the machine, when, and to which model provider — written from call sites |
@@ -959,19 +947,19 @@ the Linux desktop build need real devices. This project is tested with BrowserSt
 
 ## Support
 
-libredb-studio is free and open source. If it helps you or your team, consider
-[sponsoring the project](https://github.com/sponsors/libredb) — your support
+storagebase-studio is free and open source. If it helps you or your team, consider
+[sponsoring the project](https://github.com/sponsors/storagebase) — your support
 funds maintenance, bug fixes, new database providers, and the ongoing
 development of the open-source edition.
 
-[![Sponsor](https://img.shields.io/badge/Sponsor-libredb-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/libredb)
+[![Sponsor](https://img.shields.io/badge/Sponsor-storagebase-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/storagebase)
 
 ---
 
 ## Sponsors
 
 <!-- sponsors-start -->
-_Be the first to sponsor libredb-studio!_
+_Be the first to sponsor storagebase-studio!_
 <!-- sponsors-end -->
 
 ---
@@ -980,12 +968,12 @@ _Be the first to sponsor libredb-studio!_
 
 Distinct from the sponsors above: these are open-source programmes that cover a
 running cost of the project. A place here cannot be bought, and nothing here is
-an endorsement of libredb-studio by the company named. The full list, what each
+an endorsement of storagebase-studio by the company named. The full list, what each
 one covers and what attribution is owed in return are at
-[libredb.org/supporters](https://libredb.org/supporters/).
+[storagebase.org/supporters](https://storagebase.org/supporters/).
 
 - **[Docker](https://www.docker.com/community/open-source/)** — the
-  Docker-Sponsored Open Source programme behind the `libredb` namespace on
+  Docker-Sponsored Open Source programme behind the `storagebase` namespace on
   Docker Hub, which removes pull rate limits for everyone pulling the public
   image. The canonical image is still GHCR; this is what keeps the Hub mirror
   usable without an account. Since 2026-09-01.
@@ -1017,7 +1005,7 @@ gate. Clearing that bar is worth something, so the people who have are named in
 [`CONTRIBUTORS.md`](CONTRIBUTORS.md) with a link to the change they made. Nothing on that page is
 counted — no merge totals, no line counts — and
 [`CONTRIBUTING.md`](CONTRIBUTING.md#the-contributor-ladder) says why. Start with a
-[`good first issue`](https://github.com/libredb/libredb-studio/labels/good%20first%20issue): each one
+[`good first issue`](https://github.com/storagebase/storagebase-studio/labels/good%20first%20issue): each one
 states what "done" looks like as a command you can run yourself.
 
 ---

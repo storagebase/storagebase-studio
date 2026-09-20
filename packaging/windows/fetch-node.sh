@@ -6,7 +6,7 @@
 # Downloads the official nodejs.org dist zip for NODE_VERSION (win-x64),
 # verifies it against the sha256 pinned in this script, and installs ONLY
 # node.exe into <payload-dir>/node/node.exe - the private runtime the
-# packaged launcher (libredb-studio.exe) starts. Nothing else from the Node
+# packaged launcher (storagebase-studio.exe) starts. Nothing else from the Node
 # distribution (npm, corepack, headers, docs) is shipped.
 #
 # Runs in Git Bash on the windows-latest release runner; zip extraction uses

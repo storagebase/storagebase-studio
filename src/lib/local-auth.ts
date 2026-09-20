@@ -66,7 +66,7 @@ function readTotpSecret(variable: string): string | undefined {
  * @throws {AuthConfigError} when ADMIN_PASSWORD is not configured.
  */
 export function getAuthUsers(): AuthUser[] {
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@libredb.org";
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@storagebase.org";
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {
@@ -81,7 +81,7 @@ export function getAuthUsers(): AuthUser[] {
   // it is inert rather than a hole: with no password there is no user account to log into at all.
   const userPassword = process.env.USER_PASSWORD;
   if (userPassword) {
-    const userEmail = process.env.USER_EMAIL || "user@libredb.org";
+    const userEmail = process.env.USER_EMAIL || "user@storagebase.org";
     users.push({
       email: userEmail,
       password: userPassword,

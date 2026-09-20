@@ -1,5 +1,5 @@
 # ==============================================================================
-# LibreDB Studio - Production Dockerfile
+# StorageBase Studio - Production Dockerfile
 # Optimized for Render, Railway, Fly.io, and Kubernetes
 # ==============================================================================
 
@@ -92,7 +92,7 @@ COPY --from=builder /usr/src/app/.next/static ./.next/static
 COPY --from=builder /usr/src/app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 # prebuild-install is only needed at build time, not runtime
 
-# Copy the embedded LibreDB database package. The libredb provider lazy-imports
+# Copy the embedded StorageBase database package. The storagebase provider lazy-imports
 # it (await import('@libredb/libredb')) so it stays out of client bundles, but
 # that also means Next.js output-file-tracing does not include it in the
 # standalone server bundle — copy it explicitly so the provider works at runtime.
@@ -161,7 +161,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # the entrypoint, OUTSIDE /app, so a volume mounted on /app cannot hide it, and
 # outside the standalone payload so the native channels - which bind 127.0.0.1
 # by design (#134) - can never inherit container bind policy.
-COPY docker/bind-address.mjs /usr/local/lib/libredb-studio/bind-address.mjs
+COPY docker/bind-address.mjs /usr/local/lib/storagebase-studio/bind-address.mjs
 
 # Render uses PORT env variable, default to 3000
 EXPOSE 3000/tcp

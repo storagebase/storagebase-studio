@@ -1,7 +1,7 @@
 /**
  * Unit tests for the Homebrew direct-run wrapper's data/state directory
  * default (issue #135). Exercises the real packaged wrapper script (the
- * `bin/"libredb-studio"` heredoc in the .rb.tmpl) as a subprocess against a
+ * `bin/"storagebase-studio"` heredoc in the .rb.tmpl) as a subprocess against a
  * stub "node" that only echoes STORAGE_SQLITE_PATH - no real server starts.
  */
 import { afterEach, expect, test } from "bun:test";
@@ -30,10 +30,10 @@ function writeStubNode(binDir: string): string {
   return nodePath;
 }
 
-describeIf(CANNOT_RUN, "packaging/homebrew/libredb-studio.rb.tmpl data dir (#135)", () => {
-  const template = readFileSync(join(import.meta.dir, "../../packaging/homebrew/libredb-studio.rb.tmpl"), "utf8");
-  const heredocMatch = /\(bin\/"libredb-studio"\)\.write <<~SCRIPT\n([\s\S]*?)\n\s*SCRIPT\b/.exec(template);
-  if (!heredocMatch) throw new Error('could not locate the bin/"libredb-studio" heredoc in the Homebrew template');
+describeIf(CANNOT_RUN, "packaging/homebrew/storagebase-studio.rb.tmpl data dir (#135)", () => {
+  const template = readFileSync(join(import.meta.dir, "../../packaging/homebrew/storagebase-studio.rb.tmpl"), "utf8");
+  const heredocMatch = /\(bin\/"storagebase-studio"\)\.write <<~SCRIPT\n([\s\S]*?)\n\s*SCRIPT\b/.exec(template);
+  if (!heredocMatch) throw new Error('could not locate the bin/"storagebase-studio" heredoc in the Homebrew template');
   const rawScript = heredocMatch[1];
 
   const fixtureRoots: string[] = [];
@@ -43,7 +43,7 @@ describeIf(CANNOT_RUN, "packaging/homebrew/libredb-studio.rb.tmpl data dir (#135
   });
 
   function runWrapper(env: Record<string, string> = {}) {
-    const dir = mkdtempSync(join(tmpdir(), "libredb-brew-datadir-"));
+    const dir = mkdtempSync(join(tmpdir(), "storagebase-brew-datadir-"));
     fixtureRoots.push(dir);
     const nodePath = writeStubNode(join(dir, "keg-libexec"));
     const serverPath = join(dir, "keg-libexec", "server.js");
@@ -54,7 +54,7 @@ describeIf(CANNOT_RUN, "packaging/homebrew/libredb-studio.rb.tmpl data dir (#135
     const script = rawScript
       .replaceAll('#{Formula["node@24"].opt_bin}/node', nodePath)
       .replaceAll("#{libexec}/server.js", serverPath)
-      .replaceAll("#{var}/libredb-studio/libredb-storage.db", join(brewVar, "libredb-studio/libredb-storage.db"));
+      .replaceAll("#{var}/storagebase-studio/storagebase-storage.db", join(brewVar, "storagebase-studio/storagebase-storage.db"));
     const result = Bun.spawnSync([BASH!, "-c", script], {
       env: { ...process.env, HOME: dir, HOSTNAME: "", LIBREDB_BIND: "", STORAGE_SQLITE_PATH: "", ...env },
       stdout: "pipe",
@@ -66,7 +66,7 @@ describeIf(CANNOT_RUN, "packaging/homebrew/libredb-studio.rb.tmpl data dir (#135
   test("defaults STORAGE_SQLITE_PATH outside the versioned Cellar keg", () => {
     const { result, brewVar } = runWrapper();
     const output = result.stdout.toString();
-    expect(output).toContain(`STORAGE_SQLITE_PATH=${join(brewVar, "libredb-studio/libredb-storage.db")}`);
+    expect(output).toContain(`STORAGE_SQLITE_PATH=${join(brewVar, "storagebase-studio/storagebase-storage.db")}`);
     expect(output).not.toContain("keg-libexec");
   });
 

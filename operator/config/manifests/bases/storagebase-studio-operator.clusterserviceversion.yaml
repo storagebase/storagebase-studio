@@ -1,0 +1,107 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    categories: Database, Developer Tools
+    containerImage: ghcr.io/storagebase/storagebase-studio-operator:0.0.0
+    description: Open-source web-based SQL IDE for sixteen engines - PostgreSQL, MySQL,
+      Oracle, SQL Server, SQLite, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Apache
+      Druid, Elasticsearch, OpenSearch, Apache Trino, Apache Cassandra and libSQL
+      - with AI-powered query assistance.
+    olm.skipRange: '>=0.0.0 <0.0.0'
+    repository: https://github.com/storagebase/storagebase-studio
+    support: StorageBase
+  labels:
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.arm64: supported
+    operatorframework.io/os.linux: supported
+  name: storagebase-studio-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: A StorageBase Studio instance managed by the operator. The spec mirrors
+        the Helm chart values; every field left unset falls back to the chart defaults.
+      displayName: StorageBase Studio
+      kind: StorageBaseStudio
+      name: storagebasestudios.studio.storagebase.org
+      version: v1alpha1
+  description: |
+    StorageBase Studio is an open-source, web-based SQL IDE. Query PostgreSQL,
+    MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase,
+    ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino and Apache
+    Cassandra from the browser —
+    with AI-powered query assistance (natural-language-to-SQL, explain, fix),
+    an ERD viewer, schema diff and a data profiler. No desktop client required.
+
+    This Helm-based operator installs and manages StorageBase Studio through the
+    `StorageBaseStudio` custom resource, which exposes the full Helm chart
+    configuration. With no credentials provided, the instance starts in
+    zero-config bootstrap mode: a JWT secret is generated automatically and a
+    first-run admin account is created. For production, switch
+    `config.authBootstrap` to `"off"` and supply an existing Secret.
+
+    ### Usage
+
+    Create a `StorageBaseStudio` resource; every field left unset falls back to
+    the chart defaults. See the sample on this page for a minimal start.
+  displayName: StorageBase Studio
+  icon:
+  - base64data: PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImxvZ28tZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjNEY0NkU1IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM5MzMzRUEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJjb2RlLWdyYWRpZW50IiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzEwQjk4MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjM0I4MkY2IiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxmaWx0ZXIgaWQ9Imdsb3ciIHg9Ii0yMCUiIHk9Ii0yMCUiIHdpZHRoPSIxNDAlIiBoZWlnaHQ9IjE0MCUiPgogICAgICA8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSIzIiByZXN1bHQ9ImJsdXIiIC8+CiAgICAgIDxmZUNvbXBvc2l0ZSBpbj0iU291cmNlR3JhcGhpYyIgaW4yPSJibHVyIiBvcGVyYXRvcj0ib3ZlciIgLz4KICAgIDwvZmlsdGVyPgogIDwvZGVmcz4KICAKICA8IS0tIEJhY2tncm91bmQgU2hhcGUgLS0+CiAgPHBhdGggZD0iTTEwMCAyMEwxNjkuMjgyIDYwVjE0MEwxMDAgMTgwTDMwLjcxOCAxNDBWNjBMMTAwIDIwWiIgZmlsbD0idXJsKCNsb2dvLWdyYWRpZW50KSIgZmlsbC1vcGFjaXR5PSIwLjA1IiBzdHJva2U9InVybCgjbG9nby1ncmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgCiAgPCEtLSBEYXRhYmFzZSBMYXllcnMgKERlLWVtcGhhc2l6ZWQpIC0tPgogIDxnIG9wYWNpdHk9IjAuMyI+CiAgICA8cmVjdCB4PSI3MCIgeT0iODAiIHdpZHRoPSI2MCIgaGVpZ2h0PSIxMCIgcng9IjIiIGZpbGw9InVybCgjbG9nby1ncmFkaWVudCkiIC8+CiAgICA8cmVjdCB4PSI3MCIgeT0iOTUiIHdpZHRoPSI2MCIgaGVpZ2h0PSIxMCIgcng9IjIiIGZpbGw9InVybCgjbG9nby1ncmFkaWVudCkiIC8+CiAgICA8cmVjdCB4PSI3MCIgeT0iMTEwIiB3aWR0aD0iNjAiIGhlaWdodD0iMTAiIHJ4PSIyIiBmaWxsPSJ1cmwoI2xvZ28tZ3JhZGllbnQpIiAvPgogIDwvZz4KICAKICA8IS0tIENvZGluZyBCcmFja2V0cyAoRW1waGFzaXplZCkgLS0+CiAgPGcgZmlsdGVyPSJ1cmwoI2dsb3cpIj4KICAgIDxwYXRoIGQ9Ik01NSA3MEwzNSAxMDBMNTUgMTMwIiBzdHJva2U9InVybCgjY29kZS1ncmFkaWVudCkiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiAvPgogICAgPHBhdGggZD0iTTE0NSA3MEwxNjUgMTAwTDE0NSAxMzAiIHN0cm9rZT0idXJsKCNjb2RlLWdyYWRpZW50KSIgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIC8+CiAgPC9nPgo8L3N2Zz4K
+    mediatype: image/svg+xml
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - sql
+  - database
+  - ide
+  - sql-editor
+  - postgresql
+  - mysql
+  - mongodb
+  - redis
+  - oracle
+  - sql-server
+  - sqlite
+  - couchbase
+  - clickhouse
+  - druid
+  - elasticsearch
+  - opensearch
+  - trino
+  - cassandra
+  - libsql
+  - turso
+  - duckdb
+  links:
+  - name: Website
+    url: https://storagebase.org
+  - name: Source Code
+    url: https://github.com/storagebase/storagebase-studio
+  - name: Helm Chart
+    url: https://storagebase.org/storagebase-studio/
+  maintainers:
+  - email: yusuf.gundogdu@sekoya.tech
+    name: Yusuf Gündoğdu
+  - email: cevheri.bozoglan@sekoya.tech
+    name: Mehmet Cevheri Bozoğlan
+  maturity: alpha
+  minKubeVersion: 1.26.0
+  provider:
+    name: StorageBase
+    url: https://storagebase.org
+  version: 0.0.0

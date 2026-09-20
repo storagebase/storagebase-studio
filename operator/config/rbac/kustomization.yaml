@@ -20,9 +20,9 @@ resources:
 - metrics_reader_role.yaml
 # For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
 # default, aiding admins in cluster management. Those roles are
-# not used by the libredb-studio-operator itself. You can comment the following lines
+# not used by the storagebase-studio-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- libredbstudio_admin_role.yaml
-- libredbstudio_editor_role.yaml
-- libredbstudio_viewer_role.yaml
+- storagebasestudio_admin_role.yaml
+- storagebasestudio_editor_role.yaml
+- storagebasestudio_viewer_role.yaml
 

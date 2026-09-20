@@ -37,7 +37,7 @@ import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
 const ROOT = join(import.meta.dir, "../..");
-const CHART_DIR = join(ROOT, "charts/libredb-studio");
+const CHART_DIR = join(ROOT, "charts/storagebase-studio");
 const read = (relative: string): string => readFileSync(join(ROOT, relative), "utf8");
 
 // Long enough for values.schema.json's 32-char minimum: every multi-replica case
@@ -207,7 +207,7 @@ describe("multi-replica with an agent that could run fails to render", () => {
   test("the key-optional set is exactly the schema enum minus the key-requiring providers", () => {
     // A provider added to values.schema.json without being classified here would
     // reopen the hole silently, so the enum itself is the fixture.
-    const schema = JSON.parse(read("charts/libredb-studio/values.schema.json"));
+    const schema = JSON.parse(read("charts/storagebase-studio/values.schema.json"));
     const enumerated: string[] = schema.properties.config.properties.llmProvider.enum;
     expect(enumerated.filter((value) => value !== "").sort()).toEqual(["custom", "gemini", "ollama", "openai"]);
     // gemini/openai carry no inline key here, so they must NOT fire the guard.
@@ -308,7 +308,7 @@ describe("the guard's blind spots are real, and completely listed", () => {
     expect(helmTemplate([...args, "--set", "replicaCount=2", ...JWT]).exitCode).toBe(0);
   });
 
-  test.each(["charts/libredb-studio/README.md", "charts/libredb-studio/templates/_helpers.tpl"])(
+  test.each(["charts/storagebase-studio/README.md", "charts/storagebase-studio/templates/_helpers.tpl"])(
     "%s names every one of them",
     (file) => {
       const text = read(file);
@@ -325,8 +325,8 @@ describe("an operator is told where run history lives", () => {
     // freely, and helm-release's ct install job still pins to Helm 3.16. An
     // assertion on stdout would pass on one machine and fail on the other. What
     // must not silently disappear is the note and its condition.
-    const notes = read("charts/libredb-studio/templates/NOTES.txt");
-    const block = notes.split(/^{{- if and \(include "libredb-studio\.agentPossible"/m)[1] ?? "";
+    const notes = read("charts/storagebase-studio/templates/NOTES.txt");
+    const block = notes.split(/^{{- if and \(include "storagebase-studio\.agentPossible"/m)[1] ?? "";
     expect(block).toContain("persistenceEnabled");
     expect(block).toMatch(/emptyDir/);
     expect(block).toContain("persistence.enabled=true");
@@ -335,7 +335,7 @@ describe("an operator is told where run history lives", () => {
   test("values.yaml states it where the field is configured", () => {
     // The whole section an operator reads before editing the field: its header
     // comment plus the field itself, bounded by the next section banner.
-    const values = read("charts/libredb-studio/values.yaml");
+    const values = read("charts/storagebase-studio/values.yaml");
     const section = values.split(/^# Agent Runtime$/m)[1]?.split(/^# Persistence/m)[0] ?? "";
     expect(section).toContain("agent:");
     expect(section).toContain("persistence.enabled");
@@ -344,7 +344,7 @@ describe("an operator is told where run history lives", () => {
 
   test("the chart README states it in the agent section", () => {
     const section =
-      read("charts/libredb-studio/README.md")
+      read("charts/storagebase-studio/README.md")
         .split(/^## Agent Runtime/m)[1]
         ?.split(/^## /m)[0] ?? "";
     expect(section).toMatch(/emptyDir/);
@@ -361,9 +361,9 @@ describe("the chart no longer states the pre-T5 default", () => {
    * wording that used to be there.
    */
   const FILES = [
-    "charts/libredb-studio/README.md",
-    "charts/libredb-studio/values.yaml",
-    "charts/libredb-studio/Chart.yaml",
+    "charts/storagebase-studio/README.md",
+    "charts/storagebase-studio/values.yaml",
+    "charts/storagebase-studio/Chart.yaml",
   ];
 
   test.each(FILES)("%s does not say the agent is off by default", (file) => {
@@ -376,7 +376,7 @@ describe("the chart no longer states the pre-T5 default", () => {
 
   test("the README says what IS required now: an AI configuration, not the flag", () => {
     const section =
-      read("charts/libredb-studio/README.md")
+      read("charts/storagebase-studio/README.md")
         .split(/^## Agent Runtime/m)[1]
         ?.split(/^## /m)[0] ?? "";
     expect(section).toMatch(/derive/i);
@@ -478,7 +478,7 @@ describe("the chart mounts an operator's model-tuning document", () => {
     expect(JSON.parse(mounted?.data["model-tuning.json"] ?? "")).toEqual(DOCUMENT);
     expect(volumes).toContainEqual({
       name: "agent-model-tuning",
-      configMap: { name: "release-under-test-libredb-studio-agent-model-tuning" },
+      configMap: { name: "release-under-test-storagebase-studio-agent-model-tuning" },
     });
   });
 

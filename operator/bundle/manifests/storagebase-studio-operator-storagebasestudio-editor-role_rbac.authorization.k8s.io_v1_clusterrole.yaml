@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: storagebase-studio-operator
+  name: storagebase-studio-operator-storagebasestudio-editor-role
+rules:
+- apiGroups:
+  - studio.storagebase.org
+  resources:
+  - storagebasestudios
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - studio.storagebase.org
+  resources:
+  - storagebasestudios/status
+  verbs:
+  - get

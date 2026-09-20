@@ -1,14 +1,14 @@
 {
-  "$comment": "Reviewable serialization of the LibreDB Studio Railway template. Railway does not ingest this file directly — the marketplace template is built in Railway's template editor (Workspace -> Templates -> New Template, at https://railway.com/workspace/templates). This file is the single source of truth for what to enter there (see PUBLISH.md) and what a future API automation would consume. Mirrors deploy/caprover/libredb-studio.yml.",
-  "name": "LibreDB Studio",
+  "$comment": "Reviewable serialization of the StorageBase Studio Railway template. Railway does not ingest this file directly — the marketplace template is built in Railway's template editor (Workspace -> Templates -> New Template, at https://railway.com/workspace/templates). This file is the single source of truth for what to enter there (see PUBLISH.md) and what a future API automation would consume. Mirrors deploy/caprover/storagebase-studio.yml.",
+  "name": "StorageBase Studio",
   "description": "Open-source web-based SQL IDE. Query sixteen engines - PostgreSQL, MySQL, SQLite, libSQL, DuckDB, Oracle, SQL Server, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Apache Trino & Apache Cassandra - from your browser, with optional read-only AI on your own model key.",
   "tags": ["database", "sql", "ide", "postgres", "mysql", "mongodb", "redis"],
   "services": [
     {
-      "name": "libredb-studio",
-      "icon": "https://raw.githubusercontent.com/libredb/libredb-studio/main/deploy/railway/libredb-studio.png",
+      "name": "storagebase-studio",
+      "icon": "https://raw.githubusercontent.com/storagebase/storagebase-studio/main/deploy/railway/storagebase-studio.png",
       "source": {
-        "image": "ghcr.io/libredb/libredb-studio:0.14.1"
+        "image": "ghcr.io/storagebase/storagebase-studio:0.14.1"
       },
       "networking": {
         "public": true,
@@ -24,19 +24,19 @@
       },
       "volumes": [
         {
-          "name": "libredb-data",
+          "name": "storagebase-data",
           "mountPath": "/app/data"
         }
       ],
       "variables": {
         "JWT_SECRET": "${{ secret(48) }}",
-        "ADMIN_EMAIL": "admin@libredb.org",
+        "ADMIN_EMAIL": "admin@storagebase.org",
         "ADMIN_PASSWORD": "${{ secret(16) }}",
-        "USER_EMAIL": "user@libredb.org",
+        "USER_EMAIL": "user@storagebase.org",
         "USER_PASSWORD": "${{ secret(16) }}",
         "NEXT_PUBLIC_AUTH_PROVIDER": "local",
         "STORAGE_PROVIDER": "sqlite",
-        "STORAGE_SQLITE_PATH": "/app/data/libredb-storage.db",
+        "STORAGE_SQLITE_PATH": "/app/data/storagebase-storage.db",
         "PORT": "3000"
       },
       "variableDescriptions": {

@@ -53,7 +53,7 @@ describe("emitAuditEvent", () => {
         type: "login_failure",
         action: "login",
         target: "POST /api/auth/login",
-        user: "admin@libredb.org",
+        user: "admin@storagebase.org",
         result: "failure",
         reason: "bad_credentials",
         ip: "203.0.113.9",
@@ -67,7 +67,7 @@ describe("emitAuditEvent", () => {
     expect(line.event).toBe("login_failure");
     expect(line.action).toBe("login");
     expect(line.outcome).toBe("failure");
-    expect(line.actor).toBe("admin@libredb.org");
+    expect(line.actor).toBe("admin@storagebase.org");
     expect(line.route).toBe("POST /api/auth/login");
     expect(line.reason).toBe("bad_credentials");
     expect(line.ip).toBe("203.0.113.9");
@@ -119,7 +119,7 @@ describe("emitAuditEvent", () => {
         type: "login_failure",
         action: "login",
         target: "POST /api/auth/login",
-        user: "admin@libredb.org",
+        user: "admin@storagebase.org",
         result: "failure",
         reason: "bad_credentials",
         // These are the shapes a careless call site would try to attach. The AuditEvent fields
@@ -175,7 +175,7 @@ describe("emitAuditEvent", () => {
         type: "rate_limit_exceeded",
         action: "throttled",
         target: "POST /api/auth/login",
-        user: "admin@libredb.org",
+        user: "admin@storagebase.org",
         result: "failure",
         reason: "rate_limited",
         bucket: "login_account",
@@ -208,7 +208,7 @@ describe("emitAuditEvent", () => {
         action: "query",
         target: "POST /api/db/query",
         connectionName: "sample-employees",
-        user: "user@libredb.org",
+        user: "user@storagebase.org",
         result: "success",
         duration: 42,
       }),
@@ -225,7 +225,7 @@ describe("emitAuditEvent", () => {
         type: "login_success",
         action: "login",
         target: "POST /api/auth/login",
-        user: "admin@libredb.org",
+        user: "admin@storagebase.org",
         result: "success",
       });
       const line = JSON.parse(spy.mock.calls[0][0] as string) as Record<string, unknown>;
@@ -256,7 +256,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: CONNECTION_STRING,
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -307,7 +307,7 @@ describe("emitAuditEvent", () => {
           type: "login_failure",
           action: CONNECTION_STRING,
           target: "POST /api/auth/login",
-          user: "admin@libredb.org",
+          user: "admin@storagebase.org",
           result: "failure",
           reason: "bad_credentials",
         }),
@@ -324,7 +324,7 @@ describe("emitAuditEvent", () => {
           type: "login_failure",
           action: "login",
           target: CONNECTION_STRING,
-          user: "admin@libredb.org",
+          user: "admin@storagebase.org",
           result: "failure",
           reason: "bad_credentials",
         }),
@@ -351,7 +351,7 @@ describe("emitAuditEvent", () => {
         action: "query",
         target: "POST /api/db/query",
         connectionName: "postgres://dbadmin:supersecret@10.0.0.5:5432/prod",
-        user: "user@libredb.org",
+        user: "user@storagebase.org",
         result: "success",
       });
 
@@ -381,7 +381,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:pass@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -396,7 +396,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:p@ss@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -411,7 +411,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:p@s@s@host/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -426,7 +426,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -440,13 +440,13 @@ describe("emitAuditEvent", () => {
           type: "login_failure",
           action: "login",
           target: "POST /api/auth/login",
-          user: "admin@libredb.org",
+          user: "admin@storagebase.org",
           result: "failure",
           reason: "bad_credentials",
         }),
       );
 
-      expect(line.actor).toBe("admin@libredb.org");
+      expect(line.actor).toBe("admin@storagebase.org");
     });
 
     /**
@@ -465,7 +465,7 @@ describe("emitAuditEvent", () => {
           type: "login_failure",
           action: "login",
           target: "https://example.com/user@example/profile",
-          user: "admin@libredb.org",
+          user: "admin@storagebase.org",
           result: "failure",
           reason: "bad_credentials",
         }),
@@ -481,7 +481,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:pa/ss@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -496,7 +496,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:pa?ss#word@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -511,7 +511,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "postgres://user:pa/ss@",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -535,7 +535,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "1://postgres://user:pass@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -550,7 +550,7 @@ describe("emitAuditEvent", () => {
           action: "query",
           target: "POST /api/db/query",
           connectionName: "123abc://user:pass@host:5432/db",
-          user: "user@libredb.org",
+          user: "user@storagebase.org",
           result: "success",
         }),
       );
@@ -609,7 +609,7 @@ describe("emitAuditEvent", () => {
         action: "query",
         target: "POST /api/db/query",
         connectionName: "sample-employees",
-        user: "user@libredb.org",
+        user: "user@storagebase.org",
         result: "success",
         duration: Number.NaN,
       }),

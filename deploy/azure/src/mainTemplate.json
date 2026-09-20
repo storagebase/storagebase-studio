@@ -9,10 +9,10 @@
     },
     "vmName": {
       "type": "string",
-      "defaultValue": "libredb-studio",
+      "defaultValue": "storagebase-studio",
       "minLength": 3,
       "maxLength": 40,
-      "metadata": { "description": "Name of the virtual machine that hosts LibreDB Studio." }
+      "metadata": { "description": "Name of the virtual machine that hosts StorageBase Studio." }
     },
     "vmSize": {
       "type": "string",
@@ -24,7 +24,7 @@
       "defaultValue": 64,
       "minValue": 32,
       "maxValue": 1024,
-      "metadata": { "description": "OS disk size in GB. LibreDB Studio stores its SQLite data on this disk." }
+      "metadata": { "description": "OS disk size in GB. StorageBase Studio stores its SQLite data on this disk." }
     },
     "adminUsername": {
       "type": "string",
@@ -42,17 +42,17 @@
     },
     "dnsLabelPrefix": {
       "type": "string",
-      "defaultValue": "[toLower(concat('libredb-', uniqueString(resourceGroup().id)))]",
+      "defaultValue": "[toLower(concat('storagebase-', uniqueString(resourceGroup().id)))]",
       "metadata": { "description": "DNS label for the public IP address. Produces <label>.<region>.cloudapp.azure.com." }
     },
     "appAdminEmail": {
       "type": "string",
-      "metadata": { "description": "Email address of the LibreDB Studio administrator account." }
+      "metadata": { "description": "Email address of the StorageBase Studio administrator account." }
     },
     "appAdminPassword": {
       "type": "securestring",
       "minLength": 12,
-      "metadata": { "description": "Password for the LibreDB Studio administrator account. Minimum 12 characters." }
+      "metadata": { "description": "Password for the StorageBase Studio administrator account. Minimum 12 characters." }
     },
     "enableHttps": {
       "type": "bool",
@@ -260,7 +260,7 @@
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2026-03-01",
-      "name": "[concat(parameters('vmName'), '/installLibreDBStudio')]",
+      "name": "[concat(parameters('vmName'), '/installStorageBaseStudio')]",
       "location": "[parameters('location')]",
       "dependsOn": [ "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]" ],
       "properties": {
@@ -269,7 +269,7 @@
         "typeHandlerVersion": "2.1",
         "autoUpgradeMinorVersion": true,
         "protectedSettings": {
-          "commandToExecute": "[concat('echo ', variables('installScriptB64'), ' | base64 -d > /opt/libredb-install.sh && chmod 700 /opt/libredb-install.sh && /opt/libredb-install.sh ', base64(parameters('appAdminEmail')), ' ', base64(parameters('appAdminPassword')), ' ', base64(if(parameters('enableHttps'), reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))).dnsSettings.fqdn, ':80')), ' ', base64(parameters('acmeContactEmail')))]"
+          "commandToExecute": "[concat('echo ', variables('installScriptB64'), ' | base64 -d > /opt/storagebase-install.sh && chmod 700 /opt/storagebase-install.sh && /opt/storagebase-install.sh ', base64(parameters('appAdminEmail')), ' ', base64(parameters('appAdminPassword')), ' ', base64(if(parameters('enableHttps'), reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))).dnsSettings.fqdn, ':80')), ' ', base64(parameters('acmeContactEmail')))]"
         }
       }
     }
@@ -281,7 +281,7 @@
     },
     "notes": {
       "type": "string",
-      "value": "[if(parameters('enableHttps'), 'The application is always served at the URL above. If a publicly trusted certificate cannot be issued, the reverse proxy serves a self-signed one on the same port instead of moving anywhere else, so the URL and your source restriction both stay valid; your browser will warn you until a trusted certificate arrives, which the proxy keeps retrying on its own. The reason is recorded in /etc/libredb-studio.info on the virtual machine.', 'The application is served over plain HTTP. Put a TLS terminating gateway in front of it before exposing it beyond a trusted network.')]"
+      "value": "[if(parameters('enableHttps'), 'The application is always served at the URL above. If a publicly trusted certificate cannot be issued, the reverse proxy serves a self-signed one on the same port instead of moving anywhere else, so the URL and your source restriction both stay valid; your browser will warn you until a trusted certificate arrives, which the proxy keeps retrying on its own. The reason is recorded in /etc/storagebase-studio.info on the virtual machine.', 'The application is served over plain HTTP. Put a TLS terminating gateway in front of it before exposing it beyond a trusted network.')]"
     },
     "administratorEmail": { "type": "string", "value": "[parameters('appAdminEmail')]" },
     "sshCommand": {

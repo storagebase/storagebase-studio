@@ -7,7 +7,7 @@ name: Operator Image Release
 #
 # ONE-TIME MANUAL STEP: the very first push creates the GHCR package as
 # PRIVATE. After the first successful release, make it public once:
-# github.com/orgs/libredb/packages -> libredb-studio-operator ->
+# github.com/orgs/storagebase/packages -> storagebase-studio-operator ->
 # Package settings -> Change visibility -> Public.
 # Community catalog submissions FAIL while the image is private.
 
@@ -38,7 +38,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/libredb-studio-operator
+  IMAGE_NAME: ${{ github.repository_owner }}/storagebase-studio-operator
 
 jobs:
   build-and-push:
@@ -61,8 +61,8 @@ jobs:
 
       - name: Verify operator embedded chart is in sync
         run: |
-          if ! diff -r --exclude=charts charts/libredb-studio operator/helm-charts/libredb-studio; then
-            echo "::error::operator/helm-charts/libredb-studio is out of sync with charts/libredb-studio. The operator image would ship a stale chart. Refresh it with: rm -rf operator/helm-charts/libredb-studio && cp -R charts/libredb-studio operator/helm-charts/libredb-studio"
+          if ! diff -r --exclude=charts charts/storagebase-studio operator/helm-charts/storagebase-studio; then
+            echo "::error::operator/helm-charts/storagebase-studio is out of sync with charts/storagebase-studio. The operator image would ship a stale chart. Refresh it with: rm -rf operator/helm-charts/storagebase-studio && cp -R charts/storagebase-studio operator/helm-charts/storagebase-studio"
             exit 1
           fi
 
@@ -80,7 +80,7 @@ jobs:
           fi
           if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
             if [ "$EVENT_NAME" = "release" ]; then
-              # Helm chart releases publish tags like libredb-studio-0.1.19,
+              # Helm chart releases publish tags like storagebase-studio-0.1.19,
               # which also emit 'release: published'. They are not operator
               # versions - skip quietly instead of failing every chart release.
               echo "Tag '$RELEASE_TAG' is not an app semver - skipping operator build"
@@ -141,7 +141,7 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami --timeout 5m
-          helm dependency build operator/helm-charts/libredb-studio --skip-refresh
+          helm dependency build operator/helm-charts/storagebase-studio --skip-refresh
 
       - name: Set up QEMU
         if: steps.version.outputs.skip != 'true'
@@ -186,11 +186,11 @@ jobs:
         catalog:
           - label: operatorhub.io
             upstream: k8s-operatorhub/community-operators
-            fork: libredb/community-operators
+            fork: storagebase/community-operators
             release_config: false
           - label: OpenShift console
             upstream: redhat-openshift-ecosystem/community-operators-prod
-            fork: libredb/community-operators-prod
+            fork: storagebase/community-operators-prod
             release_config: true
     steps:
       - name: Checkout code
@@ -258,7 +258,7 @@ jobs:
           case "${CODE}" in
             200) ;;
             401|403)
-              echo "::error::${IMAGE}:${VERSION} is not anonymously pullable (HTTP ${CODE}). The catalog CI pulls without credentials - make the GHCR package public: github.com/orgs/libredb/packages"
+              echo "::error::${IMAGE}:${VERSION} is not anonymously pullable (HTTP ${CODE}). The catalog CI pulls without credentials - make the GHCR package public: github.com/orgs/storagebase/packages"
               exit 1 ;;
             404)
               echo "::error::${IMAGE}:${VERSION} has no manifest (HTTP 404) - the tag was never pushed."
@@ -329,7 +329,7 @@ jobs:
           set -euo pipefail
           node scripts/operator-catalog-submission.mjs decide \
             --version "${{ needs.build-and-push.outputs.version }}" \
-            --operator-dir catalog/operators/libredb-studio-operator \
+            --operator-dir catalog/operators/storagebase-studio-operator \
             --repo "${{ matrix.catalog.upstream }}" \
             --fork "${{ matrix.catalog.fork }}" | tee -a "$GITHUB_OUTPUT"
 
@@ -349,8 +349,8 @@ jobs:
           REPLACES: ${{ steps.decide.outputs.replaces }}
         run: |
           set -euo pipefail
-          DEST="catalog/operators/libredb-studio-operator/${VERSION}"
-          CSV="operator/bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml"
+          DEST="catalog/operators/storagebase-studio-operator/${VERSION}"
+          CSV="operator/bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml"
           # The directory is named from the release version while its contents
           # come from the committed bundle, and nothing upstream of here proves
           # those agree: the bundle-freshness job only runs when a pull request
@@ -372,7 +372,7 @@ jobs:
           # on a first submission.
           if [ -n "${REPLACES}" ]; then
             node scripts/operator-catalog-submission.mjs set-replaces \
-              --csv "$DEST/manifests/libredb-studio-operator.clusterserviceversion.yaml" \
+              --csv "$DEST/manifests/storagebase-studio-operator.clusterserviceversion.yaml" \
               --replaces "${REPLACES}"
           else
             echo "First submission in this catalog - no replaces to set."
@@ -391,7 +391,7 @@ jobs:
           # channel keeps two heads and `opm validate` rejects it with
           # "multiple channel heads found in graph" (measured on
           # community-operators-prod#11106).
-          CONFIG="catalog/operators/libredb-studio-operator/${VERSION}/release-config.yaml"
+          CONFIG="catalog/operators/storagebase-studio-operator/${VERSION}/release-config.yaml"
           {
             echo "---"
             echo "catalog_templates:"
@@ -411,23 +411,23 @@ jobs:
           push-to-fork: ${{ matrix.catalog.fork }}
           token: ${{ secrets.OPERATOR_CATALOG_TOKEN }}
           base: main
-          branch: libredb-studio-operator-${{ needs.build-and-push.outputs.version }}
+          branch: storagebase-studio-operator-${{ needs.build-and-push.outputs.version }}
           # Never delete the head branch from here: deleting it closes the PR
           # and GitHub then refuses to reopen it.
           delete-branch: false
-          add-paths: operators/libredb-studio-operator
+          add-paths: operators/storagebase-studio-operator
           # DCO, not GPG: upstream's "signed" requirement is the Developer
           # Certificate of Origin, and the trailer email must match the author.
           signoff: true
           committer: Mehmet Cevheri BOZOGLAN <cevheribozoglan@gmail.com>
           author: Mehmet Cevheri BOZOGLAN <cevheribozoglan@gmail.com>
           commit-message: |
-            operator libredb-studio-operator (${{ needs.build-and-push.outputs.version }})
-          title: operator libredb-studio-operator (${{ needs.build-and-push.outputs.version }})
+            operator storagebase-studio-operator (${{ needs.build-and-push.outputs.version }})
+          title: operator storagebase-studio-operator (${{ needs.build-and-push.outputs.version }})
           body: |
-            Update libredb-studio-operator to ${{ needs.build-and-push.outputs.version }}.
+            Update storagebase-studio-operator to ${{ needs.build-and-push.outputs.version }}.
 
-            Release notes: https://github.com/libredb/libredb-studio/releases/tag/${{ needs.build-and-push.outputs.version }}
+            Release notes: https://github.com/storagebase/storagebase-studio/releases/tag/${{ needs.build-and-push.outputs.version }}
             Controller image: `${{ needs.build-and-push.outputs.image }}:${{ needs.build-and-push.outputs.version }}`, public, linux/amd64 and linux/arm64.
 
             ${{ steps.decide.outputs.reason }}

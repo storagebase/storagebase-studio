@@ -1,24 +1,24 @@
-# Run LibreDB Studio on Fly.io from the prebuilt image.
+# Run StorageBase Studio on Fly.io from the prebuilt image.
 # Setup steps: docs/FLY.md
 #
 # Credentials are NOT set here on purpose - put them in Fly secrets
 # (see docs/FLY.md), never in a committed file.
 
-app = 'libredb-studio'
+app = 'storagebase-studio'
 primary_region = 'ams'
 
 [build]
-  image = 'ghcr.io/libredb/libredb-studio:0.14.1'
+  image = 'ghcr.io/storagebase/storagebase-studio:0.14.1'
 
 [env]
   NEXT_PUBLIC_AUTH_PROVIDER = 'local'
   NODE_ENV = 'production'
   PORT = '3000'
   STORAGE_PROVIDER = 'sqlite'
-  STORAGE_SQLITE_PATH = '/app/data/libredb-storage.db'
+  STORAGE_SQLITE_PATH = '/app/data/storagebase-storage.db'
 
 [mounts]
-  source = 'libredb_data'
+  source = 'storagebase_data'
   destination = '/app/data'
 
 [http_service]

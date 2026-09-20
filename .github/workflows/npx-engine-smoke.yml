@@ -1,6 +1,6 @@
 # Post-release validation of the bare-npx experience against the LIVE npm
 # registry (issue #130 regression class): npm's version picker avoids
-# engine-incompatible versions for bare specs, so `npx @libredb/studio` must
+# engine-incompatible versions for bare specs, so `npx @storagebase/studio` must
 # resolve a runnable release on every Node tier - not fall back to an ancient
 # bin-less version.
 #
@@ -109,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
-            if npm view "@libredb/studio@${EXPECTED_VERSION}" version >/dev/null 2>&1; then
+            if npm view "@storagebase/studio@${EXPECTED_VERSION}" version >/dev/null 2>&1; then
               echo "registry serves ${EXPECTED_VERSION}"
               exit 0
             fi
@@ -127,7 +127,7 @@ jobs:
           set -euo pipefail
           WORK=$(mktemp -d)
           cd "$WORK"
-          echo "==> node $(node --version), bare: npx -y @libredb/studio"
+          echo "==> node $(node --version), bare: npx -y @storagebase/studio"
           # S6505 (npx installs on demand and runs lifecycle scripts) is accepted
           # here deliberately: that invocation IS the subject of this workflow.
           # Issue #130 was npm's picker resolving a bin-less release for exactly
@@ -137,7 +137,7 @@ jobs:
           # release chain. `--ignore-scripts` is not the mitigation either - the
           # published dependency tree carries native modules (better-sqlite3,
           # oracledb) whose install steps a real user does run.
-          npx -y @libredb/studio --port 3105 --host 127.0.0.1 > npx.log 2>&1 & # NOSONAR
+          npx -y @storagebase/studio --port 3105 --host 127.0.0.1 > npx.log 2>&1 & # NOSONAR
           for _ in $(seq 1 150); do
             curl -sf -o /dev/null http://127.0.0.1:3105/api/db/health && break
             sleep 2
@@ -149,7 +149,7 @@ jobs:
           fi
           echo "PASS: health 200"
           grep -F "Checksum verified" npx.log
-          RESOLVED=$(sed -n 's/^Starting LibreDB Studio \([0-9][0-9.]*\) .*/\1/p' npx.log | head -1)
+          RESOLVED=$(sed -n 's/^Starting StorageBase Studio \([0-9][0-9.]*\) .*/\1/p' npx.log | head -1)
           echo "resolved version: ${RESOLVED:-unknown}"
           if [ -z "$RESOLVED" ]; then
             echo "FAIL: could not read the resolved version from the launcher banner; log:" >&2

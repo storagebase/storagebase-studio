@@ -80,7 +80,7 @@ describe("LoginPage", () => {
     globalThis.fetch = mockFetch as never;
 
     const { form, emailInput, passwordInput, user } = renderLogin();
-    await user.type(emailInput, "admin@libredb.org");
+    await user.type(emailInput, "admin@storagebase.org");
     await user.type(passwordInput, "LibreDB.2026");
     fireEvent.submit(form);
 
@@ -91,7 +91,7 @@ describe("LoginPage", () => {
     const [url, options] = mockFetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/auth/login");
     expect(options.method).toBe("POST");
-    expect(JSON.parse(options.body as string)).toEqual({ email: "admin@libredb.org", password: "LibreDB.2026" });
+    expect(JSON.parse(options.body as string)).toEqual({ email: "admin@storagebase.org", password: "LibreDB.2026" });
   });
 
   test("redirects admin to /admin on success", async () => {
@@ -100,7 +100,7 @@ describe("LoginPage", () => {
     ) as never;
 
     const { form, emailInput, passwordInput, user } = renderLogin();
-    await user.type(emailInput, "admin@libredb.org");
+    await user.type(emailInput, "admin@storagebase.org");
     await user.type(passwordInput, "LibreDB.2026");
     fireEvent.submit(form);
 
@@ -117,7 +117,7 @@ describe("LoginPage", () => {
     ) as never;
 
     const { form, emailInput, passwordInput, user } = renderLogin();
-    await user.type(emailInput, "user@libredb.org");
+    await user.type(emailInput, "user@storagebase.org");
     await user.type(passwordInput, "LibreDB.2026");
     fireEvent.submit(form);
 
@@ -159,7 +159,7 @@ describe("LoginPage", () => {
     ) as never;
 
     const { form, emailInput, passwordInput, user } = renderLogin();
-    await user.type(emailInput, "admin@libredb.org");
+    await user.type(emailInput, "admin@storagebase.org");
     await user.type(passwordInput, "correct-password");
     fireEvent.submit(form);
 
@@ -498,7 +498,7 @@ describe("LoginPage TOTP step", () => {
 
   /** Fills in the credentials and submits once, leaving the form on whatever step it reached. */
   async function submitCredentials(result: ReturnType<typeof renderLogin>) {
-    await result.user.type(result.emailInput, "admin@libredb.org");
+    await result.user.type(result.emailInput, "admin@storagebase.org");
     await result.user.type(result.passwordInput, "LibreDB.2026");
     fireEvent.submit(result.form);
   }
@@ -572,7 +572,7 @@ describe("LoginPage TOTP step", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
     const [, options] = mockFetch.mock.calls[1] as unknown as [string, RequestInit];
     expect(JSON.parse(options.body as string)).toEqual({
-      email: "admin@libredb.org",
+      email: "admin@storagebase.org",
       password: "LibreDB.2026",
       totp: "287082",
     });

@@ -108,7 +108,7 @@ wait_health() { # wait_health <base-url> <log>
 
 login() { # login <base-url> <password> <cookie-jar> -> body
   curl -s -c "$3" -X POST "$1/api/auth/login" -H "Content-Type: application/json" \
-    -d "{\"email\":\"admin@libredb.org\",\"password\":\"$2\"}"
+    -d "{\"email\":\"admin@storagebase.org\",\"password\":\"$2\"}"
 }
 
 # ------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ LOGIN_BODY=$(login "$BASE" "$PASSWORD" "$WORK/cookies.txt")
 check "zero-config login succeeds" "$LOGIN_BODY" '"success":true'
 
 SAMPLE_BODY=$(curl -s -b "$WORK/cookies.txt" -X POST "$BASE/api/db/query" -H "Content-Type: application/json" \
-  -d '{"connectionId":"seed:libredb-embedded-sample","sql":"prefix users:"}')
+  -d '{"connectionId":"seed:storagebase-embedded-sample","sql":"prefix users:"}')
 check "embedded sample query returns seeded rows" "$SAMPLE_BODY" "Ada"
 
 SQLITE_BODY=$(curl -s -b "$WORK/cookies.txt" -X POST "$BASE/api/db/query" -H "Content-Type: application/json" \

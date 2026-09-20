@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 /// Default admin account of the local auth provider (`src/lib/local-auth.ts`).
-pub const ADMIN_EMAIL: &str = "admin@libredb.org";
+pub const ADMIN_EMAIL: &str = "admin@storagebase.org";
 
 /// Credentials file written by `src/lib/auth-bootstrap.ts`.
 pub const BOOTSTRAP_FILE: &str = "auth-bootstrap.json";
@@ -89,8 +89,8 @@ pub fn login_script(email: &str, password: &str) -> String {
     let password = serde_json::to_string(password).unwrap_or_else(|_| "\"\"".to_string());
     format!(
         r#"(() => {{
-  if (window.__libredbDesktopHandoff) return;
-  window.__libredbDesktopHandoff = true;
+  if (window.__storagebaseDesktopHandoff) return;
+  window.__storagebaseDesktopHandoff = true;
   fetch("/api/auth/login", {{
     method: "POST",
     headers: {{ "Content-Type": "application/json" }},
@@ -111,7 +111,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     fn temp_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("libredb-handoff-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("storagebase-handoff-{}-{name}", std::process::id()));
         fs::create_dir_all(&dir).expect("mkdir");
         dir
     }
@@ -179,12 +179,12 @@ mod tests {
 
     #[test]
     fn login_script_escapes_the_injected_credentials() {
-        let script = login_script("admin@libredb.org", "pa\"ss\\word\n");
-        assert!(script.contains(r#"email: "admin@libredb.org""#));
+        let script = login_script("admin@storagebase.org", "pa\"ss\\word\n");
+        assert!(script.contains(r#"email: "admin@storagebase.org""#));
         assert!(script.contains(r#"password: "pa\"ss\\word\n""#));
         assert!(script.contains("/api/auth/login"));
         assert!(script.contains("window.location.replace(\"/\")"));
         // Guard against a double submit if the page load event fires twice.
-        assert!(script.contains("__libredbDesktopHandoff"));
+        assert!(script.contains("__storagebaseDesktopHandoff"));
     }
 }

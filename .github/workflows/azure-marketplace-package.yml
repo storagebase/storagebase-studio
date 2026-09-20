@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'App version to pin (must exist on ghcr.io/libredb/libredb-studio, e.g. 0.9.66)'
+        description: 'App version to pin (must exist on ghcr.io/storagebase/storagebase-studio, e.g. 0.9.66)'
         required: true
       packageVersion:
         description: 'Marketplace package version (integer.integer.integer, must be higher than the last published one)'
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id: upload
         with:
-          name: libredb-studio-azure-package
+          name: storagebase-studio-azure-package
           path: dist/azure/*.zip
           if-no-files-found: error
 
@@ -131,7 +131,7 @@ jobs:
           {
             echo "### Download"
             echo ""
-            echo "[**libredb-studio-azure-package**](${ARTIFACT_URL}) - the run's artifact, valid while this run is kept (90 days)."
+            echo "[**storagebase-studio-azure-package**](${ARTIFACT_URL}) - the run's artifact, valid while this run is kept (90 days)."
             echo ""
             echo "> GitHub wraps artifacts in an archive of its own, so the download is a zip"
             echo "> **containing** \`${ZIP}\`. Partner Center needs the INNER zip - the one whose"

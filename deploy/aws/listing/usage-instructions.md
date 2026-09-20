@@ -1,4 +1,4 @@
-# LibreDB Studio - usage instructions
+# StorageBase Studio - usage instructions
 
 Pasted into the AWS Marketplace Management Portal's usage instructions field.
 AWS grades this field: the items below are the ones its guide makes mandatory
@@ -23,18 +23,18 @@ Retrieve the generated password in either of two ways:
   system log. The first-boot banner is printed there. This is the one place the
   password is published; anyone holding `ec2:GetConsoleOutput` on the account
   can read it.
-- SSH: log in as `ubuntu` and run `sudo cat /etc/libredb-studio.info`. The login
+- SSH: log in as `ubuntu` and run `sudo cat /etc/storagebase-studio.info`. The login
   greeting shows the same banner with the password line replaced by that
   pointer, because the greeting is cached in a world-readable file.
 
-Sign in as `admin@libredb.org` with that password.
+Sign in as `admin@storagebase.org` with that password.
 
 ## 3. Change the password immediately after first login
 
 The application has no in-app password change today, so rotation is a file edit:
 
-    sudo nano /etc/libredb-studio.env
-    sudo systemctl restart libredb-studio
+    sudo nano /etc/storagebase-studio.env
+    sudo systemctl restart storagebase-studio
 
 Change the `ADMIN_PASSWORD` line, and `ADMIN_EMAIL` too if you want your own
 address. The file is plain `KEY=value` lines read by `docker --env-file`: write
@@ -51,19 +51,19 @@ be entered again.
 
 | What | Where |
 |---|---|
-| Saved connections. The secret fields - database passwords, connection strings, TLS keys, SSH keys - are sealed with AES-256-GCM before they are written, under a key derived from `JWT_SECRET`. The rest of the record (host, port, database name, query history) is stored as written. | `/opt/libredb/data/libredb-storage.db` (mode 0700 directory) |
-| Administrator password and `JWT_SECRET` | `/etc/libredb-studio.env` (mode 0600) |
-| First-boot banner | `/etc/libredb-studio.info` (mode 0600) |
-| A copy of the environment file, held by the container runtime | `/var/lib/docker/containers/<container id>/config.v2.json` (root only). It also appears in `sudo docker inspect libredb-studio` output, so redact that before pasting it into a support ticket. |
+| Saved connections. The secret fields - database passwords, connection strings, TLS keys, SSH keys - are sealed with AES-256-GCM before they are written, under a key derived from `JWT_SECRET`. The rest of the record (host, port, database name, query history) is stored as written. | `/opt/storagebase/data/storagebase-storage.db` (mode 0700 directory) |
+| Administrator password and `JWT_SECRET` | `/etc/storagebase-studio.env` (mode 0600) |
+| First-boot banner | `/etc/storagebase-studio.info` (mode 0600) |
+| A copy of the environment file, held by the container runtime | `/var/lib/docker/containers/<container id>/config.v2.json` (root only). It also appears in `sudo docker inspect storagebase-studio` output, so redact that before pasting it into a support ticket. |
 
 The store is placed by `STORAGE_PROVIDER=sqlite` and
-`STORAGE_SQLITE_PATH=/app/data/libredb-storage.db`; `/opt/libredb/data` on the
+`STORAGE_SQLITE_PATH=/app/data/storagebase-storage.db`; `/opt/storagebase/data` on the
 instance is mounted into the container as `/app/data`.
 
 Encryption: the AMI ships with an unencrypted snapshot, as AWS Marketplace
 requires, and you can enable EBS encryption for the volume at launch. Inside the
 instance, the credential fields in the store are already encrypted at rest as
-described above; the key lives in `/etc/libredb-studio.env`, outside the store
+described above; the key lives in `/etc/storagebase-studio.env`, outside the store
 file, so a copy of the database file alone does not disclose them. Both files
 sit on the instance's single root volume, so an EBS snapshot captures the key
 along with the data - treat a snapshot with the same care as the credentials
@@ -73,9 +73,9 @@ Backup and restore: back up the data directory **and** the environment file
 together. The environment file holds `JWT_SECRET`, and without it the saved
 credentials in the data file cannot be decrypted on the instance you restore to.
 
-    sudo systemctl stop libredb-studio
-    sudo tar czf libredb-backup.tar.gz -C / opt/libredb/data etc/libredb-studio.env
-    sudo systemctl start libredb-studio
+    sudo systemctl stop storagebase-studio
+    sudo tar czf storagebase-backup.tar.gz -C / opt/storagebase/data etc/storagebase-studio.env
+    sudo systemctl start storagebase-studio
 
 Restore both files with the service stopped, then start it again. An EBS
 snapshot of the whole volume captures both, because the environment file is on
@@ -83,11 +83,11 @@ the same volume.
 
 ## 5. Health and proper function
 
-    sudo docker inspect -f '{{.State.Running}}' libredb-studio   # container up
+    sudo docker inspect -f '{{.State.Running}}' storagebase-studio   # container up
     curl -fsS http://127.0.0.1:3000/api/db/health                # server answers
     curl -fsS http://127.0.0.1:3000/login                        # app serves pages
-    systemctl status libredb-studio
-    sudo docker logs libredb-studio
+    systemctl status storagebase-studio
+    sudo docker logs storagebase-studio
 
 The health route answers with a static payload without touching the database or
 the auth configuration, so it proves the server process is up and nothing more.
@@ -158,7 +158,7 @@ Version 0.14.1 is the initial listing and is labelled `Optional`.
 ## 13. Upgrades
 
 New versions ship as new AMI versions in this listing. To move to one, launch an
-instance from the new version, copy `/opt/libredb/data` and
-`/etc/libredb-studio.env` across from the old instance - both, for the reason in
+instance from the new version, copy `/opt/storagebase/data` and
+`/etc/storagebase-studio.env` across from the old instance - both, for the reason in
 section 4 - and start the service.
 There is no in-place upgrade path on a running instance.

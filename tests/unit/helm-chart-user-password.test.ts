@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
 
 const MINIMAL_ARGS = [
   "--set",
@@ -49,7 +49,7 @@ function renderChart(extraArgs: string[] = []): { secret: RenderedManifest; depl
   }
   const docs = parseAllDocuments(run.stdout.toString()).map((doc) => doc.toJSON() as RenderedManifest);
   const secret = docs.find(
-    (doc) => doc?.kind === "Secret" && doc.metadata.name === "release-under-test-libredb-studio",
+    (doc) => doc?.kind === "Secret" && doc.metadata.name === "release-under-test-storagebase-studio",
   );
   if (!secret) throw new Error("no chart Secret manifest found in rendered output");
   const deployment = docs.find((doc) => doc?.kind === "Deployment");
@@ -61,7 +61,7 @@ function containerEnv(deployment: RenderedManifest): EnvVar[] {
   return deployment.spec?.template.spec.containers[0].env ?? [];
 }
 
-describe("charts/libredb-studio optional user password (#136)", () => {
+describe("charts/storagebase-studio optional user password (#136)", () => {
   test("minimal two-secret install renders with no user-password secret key and no USER_PASSWORD env", () => {
     const { secret, deployment } = renderChart();
 

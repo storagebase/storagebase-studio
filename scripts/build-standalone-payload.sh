@@ -29,10 +29,10 @@
 # Usage: scripts/build-standalone-payload.sh <output-dir> [--smoke]
 #
 #   <output-dir>  where the archive is written:
-#                 libredb-studio-standalone-<version>-<os>-<arch>.tar.gz
+#                 storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz
 #                 (.zip on win32, issue #114).
 #                 Tarball entries are rooted under a top-level
-#                 libredb-studio-<version>/ directory (issue #133) - extract
+#                 storagebase-studio-<version>/ directory (issue #133) - extract
 #                 with --strip-components=1 (scripts/lib/pack-standalone-tarball.sh).
 #                 The win32 zip is FLAT (no versioned root) so winget's
 #                 NestedInstallerFiles paths stay stable across versions
@@ -92,14 +92,14 @@ if [ "$OS" = "win32" ] && [ "$ARCH" != "x64" ]; then
   exit 1
 fi
 
-# POSIX targets ship a tar.gz rooted under libredb-studio-<version>/ (issue
+# POSIX targets ship a tar.gz rooted under storagebase-studio-<version>/ (issue
 # #133); win32 ships a FLAT .zip (issue #114) - winget extracts it in place
 # and NestedInstallerFiles.RelativeFilePath must stay stable across versions,
 # so the zip has no versioned root directory.
 if [ "$OS" = "win32" ]; then
-  ARCHIVE="libredb-studio-standalone-${VERSION}-${OS}-${ARCH}.zip"
+  ARCHIVE="storagebase-studio-standalone-${VERSION}-${OS}-${ARCH}.zip"
 else
-  ARCHIVE="libredb-studio-standalone-${VERSION}-${OS}-${ARCH}.tar.gz"
+  ARCHIVE="storagebase-studio-standalone-${VERSION}-${OS}-${ARCH}.tar.gz"
 fi
 
 STAGE_DIR=$(mktemp -d)
@@ -143,7 +143,7 @@ cp -R .next/standalone/. "$PAYLOAD_DIR/"
 # consumes the payload.
 "$ROOT_DIR/scripts/lib/prune-standalone-payload.sh" "$PAYLOAD_DIR"
 # Ship an empty data/ dir (the default SQLite storage location). Output file
-# tracing can pull git-ignored local dev databases (data/*.libredb, *.db)
+# tracing can pull git-ignored local dev databases (data/*.storagebase, *.db)
 # into .next/standalone - never leak those into a distributable tarball. A CI
 # checkout is clean, so this only affects local builds.
 rm -rf "${PAYLOAD_DIR:?}/data"
@@ -196,7 +196,7 @@ if [ ! -d node_modules/@libredb/libredb ]; then
   echo "node_modules/@libredb/libredb not found - run 'bun install --frozen-lockfile' first" >&2
   exit 1
 fi
-mkdir -p "$PAYLOAD_DIR/node_modules/@libredb"
+mkdir -p "$PAYLOAD_DIR/node_modules/@storagebase"
 rm -rf "$PAYLOAD_DIR/node_modules/@libredb/libredb"
 cp -R node_modules/@libredb/libredb "$PAYLOAD_DIR/node_modules/@libredb/libredb"
 
@@ -266,7 +266,7 @@ if [ "$OS" = "win32" ]; then
   # Flat zip (issue #114): entries at the archive root, no versioned wrapper.
   "$ROOT_DIR/scripts/lib/pack-standalone-zip.sh" "$PAYLOAD_DIR" "$OUT_DIR/$ARCHIVE"
 else
-  # Wraps PAYLOAD_DIR in a top-level libredb-studio-<version>/ root instead of
+  # Wraps PAYLOAD_DIR in a top-level storagebase-studio-<version>/ root instead of
   # a tarbomb (issue #133); consumers extract with --strip-components=1.
   "$ROOT_DIR/scripts/lib/pack-standalone-tarball.sh" "$PAYLOAD_DIR" "$VERSION" "$OUT_DIR/$ARCHIVE"
 fi

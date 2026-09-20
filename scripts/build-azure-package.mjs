@@ -16,7 +16,7 @@
  *      700, leaving a 30-day certification buffer (only "apiVersion" keys are
  *      scanned: the 2019-04-01 in $schema is a schema URI, not an apiVersion);
  *   4. write dist/azure/package/ and zip it as
- *      dist/azure/libredb-studio-azure-<packageVersion>.zip.
+ *      dist/azure/storagebase-studio-azure-<packageVersion>.zip.
  *
  * The digest resolution deliberately does not reuse the ghcr-tag-digest probe
  * in distribution-check.mjs: that probe compares latest-vs-tag for drift
@@ -33,7 +33,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const APP_IMAGE_REPO = "ghcr.io/libredb/libredb-studio";
+export const APP_IMAGE_REPO = "ghcr.io/storagebase/storagebase-studio";
 /**
  * Tracking "2-alpine" keeps every build on the current Caddy 2 stable; the
  * resolved digest pins whatever that was at build time into the package.
@@ -266,7 +266,7 @@ export async function buildPackage({
   fs.writeFileSync(path.join(packageDir, "mainTemplate.json"), template);
   fs.writeFileSync(path.join(packageDir, "createUiDefinition.json"), uiDefinition);
 
-  const zipPath = path.join(root, `dist/azure/libredb-studio-azure-${resolvedPackageVersion}.zip`);
+  const zipPath = path.join(root, `dist/azure/storagebase-studio-azure-${resolvedPackageVersion}.zip`);
   fs.rmSync(zipPath, { force: true });
   // -j strips directories, which is exactly the Partner Center requirement:
   // both files at the zip root, no folder nesting, no binaries.

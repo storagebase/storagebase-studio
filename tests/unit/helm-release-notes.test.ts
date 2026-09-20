@@ -4,7 +4,7 @@
  * Why a test for release copy: this text is the only explanation a visitor to
  * the Releases page ever gets for why the repository carries two version
  * streams - the application (`0.13.4`) and the chart
- * (`libredb-studio-0.1.49`). It used to be the chart's one-line `description:`
+ * (`storagebase-studio-0.1.49`). It used to be the chart's one-line `description:`
  * repeated verbatim on every chart release, which answers a question nobody
  * asked. The failure mode of the replacement is equally silent: a stale
  * version placeholder still renders (as literal `__CHART_VERSION__`), a
@@ -92,8 +92,8 @@ describe("helm-release.yml chart release notes", () => {
 
   test("the notes tell the reader how to install this exact chart version", () => {
     const body = notesBody();
-    expect(body).toContain("helm repo add libredb https://libredb.org/libredb-studio/");
-    expect(body).toContain("oci://ghcr.io/libredb/charts/libredb-studio");
+    expect(body).toContain("helm repo add storagebase https://storagebase.org/storagebase-studio/");
+    expect(body).toContain("oci://ghcr.io/storagebase/charts/storagebase-studio");
     // Pinned installs only: an unpinned command on a versioned release page
     // would install something other than the release being read.
     for (const line of body.split("\n").filter((l) => l.includes("helm install"))) {

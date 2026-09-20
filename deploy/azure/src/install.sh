@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LibreDB Studio — Azure Marketplace solution template first-boot installer.
+# StorageBase Studio — Azure Marketplace solution template first-boot installer.
 #
 # Executed by the CustomScript VM extension via protectedSettings.commandToExecute.
 # Every argument is base64-encoded by the ARM template, so no shell quoting or
@@ -14,10 +14,10 @@ set -euo pipefail
 # The log stays root-only: it records the admin email and the deployment's hostname.
 # Created only when absent so a re-run (VM reimage, extension re-apply) keeps
 # the earlier history; chmod covers logs created by older versions.
-[ -f /var/log/libredb-install.log ] || install -m 600 /dev/null /var/log/libredb-install.log
-chmod 600 /var/log/libredb-install.log
-exec > >(tee -a /var/log/libredb-install.log) 2>&1
-echo "=== LibreDB Studio install started: $(date -Is) ==="
+[ -f /var/log/storagebase-install.log ] || install -m 600 /dev/null /var/log/storagebase-install.log
+chmod 600 /var/log/storagebase-install.log
+exec > >(tee -a /var/log/storagebase-install.log) 2>&1
+echo "=== StorageBase Studio install started: $(date -Is) ==="
 
 b64d() { printf '%s' "${1:-}" | base64 -d 2>/dev/null || true; }
 
@@ -86,27 +86,27 @@ pull_with_retry "$CADDY_IMAGE"
 
 # ------------------------------------------------------------------- layout ---
 # The shared parents stay world-readable; the two directories holding secrets do
-# not. /opt/libredb/data carries the SQLite store, whose connection records include
-# plaintext passwords and connection strings, and /opt/libredb/caddy/data carries the
+# not. /opt/storagebase/data carries the SQLite store, whose connection records include
+# plaintext passwords and connection strings, and /opt/storagebase/caddy/data carries the
 # TLS private keys and the ACME account key. The mode of the files inside follows the
 # containers' umask, not anything this installer sets, so the directory is the control
 # point: 0700 keeps both out of reach of every local account except root, which is the
-# same bar /etc/libredb-studio.env already meets.
+# same bar /etc/storagebase-studio.env already meets.
 #
 # Both containers still work, and neither needs a mode change: the app container starts
 # as root, chowns its data dir to `nextjs` and drops privileges (docker-entrypoint.sh),
 # the Caddy image runs as root, and `chown` does not touch the mode. A re-run also
 # repairs a directory left at 0755 by an earlier version, because `install -d` applies
 # the mode to directories that already exist.
-install -d -m 0755 /opt/libredb /opt/libredb/caddy /opt/libredb/caddy/config
-install -d -m 0700 /opt/libredb/data /opt/libredb/caddy/data
+install -d -m 0755 /opt/storagebase /opt/storagebase/caddy /opt/storagebase/caddy/config
+install -d -m 0700 /opt/storagebase/data /opt/storagebase/caddy/data
 
 # ---------------------------------------------------------------- app env ---
 # Strict mode: no generated credentials, everything explicit (docs/DISTRIBUTION.md).
 #
 # Written once and never rewritten: if the extension re-runs (VM reimage, extension
 # update), regenerating JWT_SECRET would invalidate every existing session.
-if [ ! -f /etc/libredb-studio.env ]; then
+if [ ! -f /etc/storagebase-studio.env ]; then
   # Command substitutions do not trip `set -e`, so an openssl failure would
   # otherwise write an EMPTY secret without a word of complaint.
   JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
@@ -125,7 +125,7 @@ if [ ! -f /etc/libredb-studio.env ]; then
       printf 'ADMIN_EMAIL=%s\n' "$APP_ADMIN_EMAIL"
       printf 'ADMIN_PASSWORD=%s\n' "$APP_ADMIN_PASSWORD"
       printf 'STORAGE_PROVIDER=sqlite\n'
-      printf 'STORAGE_SQLITE_PATH=/app/data/libredb-storage.db\n'
+      printf 'STORAGE_SQLITE_PATH=/app/data/storagebase-storage.db\n'
       printf 'PORT=3000\n'
       printf 'HOSTNAME=0.0.0.0\n'
       # In production the app marks its auth cookie Secure for every non-loopback
@@ -134,11 +134,11 @@ if [ ! -f /etc/libredb-studio.env ]; then
       # shouldMarkCookieSecure). Only the ":80" deployment needs the override: the
       # HTTPS one always speaks https to the browser, self-signed included.
       if [ "$SITE_ADDRESS" = ":80" ]; then printf 'AUTH_COOKIE_SECURE=false\n'; fi
-    } > /etc/libredb-studio.env
+    } > /etc/storagebase-studio.env
   )
-  chmod 600 /etc/libredb-studio.env
+  chmod 600 /etc/storagebase-studio.env
 else
-  echo "/etc/libredb-studio.env already exists — keeping the existing JWT secret"
+  echo "/etc/storagebase-studio.env already exists — keeping the existing JWT secret"
 fi
 
 # ---------------------------------------------------------------- Caddyfile ---
@@ -173,33 +173,33 @@ fi
     echo '	}'
   fi
   echo '	encode zstd gzip'
-  echo '	reverse_proxy libredb-studio:3000'
+  echo '	reverse_proxy storagebase-studio:3000'
   echo '}'
-} > /opt/libredb/caddy/Caddyfile
-chmod 644 /opt/libredb/caddy/Caddyfile
+} > /opt/storagebase/caddy/Caddyfile
+chmod 644 /opt/storagebase/caddy/Caddyfile
 
 # ------------------------------------------------------------------ network ---
-docker network inspect libredb >/dev/null 2>&1 || docker network create libredb
+docker network inspect storagebase >/dev/null 2>&1 || docker network create storagebase
 
 # ------------------------------------------------------------ systemd units ---
-cat > /etc/systemd/system/libredb-studio.service <<EOF
+cat > /etc/systemd/system/storagebase-studio.service <<EOF
 [Unit]
-Description=LibreDB Studio
+Description=StorageBase Studio
 After=docker.service network-online.target
 Wants=network-online.target docker.service
 
 [Service]
-ExecStartPre=-/usr/bin/docker rm -f libredb-studio
+ExecStartPre=-/usr/bin/docker rm -f storagebase-studio
 ExecStart=/usr/bin/docker run \\
-  --name libredb-studio \\
+  --name storagebase-studio \\
   --init \\
-  --network libredb \\
+  --network storagebase \\
   -p 127.0.0.1:3000:3000 \\
-  --env-file /etc/libredb-studio.env \\
-  -v /opt/libredb/data:/app/data \\
+  --env-file /etc/storagebase-studio.env \\
+  -v /opt/storagebase/data:/app/data \\
   ${APP_IMAGE}
-ExecStop=/usr/bin/docker stop libredb-studio
-ExecStopPost=-/usr/bin/docker rm -f libredb-studio
+ExecStop=/usr/bin/docker stop storagebase-studio
+ExecStopPost=-/usr/bin/docker rm -f storagebase-studio
 Restart=always
 RestartSec=10
 TimeoutStartSec=300
@@ -208,25 +208,25 @@ TimeoutStartSec=300
 WantedBy=multi-user.target
 EOF
 
-cat > /etc/systemd/system/libredb-caddy.service <<EOF
+cat > /etc/systemd/system/storagebase-caddy.service <<EOF
 [Unit]
-Description=LibreDB Studio reverse proxy (Caddy)
-After=docker.service network-online.target libredb-studio.service
+Description=StorageBase Studio reverse proxy (Caddy)
+After=docker.service network-online.target storagebase-studio.service
 Wants=network-online.target docker.service
 
 [Service]
-ExecStartPre=-/usr/bin/docker rm -f libredb-caddy
+ExecStartPre=-/usr/bin/docker rm -f storagebase-caddy
 ExecStart=/usr/bin/docker run \\
-  --name libredb-caddy \\
+  --name storagebase-caddy \\
   --init \\
-  --network libredb \\
+  --network storagebase \\
   -p 80:80 -p 443:443 \\
-  -v /opt/libredb/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \\
-  -v /opt/libredb/caddy/data:/data \\
-  -v /opt/libredb/caddy/config:/config \\
+  -v /opt/storagebase/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \\
+  -v /opt/storagebase/caddy/data:/data \\
+  -v /opt/storagebase/caddy/config:/config \\
   ${CADDY_IMAGE}
-ExecStop=/usr/bin/docker stop libredb-caddy
-ExecStopPost=-/usr/bin/docker rm -f libredb-caddy
+ExecStop=/usr/bin/docker stop storagebase-caddy
+ExecStopPost=-/usr/bin/docker rm -f storagebase-caddy
 Restart=always
 RestartSec=10
 TimeoutStartSec=300
@@ -236,7 +236,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now libredb-studio libredb-caddy
+systemctl enable --now storagebase-studio storagebase-caddy
 
 # ------------------------------------------------------------- health gate ---
 # 1) The application itself must answer. Response body is {"status":"healthy",...}.
@@ -246,8 +246,8 @@ for _ in $(seq 1 60); do
   sleep 5
 done
 if [ "$ok" -ne 1 ]; then
-  echo "FATAL: LibreDB Studio did not become healthy within 5 minutes" >&2
-  docker logs libredb-studio --tail 200 || true
+  echo "FATAL: StorageBase Studio did not become healthy within 5 minutes" >&2
+  docker logs storagebase-studio --tail 200 || true
   exit 1
 fi
 
@@ -274,7 +274,7 @@ if [ "$SITE_ADDRESS" != ":80" ]; then
   done
   if [ "$TLS_MODE" != "ready" ]; then
     echo "FATAL: HTTPS did not become reachable within 3 minutes" >&2
-    docker logs libredb-caddy --tail 100 || true
+    docker logs storagebase-caddy --tail 100 || true
     exit 1
   fi
   # Same probe WITHOUT -k: curl validates against the VM's system trust store, so a
@@ -286,7 +286,7 @@ if [ "$SITE_ADDRESS" != ":80" ]; then
   else
     TLS_MODE=internal
     echo "WARNING: no publicly trusted certificate yet — Caddy fell back to its internal (self-signed) CA"
-    docker logs libredb-caddy --tail 100 || true
+    docker logs storagebase-caddy --tail 100 || true
   fi
 fi
 
@@ -313,7 +313,7 @@ if [ "$TLS_MODE" = "internal" ]; then
      switching over on its own as soon as issuance succeeds.
      Likely causes: a Let's Encrypt rate limit or outage, or a firewall that keeps port
      80 unreachable. Which one it was:
-       docker logs libredb-caddy 2>&1 | grep -i -m5 'acme\|challenge\|rate limit'
+       docker logs storagebase-caddy 2>&1 | grep -i -m5 'acme\|challenge\|rate limit'
      * A connection error or timeout while fetching the challenge means port 80 was not
        reachable from the internet. That is measurable: from ANY machine other than this
        one, run
@@ -326,22 +326,22 @@ if [ "$TLS_MODE" = "internal" ]; then
 "
 fi
 
-cat > /etc/libredb-studio.info <<EOF
-LibreDB Studio is running.
+cat > /etc/storagebase-studio.info <<EOF
+StorageBase Studio is running.
 
   URL:   ${APP_URL}
   Admin: ${APP_ADMIN_EMAIL}   (password: the one you entered during deployment)
 ${TLS_NOTE}
 
-  Service:  systemctl status libredb-studio
-  Logs:     docker logs libredb-studio
-  Data:     /opt/libredb/data   (SQLite storage; survives restarts)
-  Config:   /etc/libredb-studio.env   (mode 0600)
-  Install log: /var/log/libredb-install.log
+  Service:  systemctl status storagebase-studio
+  Logs:     docker logs storagebase-studio
+  Data:     /opt/storagebase/data   (SQLite storage; survives restarts)
+  Config:   /etc/storagebase-studio.env   (mode 0600)
+  Install log: /var/log/storagebase-install.log
 
-  Docs:    https://github.com/libredb/libredb-studio#readme
-  Support: https://github.com/libredb/libredb-studio/issues
+  Docs:    https://github.com/storagebase/storagebase-studio#readme
+  Support: https://github.com/storagebase/storagebase-studio/issues
 EOF
-cp /etc/libredb-studio.info /etc/motd
+cp /etc/storagebase-studio.info /etc/motd
 
-echo "=== LibreDB Studio install finished: $(date -Is) ==="
+echo "=== StorageBase Studio install finished: $(date -Is) ==="

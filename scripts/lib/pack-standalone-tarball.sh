@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Wrap an assembled standalone payload directory in a top-level
-# libredb-studio-<version>/ root before tarring it (issue #133): a
+# storagebase-studio-<version>/ root before tarring it (issue #133): a
 # conventional release-tarball layout instead of a tarbomb (entries at
 # archive root). Consumers extract with `tar --strip-components=1` (see
 # bin/lib/launcher-utils.mjs's extractTarball and
@@ -34,7 +34,7 @@ OUT_TARBALL=$3
 OUT_PARENT=$(cd "$(dirname "$OUT_TARBALL")" && pwd)
 OUT_TARBALL="$OUT_PARENT/$(basename "$OUT_TARBALL")"
 
-ROOT_NAME="libredb-studio-${VERSION}"
+ROOT_NAME="storagebase-studio-${VERSION}"
 PARENT_DIR=$(cd "$(dirname "$PAYLOAD_DIR")" && pwd)
 ROOT_DIR="$PARENT_DIR/$ROOT_NAME"
 

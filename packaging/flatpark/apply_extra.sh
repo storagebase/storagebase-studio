@@ -14,9 +14,9 @@ set -eu
 # Runs offline at install time inside org.gnome.Platform (issue #241).
 #
 # The upstream Debian package is a plain FHS tree holding three things: the
-# Tauri shell (usr/bin/libredb-studio-desktop), the pinned Node runtime it
-# starts as a sidecar (usr/bin/libredb-studio-node) and the standalone Next.js
-# server payload (usr/lib/libredb-studio-desktop/payload). The relative layout
+# Tauri shell (usr/bin/storagebase-studio-desktop), the pinned Node runtime it
+# starts as a sidecar (usr/bin/storagebase-studio-node) and the standalone Next.js
+# server payload (usr/lib/storagebase-studio-desktop/payload). The relative layout
 # is load-bearing - the shell resolves its resources as
 # <exe dir>/../lib/<product name> - so the whole usr tree is kept as-is at
 # /app/extra/usr rather than cherry-picking the binary.
@@ -35,8 +35,8 @@ export LC_ALL
 extra_root="${EXTRA_ROOT:-/app/extra}"
 cd "$extra_root"
 
-[ -f libredb-studio-desktop.deb ] || {
-  echo "missing extra-data: libredb-studio-desktop.deb" >&2
+[ -f storagebase-studio-desktop.deb ] || {
+  echo "missing extra-data: storagebase-studio-desktop.deb" >&2
   exit 1
 }
 
@@ -48,21 +48,21 @@ mkdir stage
 # --no-same-owner: on a system-wide install Flatpak runs apply_extra as root with
 # every capability dropped, so restoring the archive's recorded uid/gid fails and
 # aborts the unpack even though every member extracted fine.
-bsdtar -xOf libredb-studio-desktop.deb 'data.tar*' | bsdtar --no-same-owner -xf - -C stage
+bsdtar -xOf storagebase-studio-desktop.deb 'data.tar*' | bsdtar --no-same-owner -xf - -C stage
 
-[ -x stage/usr/bin/libredb-studio-desktop ] || {
+[ -x stage/usr/bin/storagebase-studio-desktop ] || {
   echo "desktop shell not found in .deb" >&2
   exit 1
 }
-[ -x stage/usr/bin/libredb-studio-node ] || {
+[ -x stage/usr/bin/storagebase-studio-node ] || {
   echo "node sidecar not found in .deb" >&2
   exit 1
 }
-[ -f stage/usr/lib/libredb-studio-desktop/payload/server.js ] || {
+[ -f stage/usr/lib/storagebase-studio-desktop/payload/server.js ] || {
   echo "server payload not found in .deb" >&2
   exit 1
 }
 
 mv stage/usr usr
-rm -rf stage libredb-studio-desktop.deb
-chmod +x usr/bin/libredb-studio-desktop usr/bin/libredb-studio-node
+rm -rf stage storagebase-studio-desktop.deb
+chmod +x usr/bin/storagebase-studio-desktop usr/bin/storagebase-studio-node

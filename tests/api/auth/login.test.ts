@@ -51,7 +51,7 @@ describe("POST /api/auth/login", () => {
   test("returns 200 with role admin when admin credentials are provided", async () => {
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+      body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -65,7 +65,7 @@ describe("POST /api/auth/login", () => {
   test("returns 200 with role user when user credentials are provided", async () => {
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "user@libredb.org", password: "LibreDB.2026" },
+      body: { email: "user@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -79,7 +79,7 @@ describe("POST /api/auth/login", () => {
   test("returns 401 when wrong password is provided", async () => {
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "wrong-password" },
+      body: { email: "admin@storagebase.org", password: "wrong-password" },
     });
 
     const res = await POST(req as never);
@@ -204,25 +204,25 @@ describe("POST /api/auth/login", () => {
   test("calls login() with role and email for admin", async () => {
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+      body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
     });
 
     await POST(req as never);
 
     expect(mockLogin).toHaveBeenCalledTimes(1);
-    expect(mockLogin).toHaveBeenCalledWith("admin", "admin@libredb.org");
+    expect(mockLogin).toHaveBeenCalledWith("admin", "admin@storagebase.org");
   });
 
   test("calls login() with role and email for user", async () => {
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "user@libredb.org", password: "LibreDB.2026" },
+      body: { email: "user@storagebase.org", password: "LibreDB.2026" },
     });
 
     await POST(req as never);
 
     expect(mockLogin).toHaveBeenCalledTimes(1);
-    expect(mockLogin).toHaveBeenCalledWith("user", "user@libredb.org");
+    expect(mockLogin).toHaveBeenCalledWith("user", "user@storagebase.org");
   });
 
   test("returns 503 with an actionable message when ADMIN_PASSWORD is missing", async () => {
@@ -230,7 +230,7 @@ describe("POST /api/auth/login", () => {
 
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+      body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -258,7 +258,7 @@ describe("POST /api/auth/login", () => {
 
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+      body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -275,7 +275,7 @@ describe("POST /api/auth/login", () => {
 
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+      body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -296,7 +296,7 @@ describe("POST /api/auth/login", () => {
     try {
       const req = createMockRequest("/api/auth/login", {
         method: "POST",
-        body: { email: "admin@libredb.org", password: "LibreDB.2026" },
+        body: { email: "admin@storagebase.org", password: "LibreDB.2026" },
       });
 
       const res = await POST(req as never);
@@ -317,7 +317,7 @@ describe("POST /api/auth/login", () => {
       const req = createMockRequest("/api/auth/login", {
         method: "POST",
         headers: { "x-forwarded-for": "203.0.113.77" },
-        body: { email: "admin@libredb.org", password: "wrong" },
+        body: { email: "admin@storagebase.org", password: "wrong" },
       });
       await POST(req as never);
     }
@@ -329,7 +329,7 @@ describe("POST /api/auth/login", () => {
       const req = createMockRequest("/api/auth/login", {
         method: "POST",
         headers: { "x-forwarded-for": "203.0.113.77" },
-        body: { email: "admin@libredb.org", password: "wrong" },
+        body: { email: "admin@storagebase.org", password: "wrong" },
       });
 
       const res = await POST(req as never);
@@ -347,7 +347,7 @@ describe("POST /api/auth/login", () => {
     try {
       const req = createMockRequest("/api/auth/login", {
         method: "POST",
-        body: { email: "admin@libredb.org", password: "wrong-password" },
+        body: { email: "admin@storagebase.org", password: "wrong-password" },
       });
 
       const res = await POST(req as never);
@@ -366,7 +366,7 @@ describe("POST /api/auth/login", () => {
 
     const req = createMockRequest("/api/auth/login", {
       method: "POST",
-      body: { email: "user@libredb.org", password: "LibreDB.2026" },
+      body: { email: "user@storagebase.org", password: "LibreDB.2026" },
     });
 
     const res = await POST(req as never);
@@ -411,7 +411,7 @@ describe("POST /api/auth/login", () => {
     }
 
     test("asks for a code instead of signing in when the account carries a secret", async () => {
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(401);
@@ -422,17 +422,17 @@ describe("POST /api/auth/login", () => {
     });
 
     test("signs in once the correct code is presented", async () => {
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: CODE });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.role).toBe("admin");
-      expect(mockLogin).toHaveBeenCalledWith("admin", "admin@libredb.org");
+      expect(mockLogin).toHaveBeenCalledWith("admin", "admin@storagebase.org");
     });
 
     test("distinguishes a wrong code from a missing one", async () => {
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: "000000" });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: "000000" });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(401);
@@ -442,9 +442,9 @@ describe("POST /api/auth/login", () => {
     });
 
     test("refuses a code that has already been spent (RFC 6238 replay guard)", async () => {
-      expect((await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: CODE })).status).toBe(200);
+      expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE })).status).toBe(200);
 
-      const replay = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: CODE });
+      const replay = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE });
       const data = await parseResponseJSON<MfaBody>(replay);
 
       expect(replay.status).toBe(401);
@@ -453,7 +453,7 @@ describe("POST /api/auth/login", () => {
     });
 
     test("treats a non-string code as no code rather than a 500", async () => {
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: 287082 });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: 287082 });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(401);
@@ -461,7 +461,7 @@ describe("POST /api/auth/login", () => {
     });
 
     test("keeps the uniform 401 when the password is wrong, even alongside a valid code", async () => {
-      const res = await attempt({ email: "admin@libredb.org", password: "wrong", totp: CODE });
+      const res = await attempt({ email: "admin@storagebase.org", password: "wrong", totp: CODE });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(401);
@@ -474,7 +474,7 @@ describe("POST /api/auth/login", () => {
     test("leaves an account without a secret on the single-step flow", async () => {
       delete process.env.ADMIN_TOTP_SECRET;
 
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" });
 
       expect(res.status).toBe(200);
     });
@@ -484,22 +484,22 @@ describe("POST /api/auth/login", () => {
       // charged, the code below would meet a 429 instead of a session — five ordinary logins a
       // window is not a usable limit.
       for (let i = 0; i < 6; i += 1) {
-        const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" });
+        const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" });
         expect(res.status).toBe(401);
       }
 
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: CODE });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE });
 
       expect(res.status).toBe(200);
     });
 
     test("does spend the budget on a wrong code, so guessing is bounded", async () => {
       for (let i = 0; i < 5; i += 1) {
-        const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: "000000" });
+        const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: "000000" });
         expect(res.status).toBe(401);
       }
 
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026", totp: CODE });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026", totp: CODE });
 
       expect(res.status).toBe(429);
     });
@@ -507,7 +507,7 @@ describe("POST /api/auth/login", () => {
     test("returns an actionable 503 when the configured secret is not base32", async () => {
       process.env.ADMIN_TOTP_SECRET = "not-base32!";
 
-      const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" });
+      const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" });
       const data = await parseResponseJSON<MfaBody>(res);
 
       expect(res.status).toBe(503);
@@ -519,7 +519,7 @@ describe("POST /api/auth/login", () => {
         throw new Error("audit sink unavailable");
       });
       try {
-        const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" });
+        const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" });
         const data = await parseResponseJSON<MfaBody>(res);
 
         expect(res.status).toBe(401);

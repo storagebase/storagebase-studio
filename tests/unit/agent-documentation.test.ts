@@ -58,10 +58,10 @@ const ARCHITECTURE = read("docs/ARCHITECTURE.md");
 const ENV_EXAMPLE = read(".env.example");
 const BACKLOG = read("docs/BACKLOG.md");
 const AGENT_CONFIG = read("src/lib/agent/config.ts");
-const CHART_VALUES = read("charts/libredb-studio/values.yaml");
+const CHART_VALUES = read("charts/storagebase-studio/values.yaml");
 /** The ledger directory the chart writes; the same path the image will also set. */
 const CHART_LEDGER_PATH = "/app/data/workflow";
-const CHART_README = read("charts/libredb-studio/README.md");
+const CHART_README = read("charts/storagebase-studio/README.md");
 
 describe("docs/AGENT.md is reachable from the architecture document", () => {
   test("docs/ARCHITECTURE.md links to it and the link resolves to a real file", () => {
@@ -408,7 +408,7 @@ describe("the chart says the zero-config durable backend is single-instance", ()
    * install work today.
    */
   test("the chart itself writes the ledger into the writable volume", () => {
-    const deployment = read("charts/libredb-studio/templates/deployment.yaml");
+    const deployment = read("charts/storagebase-studio/templates/deployment.yaml");
     expect(deployment).toMatch(new RegExp(`- name: WORKFLOW_LOCAL_DATA_DIR\\s*\\n\\s*value: ${CHART_LEDGER_PATH}\\b`));
     // The volume that path lives in is mounted unconditionally, not only under
     // persistence: an emptyDir still makes the agent work, it only makes it forget.

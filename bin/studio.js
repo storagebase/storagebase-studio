@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * npx launcher for StorageBase Studio (issue #110): `npx @libredb/studio`.
+ * npx launcher for StorageBase Studio (issue #110): `npx @storagebase/studio`.
  *
  * The npm package stays a pure library for libredb-platform - the server
  * build is never shipped inside it. Instead this launcher downloads the
  * platform's standalone server tarball from GitHub Releases (built by
  * .github/workflows/release-artifacts.yml), verifies it against the
- * SHA256SUMS release asset, caches it under ~/.libredb-studio/<version>/,
+ * SHA256SUMS release asset, caches it under ~/.storagebase-studio/<version>/,
  * and spawns `node server.js` from the unpacked payload. Missing secrets
  * are handled by the server's zero-config bootstrap (issue #109), which
  * generates and prints admin credentials on first run.
@@ -17,7 +17,7 @@
  *
  * The `#!/usr/bin/env node` shebang above is load-bearing, not decoration.
  * `bunx` honours it and spawns a real node process, which is why `bunx
- * @libredb/studio` works; the server below is then started with
+ * @storagebase/studio` works; the server below is then started with
  * `process.execPath`, so it inherits that node. Drop the shebang and a bunx
  * user gets Bun instead, where `better-sqlite3` - the STORAGE_PROVIDER=sqlite
  * backend - segfaults rather than failing cleanly (oven-sh/bun#4290, open
@@ -56,12 +56,12 @@ const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.ur
 
 const USAGE = `StorageBase Studio ${pkg.version} launcher
 
-Usage: npx @libredb/studio [options]
+Usage: npx @storagebase/studio [options]
 
 Starts the StorageBase Studio standalone server. On first run the launcher
 downloads the release archive for this platform (tar.gz; zip on Windows)
 from GitHub Releases, verifies its SHA256 checksum, and caches it in
-~/.libredb-studio/${pkg.version}/. Later runs start straight from the cache.
+~/.storagebase-studio/${pkg.version}/. Later runs start straight from the cache.
 
 When the GitHub CLI (gh) is installed and authenticated, the launcher also
 verifies the archive's signed build provenance. Missing gh, no login or no
@@ -91,7 +91,7 @@ STORAGE_SQLITE_PATH, ...). When JWT_SECRET or ADMIN_PASSWORD are not set, the
 server generates them on first run and prints the admin credentials once.
 
 The AI agent appears once LLM_API_KEY (and the other LLM_* settings) are set;
-its run history is kept in ~/.libredb-studio/workflow-data unless
+its run history is kept in ~/.storagebase-studio/workflow-data unless
 WORKFLOW_LOCAL_DATA_DIR says otherwise. Set LIBREDB_AGENT_ENABLED=false to
 configure AI and have no agent.`;
 
@@ -137,8 +137,8 @@ async function downloadOnce(url, destination) {
           `Release ${pkg.version} has no standalone server artifacts yet (HTTP 404 for ${url}).`,
           "Standalone tarballs are attached to GitHub releases by CI and do not exist for older versions.",
           "Options:",
-          "  - run a newer release:  npx @libredb/studio@latest",
-          "  - use a locally built tarball:  npx @libredb/studio --archive <path>",
+          "  - run a newer release:  npx @storagebase/studio@latest",
+          "  - use a locally built tarball:  npx @storagebase/studio --archive <path>",
           "    (build one with scripts/build-standalone-payload.sh from the repository)",
         ].join("\n"),
       );
@@ -195,7 +195,7 @@ async function download(url, destination) {
  * `tar` exists on all supported platforms: GNU/bsd tar on linux and darwin,
  * the System32 bsdtar on win32 (which also reads the flat win32 .zip -
  * see extractionCommand in lib/launcher-utils.mjs, issue #114). Tarballs
- * are packed under a top-level libredb-studio-<version>/ root (issue #133),
+ * are packed under a top-level storagebase-studio-<version>/ root (issue #133),
  * which extractArchive strips. A previous payload's data/ dir (generated
  * credentials, SQLite storage) is preserved across the swap - see
  * preservePayloadData (issue #132).

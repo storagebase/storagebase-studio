@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "libredb-studio-desktop",
+  "productName": "storagebase-studio-desktop",
   "version": "../../package.json",
-  "identifier": "org.libredb.Studio",
+  "identifier": "org.storagebase.Studio",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,7 +10,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "LibreDB Studio",
+        "title": "StorageBase Studio",
         "url": "index.html",
         "width": 1440,
         "height": 900,
@@ -30,13 +30,13 @@
     "targets": ["appimage", "deb"],
     "category": "DeveloperTool",
     "shortDescription": "The open-source SQL IDE for cloud-native teams",
-    "longDescription": "LibreDB Studio is an open-source SQL IDE for PostgreSQL, MySQL, SQLite, libSQL, DuckDB, Oracle, SQL Server, MongoDB, Redis, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra, with AI query assistance. The desktop build runs the same server LibreDB Studio ships everywhere else as a local sidecar and keeps all data on this machine.",
-    "homepage": "https://libredb.org",
-    "publisher": "LibreDB",
+    "longDescription": "StorageBase Studio is an open-source SQL IDE for PostgreSQL, MySQL, SQLite, libSQL, DuckDB, Oracle, SQL Server, MongoDB, Redis, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra, with AI query assistance. The desktop build runs the same server StorageBase Studio ships everywhere else as a local sidecar and keeps all data on this machine.",
+    "homepage": "https://storagebase.org",
+    "publisher": "StorageBase",
     "license": "MIT",
-    "copyright": "Copyright (c) LibreDB",
+    "copyright": "Copyright (c) StorageBase",
     "icon": ["icons/32x32.png", "icons/64x64.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"],
-    "externalBin": ["bin/libredb-studio-node"],
+    "externalBin": ["bin/storagebase-studio-node"],
     "resources": ["payload"],
     "linux": {
       "appimage": {

@@ -1,6 +1,6 @@
-# LibreDB Studio
+# StorageBase Studio
 
-LibreDB Studio is an MIT-licensed, AI-assisted open source SQL IDE that connects to sixteen database engines directly from the browser.
+StorageBase Studio is an MIT-licensed, AI-assisted open source SQL IDE that connects to sixteen database engines directly from the browser.
 
 Use cases:
 

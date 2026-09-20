@@ -9,7 +9,7 @@
     "This file is NOT the Flathub exception list - it only relaxes our own verification runs.",
     "Everything else the repo lint reports stays a hard failure."
   ],
-  "org.libredb.Studio": {
+  "org.storagebase.Studio": {
     "*": {
       "appstream-external-screenshot-url": "Screenshot mirroring happens in Flathub's build pipeline, not in ours",
       "appstream-remote-icon-not-mirrored": "Icon mirroring happens in Flathub's build pipeline, not in ours"

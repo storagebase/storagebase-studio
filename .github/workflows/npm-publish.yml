@@ -24,9 +24,9 @@ permissions:
 
 jobs:
   validate:
-    # Product releases only: chart releases (libredb-studio-<chart-version>)
+    # Product releases only: chart releases (storagebase-studio-<chart-version>)
     # are published by helm-release.yml and must not reach npm.
-    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'libredb-studio-')
+    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'storagebase-studio-')
     name: Validate
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -62,7 +62,7 @@ jobs:
 
       # --skip-refresh: the `helm repo add` above already fetched the index; Helm 4's `dependency build` re-fetches it by default and takes no --timeout.
       - name: Build chart dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Lint
         run: bun run lint
@@ -87,9 +87,9 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
   publish:
@@ -157,10 +157,10 @@ jobs:
       - name: Summary
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "## Published @libredb/studio@${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Published @storagebase/studio@${VERSION}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Registry:** https://www.npmjs.com/package/@libredb/studio" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Install:** \`npm install @libredb/studio@${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Registry:** https://www.npmjs.com/package/@storagebase/studio" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Install:** \`npm install @storagebase/studio@${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
 
   dispatch-smoke:
     # npx-engine-smoke listens for this workflow's completion via

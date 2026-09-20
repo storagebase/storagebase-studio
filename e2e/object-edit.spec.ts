@@ -184,7 +184,7 @@ function definitionInTheEngine(): string {
 
 async function login(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.locator('input[type="email"]').fill("user@libredb.org");
+  await page.locator('input[type="email"]').fill("user@storagebase.org");
   await page.locator('input[type="password"]').fill("test-user");
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL("/");
@@ -213,7 +213,7 @@ async function connectToTheFixture(page: Page): Promise<void> {
  *
  * MEASURED on 2026-09-14, on the fifth test of this file's first full run: the tree drew "The object
  * list could not be read / Too many requests. Try again in 51 seconds." Every test here signs in as
- * the same shared `user@libredb.org` account, whose per-process "query" bucket
+ * the same shared `user@storagebase.org` account, whose per-process "query" bucket
  * (src/lib/api/rate-limit.ts, 120 requests per 60 seconds, shared by every db-reaching route) is
  * sized for one real session and not for five fresh logins in three minutes. The same hazard is
  * documented on playwright.config.ts's `chromium-offline-editor` project for the same reason.
@@ -384,7 +384,7 @@ async function markersOnTheSourceEditor(page: Page): Promise<MarkerReading[]> {
  * 41 seconds is longer than the 30-second assertion that was waiting for it.
  *
  * The arithmetic behind that, from `src/lib/api/rate-limit.ts`: every test in this file and in
- * `functional-smoke.spec.ts` signs in as the same `user@libredb.org`, whose per-process `query`
+ * `functional-smoke.spec.ts` signs in as the same `user@storagebase.org`, whose per-process `query`
  * bucket is 120 requests per 60 seconds and is shared by every database-reaching route including
  * all nine under `db/objects`. A `page.reload()` re-hydrates the whole application on top of
  * whatever three earlier tests already spent. The bucket is a FIXED window and a refused request

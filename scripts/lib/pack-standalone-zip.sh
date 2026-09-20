@@ -4,7 +4,7 @@
 # win32-x64 release artifact (issue #114).
 #
 # Flat means entries sit at the archive root (server.js, .next/, node/,
-# libredb-studio.exe, ...) with NO libredb-studio-<version>/ wrapper - the
+# storagebase-studio.exe, ...) with NO storagebase-studio-<version>/ wrapper - the
 # opposite of the POSIX tarball layout (issue #133). Two consumers force
 # this:
 #   - winget extracts the zip in place and resolves
@@ -88,7 +88,7 @@ EOF
     exit 1
   fi
 done
-if printf '%s\n' "$LISTING" | grep -qE '^libredb-studio-[0-9]'; then
+if printf '%s\n' "$LISTING" | grep -qE '^storagebase-studio-[0-9]'; then
   echo "Packed zip has a versioned wrapper directory - the win32 zip must be flat (issue #114)" >&2
   exit 1
 fi

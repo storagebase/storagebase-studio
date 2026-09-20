@@ -55,7 +55,7 @@ afterEach(() => {
 describe("the failure response tells an attacker nothing", () => {
   test("an unknown email and a known email with a wrong password are byte-identical", async () => {
     const unknown = await attempt({ email: "nobody@example.com", password: "guess" }, "203.0.113.1");
-    const known = await attempt({ email: "admin@libredb.org", password: "guess" }, "203.0.113.2");
+    const known = await attempt({ email: "admin@storagebase.org", password: "guess" }, "203.0.113.2");
 
     expect(unknown.status).toBe(401);
     expect(known.status).toBe(401);
@@ -92,7 +92,7 @@ describe("the work an attempt costs tells an attacker nothing", () => {
     const unknownCost = comparisonCount() - beforeUnknown;
 
     const beforeKnown = comparisonCount();
-    await attempt({ email: "admin@libredb.org", password: "guess" }, "203.0.113.7");
+    await attempt({ email: "admin@storagebase.org", password: "guess" }, "203.0.113.7");
     const knownCost = comparisonCount() - beforeKnown;
 
     expect(unknownCost).toBe(1);
@@ -111,7 +111,7 @@ describe("the work an attempt costs tells an attacker nothing", () => {
 
   test("a correct password still costs exactly one comparison", async () => {
     const before = comparisonCount();
-    const res = await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" }, "203.0.113.10");
+    const res = await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" }, "203.0.113.10");
 
     expect(res.status).toBe(200);
     expect(comparisonCount() - before).toBe(1);
@@ -121,10 +121,10 @@ describe("the work an attempt costs tells an attacker nothing", () => {
 describe("the rate limiter tells an attacker nothing either", () => {
   test("the sixth failed login returns 429", async () => {
     for (let i = 0; i < 5; i += 1) {
-      expect((await attempt({ email: "admin@libredb.org", password: "guess" }, "198.51.100.1")).status).toBe(401);
+      expect((await attempt({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.1")).status).toBe(401);
     }
 
-    const sixth = await POST(loginRequest({ email: "admin@libredb.org", password: "guess" }, "198.51.100.1") as never);
+    const sixth = await POST(loginRequest({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.1") as never);
 
     expect(sixth.status).toBe(429);
     expect(sixth.headers.get("retry-after")).toBeTruthy();
@@ -141,20 +141,20 @@ describe("the rate limiter tells an attacker nothing either", () => {
 
   test("a successful login clears the budget it had spent, so a typo is not a lockout", async () => {
     for (let i = 0; i < 3; i += 1) {
-      await attempt({ email: "admin@libredb.org", password: "typo" }, "198.51.100.3");
+      await attempt({ email: "admin@storagebase.org", password: "typo" }, "198.51.100.3");
     }
 
-    expect((await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" }, "198.51.100.3")).status).toBe(200);
+    expect((await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" }, "198.51.100.3")).status).toBe(200);
 
     for (let i = 0; i < 5; i += 1) {
-      expect((await attempt({ email: "admin@libredb.org", password: "typo" }, "198.51.100.3")).status).toBe(401);
+      expect((await attempt({ email: "admin@storagebase.org", password: "typo" }, "198.51.100.3")).status).toBe(401);
     }
   });
 
   test("an attacker rotating the forwarded address is still capped by the account bucket", async () => {
     let throttled = 0;
     for (let i = 0; i < 24; i += 1) {
-      const res = await attempt({ email: "admin@libredb.org", password: "guess" }, `198.51.100.${100 + i}`);
+      const res = await attempt({ email: "admin@storagebase.org", password: "guess" }, `198.51.100.${100 + i}`);
       if (res.status === 429) throttled += 1;
     }
 
@@ -166,12 +166,12 @@ describe("the rate limiter tells an attacker nothing either", () => {
 
 describe("what the audit trail records", () => {
   test("a failed login records the submitted account and the bad-credentials reason", async () => {
-    await attempt({ email: "admin@libredb.org", password: "guess" }, "198.51.100.200");
+    await attempt({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.200");
     const line = JSON.parse(logSpy.mock.calls[0][0] as string) as Record<string, unknown>;
 
     expect(line.event).toBe("login_failure");
     expect(line.reason).toBe("bad_credentials");
-    expect(line.actor).toBe("admin@libredb.org");
+    expect(line.actor).toBe("admin@storagebase.org");
     expect(line.ip).toBe("198.51.100.200");
     expect(JSON.stringify(line)).not.toContain("guess");
   });
@@ -184,17 +184,17 @@ describe("what the audit trail records", () => {
   });
 
   test("a successful login is recorded", async () => {
-    await attempt({ email: "admin@libredb.org", password: "LibreDB.2026" }, "198.51.100.202");
+    await attempt({ email: "admin@storagebase.org", password: "LibreDB.2026" }, "198.51.100.202");
     const line = JSON.parse(logSpy.mock.calls[0][0] as string) as Record<string, unknown>;
 
     expect(line.event).toBe("login_success");
     expect(line.outcome).toBe("success");
-    expect(line.actor).toBe("admin@libredb.org");
+    expect(line.actor).toBe("admin@storagebase.org");
   });
 
   test("the trip is recorded once, not on every subsequent rejection", async () => {
     for (let i = 0; i < 8; i += 1) {
-      await attempt({ email: "admin@libredb.org", password: "guess" }, "198.51.100.203");
+      await attempt({ email: "admin@storagebase.org", password: "guess" }, "198.51.100.203");
     }
 
     const events = logSpy.mock.calls
@@ -210,7 +210,7 @@ describe("what the audit trail records", () => {
 
   test("a targeted attack on one account spread across forged addresses is recorded as the account bucket", async () => {
     for (let i = 0; i < 21; i += 1) {
-      await attempt({ email: "admin@libredb.org", password: "guess" }, `198.51.100.${210 + i}`);
+      await attempt({ email: "admin@storagebase.org", password: "guess" }, `198.51.100.${210 + i}`);
     }
 
     const events = logSpy.mock.calls

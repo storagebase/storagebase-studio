@@ -21,9 +21,9 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
 const RELEASE = "release-under-test";
-const SECRET_NAME = `${RELEASE}-libredb-studio`;
+const SECRET_NAME = `${RELEASE}-storagebase-studio`;
 const STRICT = ["--set", "config.authBootstrap=off"];
 const OIDC = ["--set", "authProvider=oidc"];
 const JWT = ["--set", "secrets.jwtSecret=0123456789abcdef0123456789abcdef"];
@@ -110,7 +110,7 @@ describe("the admin-email key follows its siblings (#170)", () => {
     // values.yaml mirrors the app's own fallback (src/lib/local-auth.ts), so the
     // default install must keep rendering it - the gate above is for an explicit "".
     const { secret } = render([...JWT, "--set", "secrets.adminPassword=test-admin-pass"]);
-    expect(Buffer.from(secret?.data?.["admin-email"] ?? "", "base64").toString()).toBe("admin@libredb.org");
+    expect(Buffer.from(secret?.data?.["admin-email"] ?? "", "base64").toString()).toBe("admin@storagebase.org");
   });
 
   test("setting secrets.adminEmail writes the key and the env that consumes it", () => {

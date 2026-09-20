@@ -12,18 +12,18 @@ ufw --force enable
 systemctl daemon-reload
 
 # run-parts --lsbsysinit requires an extensionless name AND the exec bit
-chmod +x /etc/update-motd.d/99-libredb-studio
+chmod +x /etc/update-motd.d/99-storagebase-studio
 
 # cloud-init's runparts silently skips non-executable files (log warning
 # only) — without this line the service is never installed on customer
 # droplets
-chmod +x /var/lib/cloud/scripts/per-instance/99-libredb-first-boot.sh
+chmod +x /var/lib/cloud/scripts/per-instance/99-storagebase-first-boot.sh
 
 mkdir -p /app/data
 chmod 750 /app/data
 
 # Version pinning — must run AFTER the file provisioner
-sed -i "s/PINNED_VERSION/${VERSION}/" /etc/systemd/system/libredb-studio.service
+sed -i "s/PINNED_VERSION/${VERSION}/" /etc/systemd/system/storagebase-studio.service
 
 # Standard 1-Click metadata, mirroring droplet-1-clicks
 # common/scripts/020-application-tag.sh — img-check does not validate it,
@@ -31,7 +31,7 @@ sed -i "s/PINNED_VERSION/${VERSION}/" /etc/systemd/system/libredb-studio.service
 # identify the app and release in a snapshot
 mkdir -p /var/lib/digitalocean
 cat > /var/lib/digitalocean/application.info <<EOM
-application_name="libredb-studio"
+application_name="storagebase-studio"
 build_date="$(date +%Y-%m-%d)"
 distro="$(lsb_release -s -i)"
 distro_release="$(lsb_release -s -r)"

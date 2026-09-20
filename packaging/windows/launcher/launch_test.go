@@ -59,7 +59,7 @@ func TestLauncherEnvHonoursLibredbBind(t *testing.T) {
 func TestLauncherEnvDefaultsStorageUnderLocalAppData(t *testing.T) {
 	localAppData := filepath.Join("C:", "Users", "u", "AppData", "Local")
 	env := launcherEnv([]string{"LOCALAPPDATA=" + localAppData})
-	want := filepath.Join(localAppData, "LibreDB", "Studio", "libredb-storage.db")
+	want := filepath.Join(localAppData, "StorageBase", "Studio", "storagebase-storage.db")
 	if last := lastValue(t, env, "STORAGE_SQLITE_PATH"); last != want {
 		t.Errorf("STORAGE_SQLITE_PATH = %q, want %q", last, want)
 	}
@@ -73,12 +73,12 @@ func TestLauncherEnvKeepsPresetStoragePath(t *testing.T) {
 }
 
 func TestLauncherEnvTreatsEmptyPresetsAsUnset(t *testing.T) {
-	// Parity with packaging/linux/libredb-studio's ${VAR:-} handling: an
+	// Parity with packaging/linux/storagebase-studio's ${VAR:-} handling: an
 	// inherited-but-empty value must not suppress the zero-config defaults
 	// (the server would fall back to ./data inside the install tree).
 	localAppData := filepath.Join("C:", "Users", "u", "AppData", "Local")
 	env := launcherEnv([]string{"STORAGE_SQLITE_PATH=", "NODE_ENV=", "LOCALAPPDATA=" + localAppData})
-	wantStorage := filepath.Join(localAppData, "LibreDB", "Studio", "libredb-storage.db")
+	wantStorage := filepath.Join(localAppData, "StorageBase", "Studio", "storagebase-storage.db")
 	if last := lastValue(t, env, "STORAGE_SQLITE_PATH"); last != wantStorage {
 		t.Errorf("STORAGE_SQLITE_PATH = %q, want the default %q despite the empty preset", last, wantStorage)
 	}
@@ -90,7 +90,7 @@ func TestLauncherEnvTreatsEmptyPresetsAsUnset(t *testing.T) {
 func TestLauncherEnvFallsBackToUserProfile(t *testing.T) {
 	profile := filepath.Join("C:", "Users", "u")
 	env := launcherEnv([]string{"USERPROFILE=" + profile})
-	want := filepath.Join(profile, "AppData", "Local", "LibreDB", "Studio", "libredb-storage.db")
+	want := filepath.Join(profile, "AppData", "Local", "StorageBase", "Studio", "storagebase-storage.db")
 	if last := lastValue(t, env, "STORAGE_SQLITE_PATH"); last != want {
 		t.Errorf("STORAGE_SQLITE_PATH = %q, want the USERPROFILE-derived %q", last, want)
 	}

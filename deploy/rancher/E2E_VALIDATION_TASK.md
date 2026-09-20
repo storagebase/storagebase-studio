@@ -1,7 +1,7 @@
 # Rancher End-to-End Validation - Dynamic Workflow Agent Task
 
 Agent task brief: stand up a real Rancher Manager on this Linux machine, install the
-**latest published LibreDB Studio chart** from the live Helm repository through Rancher,
+**latest published StorageBase Studio chart** from the live Helm repository through Rancher,
 and validate a full scenario matrix (zero-config, manual secrets, strict mode,
 existingSecret, persistence, multi-replica, upgrade). Produce an evidence-backed report
 suitable for `docs/RANCHER.md` and the SUSE Ready for Rancher certification
@@ -137,7 +137,7 @@ Check and record:
 - Tools: `helm` (v3.16+), `kubectl`, `jq`, `curl`, `python3`. Install nothing globally
   without recording it for cleanup.
 - No existing container named `rancher-e2e` and no port conflict.
-- Internet reachability: `https://libredb.org/libredb-studio/index.yaml` resolves and
+- Internet reachability: `https://storagebase.org/storagebase-studio/index.yaml` resolves and
   contains the latest chart version. Record that version as `$CHART_VERSION` and its
   `appVersion` as `$APP_VERSION` - all scenarios pin `--version $CHART_VERSION`.
 
@@ -168,7 +168,7 @@ Gate: `local` cluster Active in the Rancher API, `kubectl` works, versions recor
 This phase ends by emitting the **shared context object** (see Orchestration design);
 every later agent receives it instead of re-deriving the environment.
 
-## Phase 2 - Register the LibreDB Helm repository in Rancher
+## Phase 2 - Register the StorageBase Helm repository in Rancher
 
 Add the repo the way a Rancher user would (Apps > Repositories), declaratively:
 
@@ -177,9 +177,9 @@ kubectl apply -f - <<EOF
 apiVersion: catalog.cattle.io/v1
 kind: ClusterRepo
 metadata:
-  name: libredb
+  name: storagebase
 spec:
-  url: https://libredb.org/libredb-studio/
+  url: https://storagebase.org/storagebase-studio/
 EOF
 ```
 
@@ -187,7 +187,7 @@ Verify through Rancher's own catalog machinery (not plain helm):
 
 - `ClusterRepo` status becomes `Downloaded`/active.
 - The Rancher catalog API serves our index:
-  `GET /v1/catalog.cattle.io.clusterrepos/libredb?link=index` lists `libredb-studio`
+  `GET /v1/catalog.cattle.io.clusterrepos/storagebase?link=index` lists `storagebase-studio`
   with `$CHART_VERSION`.
 
 Gate: chart visible to Rancher's Apps catalog at the expected version.
@@ -196,12 +196,12 @@ Gate: chart visible to Rancher's Apps catalog at the expected version.
 
 Common conventions for every scenario:
 
-- Install with `helm install <release> libredb/libredb-studio --version $CHART_VERSION
+- Install with `helm install <release> storagebase/storagebase-studio --version $CHART_VERSION
   -n <ns> --create-namespace` against the local cluster kubeconfig (the same chart
   Rancher's Apps UI installs; Rancher-side visibility already proven in Phase 2).
-- "Ready" means `kubectl rollout status deploy/<release>-libredb-studio` succeeds within
+- "Ready" means `kubectl rollout status deploy/<release>-storagebase-studio` succeeds within
   the scenario timebox.
-- "Health 200" means port-forward `svc/<release>-libredb-studio 3000:80` and
+- "Health 200" means port-forward `svc/<release>-storagebase-studio 3000:80` and
   `GET /api/db/health` returns 200. Kill the port-forward afterwards; wait for the
   forward to bind before curling.
 - "Login 200" means `POST /api/auth/login` with the scenario's credentials returns 200.
@@ -270,7 +270,7 @@ Common conventions for every scenario:
 ### S9 (optional, only if time remains) - Partner-charts catalog preview
 
 - Add a second ClusterRepo of type Git pointing at the partner-charts fork
-  (`https://github.com/yusuf-gundogdu/partner-charts`, branch `add-libredb-studio`).
+  (`https://github.com/yusuf-gundogdu/partner-charts`, branch `add-storagebase-studio`).
 - Expect: the catalog card renders (name, icon, description from the PR content).
 - Since 2026-08-18 that branch carries chart 0.1.36 (appVersion 0.11.0), so the default
   install works zero-config there as it does from the live Helm repo. The scenario still
@@ -287,7 +287,7 @@ Common conventions for every scenario:
 If browser automation is available (Playwright), capture into
 `deploy/rancher/results/screenshots/`:
 
-- Apps > Charts showing the LibreDB Studio card from the `libredb` repo.
+- Apps > Charts showing the StorageBase Studio card from the `storagebase` repo.
 - The install form / values YAML view.
 - The installed app detail page with the workload green.
 - Pod logs view showing the first-run credentials banner (S1 namespace, before cleanup).
@@ -313,7 +313,7 @@ Write `deploy/rancher/results/RESULTS-<YYYY-MM-DD>.md` (date obtained by an agen
 
 ```bash
 helm uninstall --ignore-not-found ... (every scenario release, every namespace)
-kubectl delete clusterrepo libredb (and the S9 repo if created)
+kubectl delete clusterrepo storagebase (and the S9 repo if created)
 docker rm -f rancher-e2e
 # Remove ONLY volumes this task explicitly created by name (none by default -
 # the Rancher container's state is removed with the container). Never use

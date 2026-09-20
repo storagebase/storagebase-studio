@@ -24,7 +24,7 @@ jobs:
 
             const result = await github.graphql(`
               query {
-                organization(login: "libredb") {
+                organization(login: "storagebase") {
                   sponsorshipsAsMaintainer(first: 100, activeOnly: true) {
                     nodes {
                       sponsorEntity {
@@ -74,7 +74,7 @@ jobs:
             }
 
             if (!section) {
-              section = '_Be the first to sponsor libredb-studio!_\n';
+              section = '_Be the first to sponsor storagebase-studio!_\n';
             }
 
             const readme = fs.readFileSync('README.md', 'utf8');

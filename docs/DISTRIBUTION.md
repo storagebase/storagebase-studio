@@ -1,6 +1,6 @@
 # Distribution & Install Guide
 
-The canonical guide to every supported way of installing and operating LibreDB Studio, and to
+The canonical guide to every supported way of installing and operating StorageBase Studio, and to
 how the release pipeline publishes each channel. For a one-line-per-channel overview, see the
 [Install matrix in the README](../README.md#install).
 
@@ -42,8 +42,8 @@ server log:
 
 ```
 ============================================================
- LibreDB Studio first run: generated admin credentials
- Email:    admin@libredb.org
+ StorageBase Studio first run: generated admin credentials
+ Email:    admin@storagebase.org
  Password: <generated>
  Stored in <data dir>/auth-bootstrap.json (delete the file to regenerate)
 ============================================================
@@ -84,11 +84,11 @@ address family either one selects.
 
 | Channel | Default bind | How to expose |
 |---|---|---|
-| npx | `127.0.0.1` | `npx @libredb/studio --host 0.0.0.0` (or set `HOSTNAME`) |
-| .deb / .rpm (systemd) | `127.0.0.1` | `HOSTNAME=0.0.0.0` in `/etc/libredb-studio/env`, then restart |
-| .deb / .rpm (direct run) | `127.0.0.1` | `LIBREDB_BIND=0.0.0.0 libredb-studio` |
+| npx | `127.0.0.1` | `npx @storagebase/studio --host 0.0.0.0` (or set `HOSTNAME`) |
+| .deb / .rpm (systemd) | `127.0.0.1` | `HOSTNAME=0.0.0.0` in `/etc/storagebase-studio/env`, then restart |
+| .deb / .rpm (direct run) | `127.0.0.1` | `LIBREDB_BIND=0.0.0.0 storagebase-studio` |
 | Homebrew service | `127.0.0.1` | run the binary manually with `LIBREDB_BIND=0.0.0.0`, or front it with a reverse proxy |
-| Snap | `127.0.0.1` | `sudo systemctl edit snap.libredb-studio.libredb-studio.service` with `[Service]` `Environment=HOSTNAME=0.0.0.0` |
+| Snap | `127.0.0.1` | `sudo systemctl edit snap.storagebase-studio.storagebase-studio.service` with `[Service]` `Environment=HOSTNAME=0.0.0.0` |
 | Docker / Helm | resolved at startup: `::` (container-internal, both families) where the namespace allows it, `0.0.0.0` where it does not | publish/route ports as usual (`-p`, Service/Ingress); `HOSTNAME=0.0.0.0` (chart: `config.bindAddress`) to pin it back to IPv4 |
 
 For anything reachable from a network, prefer a reverse proxy with TLS in front and strict mode
@@ -97,7 +97,7 @@ For anything reachable from a network, prefer a reverse proxy with TLS in front 
 A direct run of the `.deb`/`.rpm` wrapper, the Homebrew binary or the snap launcher ignores any
 inherited `HOSTNAME` (empty, or - under Docker - the container ID Next.js would otherwise bind to)
 and defaults to loopback; `LIBREDB_BIND` is the explicit opt-in for that case. Under systemd,
-`HOSTNAME` in `/etc/libredb-studio/env` or the snap unit's drop-in is still the override, since the
+`HOSTNAME` in `/etc/storagebase-studio/env` or the snap unit's drop-in is still the override, since the
 unit resolves it before the wrapper runs (detected via the systemd-set `INVOCATION_ID`, so the
 wrapper leaves it untouched there). The
 Windows launcher rebuilds `HOSTNAME` from `LIBREDB_BIND` on every run, with no systemd exception.
@@ -157,7 +157,7 @@ users over IPv4 today loses it, and an IPv6-only host works with no flags.
 To overrule the resolver, set the address yourself. Docker:
 
 ```bash
-docker run -p 3000:3000 -e HOSTNAME=0.0.0.0 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 -e HOSTNAME=0.0.0.0 ghcr.io/storagebase/storagebase-studio:latest
 ```
 
 For Helm, `config.bindAddress` writes the ConfigMap key (empty by default, which is the "resolve
@@ -180,7 +180,7 @@ same key delivered through `envFrom`.
 > self-heals. That is now reachable only by **pinning** the pod to an IPv4 literal
 > (`config.bindAddress`, or an `extraEnv` `HOSTNAME`) alongside a dual-stack Service, and the chart
 > warns at install time when you do. See the chart
-> [README](../charts/libredb-studio/README.md#ipv6-and-dual-stack).
+> [README](../charts/storagebase-studio/README.md#ipv6-and-dual-stack).
 
 The native channels are unaffected by all of this. They stay on `127.0.0.1` by default - a
 deliberate local-first choice for a server sharing someone's machine, not an oversight the
@@ -194,26 +194,26 @@ Release tags carry **no `v` prefix** (tag `0.9.41` == package.json version). Eac
 
 | Artifact | Name | Targets |
 |---|---|---|
-| Standalone server tarball | `libredb-studio-standalone-<version>-<os>-<arch>.tar.gz` | `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64` |
-| Standalone server zip (Windows) | `libredb-studio-standalone-<version>-win32-x64.zip` | `win32-x64` (bundled Node runtime + `libredb-studio.exe` launcher) |
+| Standalone server tarball | `storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz` | `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64` |
+| Standalone server zip (Windows) | `storagebase-studio-standalone-<version>-win32-x64.zip` | `win32-x64` (bundled Node runtime + `storagebase-studio.exe` launcher) |
 | Checksums | `SHA256SUMS` | covers all standalone tarballs and the win32 zip |
-| Debian package | `libredb-studio_<version>_<arch>.deb` (+ `.sha256` sidecar) | `amd64`, `arm64` |
-| RPM package | `libredb-studio-<version>.<arch>.rpm` (+ `.sha256` sidecar) | `x86_64`, `aarch64` |
-| Snap | `libredb-studio_<version>_<arch>.snap` | `amd64`, `arm64` (also published to the Snap Store) |
-| Desktop AppImage | `libredb-studio-desktop-<version>-linux-<arch>.AppImage` (+ `.sha256` sidecar) | `x64`, `arm64` (also the artifact the in-repo Flatpak manifest repacks) |
-| Desktop Debian package | `libredb-studio-desktop_<version>_<arch>.deb` (+ `.sha256` sidecar) | `amd64`, `arm64` (from 0.9.62; the artifact FlatPark pins as extra-data) |
+| Debian package | `storagebase-studio_<version>_<arch>.deb` (+ `.sha256` sidecar) | `amd64`, `arm64` |
+| RPM package | `storagebase-studio-<version>.<arch>.rpm` (+ `.sha256` sidecar) | `x86_64`, `aarch64` |
+| Snap | `storagebase-studio_<version>_<arch>.snap` | `amd64`, `arm64` (also published to the Snap Store) |
+| Desktop AppImage | `storagebase-studio-desktop-<version>-linux-<arch>.AppImage` (+ `.sha256` sidecar) | `x64`, `arm64` (also the artifact the in-repo Flatpak manifest repacks) |
+| Desktop Debian package | `storagebase-studio-desktop_<version>_<arch>.deb` (+ `.sha256` sidecar) | `amd64`, `arm64` (from 0.9.62; the artifact FlatPark pins as extra-data) |
 
 `SHA256SUMS` covers the standalone tarballs and the win32 zip; each `.deb`/`.rpm`/`.AppImage`
 ships its own per-file `<artifact>.sha256` sidecar instead (those are built in separate jobs).
 
 **Two different `.deb`s ship per release and they are not interchangeable.**
-`libredb-studio_<version>_<arch>.deb` is the headless server: it installs a systemd unit and is
-built by nfpm from `packaging/linux/nfpm.yaml`. `libredb-studio-desktop_<version>_<arch>.deb` is the
+`storagebase-studio_<version>_<arch>.deb` is the headless server: it installs a systemd unit and is
+built by nfpm from `packaging/linux/nfpm.yaml`. `storagebase-studio-desktop_<version>_<arch>.deb` is the
 GUI app: a desktop entry, the Tauri shell, the pinned Node sidecar and the server payload, built by
 the Tauri bundler in the same job as the AppImage. Different file names and different dpkg package
-names (`libredb-studio` vs `libredb-studio-desktop`), so both can be installed on one machine.
+names (`storagebase-studio` vs `storagebase-studio-desktop`), so both can be installed on one machine.
 
-Standalone tarball entries are rooted under a top-level `libredb-studio-<version>/` directory
+Standalone tarball entries are rooted under a top-level `storagebase-studio-<version>/` directory
 (not a tarbomb) - extract with `tar --strip-components=1` (`tar xzf <artifact>
 --strip-components=1`), which is what the npx launcher, the deb/rpm/snap packaging jobs, and
 `scripts/build-standalone-payload.sh`'s own `--smoke` self-test all do; Homebrew strips the single
@@ -223,7 +223,7 @@ extra flag.
 The **win32 zip is deliberately FLAT** (entries at the archive root, no versioned wrapper
 directory - `scripts/lib/pack-standalone-zip.sh`): winget resolves the manifest's
 `NestedInstallerFiles.RelativeFilePath` against the zip root and `wingetcreate update` never
-rewrites that path, so it must stay `libredb-studio.exe` across releases; Chocolatey likewise
+rewrites that path, so it must stay `storagebase-studio.exe` across releases; Chocolatey likewise
 unzips straight into its package tools directory. Windows Explorer's "Extract All" already
 defaults to a folder named after the zip, so manual extraction stays tidy.
 
@@ -237,20 +237,20 @@ personal files sitting at the repo root can still be traced in, so keep secrets 
 repo root (CI release checkouts are clean; published artifacts are unaffected).
 
 Download URL pattern:
-`https://github.com/libredb/libredb-studio/releases/download/<version>/<artifact>`.
+`https://github.com/storagebase/storagebase-studio/releases/download/<version>/<artifact>`.
 
 ## Docker
 
-`ghcr.io/libredb/libredb-studio` is the canonical image (no pull rate limits). Docker Hub
-(`libredb/libredb-studio`) is a discoverability mirror only.
+`ghcr.io/storagebase/storagebase-studio` is the canonical image (no pull rate limits). Docker Hub
+(`storagebase/storagebase-studio`) is a discoverability mirror only.
 
 ```bash
 # Zero-config: the first run prints the generated admin password to the log
-docker run --name libredb-studio -p 3000:3000 \
-  -v libredb-data:/app/data \
-  ghcr.io/libredb/libredb-studio:latest
+docker run --name storagebase-studio -p 3000:3000 \
+  -v storagebase-data:/app/data \
+  ghcr.io/storagebase/storagebase-studio:latest
 
-docker logs libredb-studio   # shows the first-run credentials banner
+docker logs storagebase-studio   # shows the first-run credentials banner
 ```
 
 The `/app/data` volume persists the generated credentials and the server-side SQLite storage;
@@ -259,12 +259,12 @@ without it, a recreated container generates new credentials.
 Production (strict mode, explicit secrets):
 
 ```bash
-docker run --name libredb-studio -p 3000:3000 \
+docker run --name storagebase-studio -p 3000:3000 \
   -e AUTH_BOOTSTRAP=off \
   -e JWT_SECRET=change-me-to-a-random-32-char-string \
-  -e ADMIN_EMAIL=admin@libredb.org \
+  -e ADMIN_EMAIL=admin@storagebase.org \
   -e ADMIN_PASSWORD=your_secure_admin_password \
-  ghcr.io/libredb/libredb-studio:latest
+  ghcr.io/storagebase/storagebase-studio:latest
 ```
 
 All environment variables are documented in [`.env.example`](../.env.example); a ready-to-use
@@ -298,8 +298,8 @@ released version) when you need arm64 from an unreleased line.
 ## Helm (Kubernetes)
 
 ```bash
-helm repo add libredb https://libredb.org/libredb-studio/
-helm install libredb libredb/libredb-studio \
+helm repo add storagebase https://storagebase.org/storagebase-studio/
+helm install storagebase storagebase/storagebase-studio \
   --set secrets.jwtSecret=$(openssl rand -base64 32) \
   --set secrets.adminPassword=MyAdmin123
 ```
@@ -307,7 +307,7 @@ helm install libredb libredb/libredb-studio \
 Or from the OCI registry:
 
 ```bash
-helm install libredb oci://ghcr.io/libredb/charts/libredb-studio \
+helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio \
   --set secrets.jwtSecret=$(openssl rand -base64 32) \
   --set secrets.adminPassword=MyAdmin123
 ```
@@ -317,10 +317,10 @@ omits the variable, so the app default applies): `helm install` works with no va
 production, inject real secrets as above, or enforce them with strict mode
 (`--set config.authBootstrap=off`).
 
-The chart's own [`README.md`](../charts/libredb-studio/README.md#auth-bootstrap-zero-config-vs-strict)
+The chart's own [`README.md`](../charts/storagebase-studio/README.md#auth-bootstrap-zero-config-vs-strict)
 is the canonical description of that behaviour — credential retrieval, what strict mode requires per
 auth provider, persistence and the single-replica constraint. Full values reference:
-[`charts/libredb-studio/README.md`](../charts/libredb-studio/README.md); chart architecture:
+[`charts/storagebase-studio/README.md`](../charts/storagebase-studio/README.md); chart architecture:
 [`docs/HELM_CHART.md`](HELM_CHART.md).
 
 On a dual-stack cluster, set `service.ipFamilyPolicy` (and optionally `service.ipFamilies`) - that
@@ -333,12 +333,12 @@ an IPv6 address that refuses every connection, and the install notes warn about 
 ## OpenShift operator (OperatorHub)
 
 `operator/` packages the published Helm chart as a codeless helm-operator
-(operator-sdk helm plugin): a `LibreDBStudio` custom resource whose spec mirrors
+(operator-sdk helm plugin): a `StorageBaseStudio` custom resource whose spec mirrors
 the chart values. Publishing works in two stages:
 
 - **Controller image** — `.github/workflows/operator-release.yml` builds and
-  pushes `ghcr.io/libredb/libredb-studio-operator:<version>` (amd64+arm64) on
-  every app release. Chart releases (`libredb-studio-x.y.z` tags) are skipped
+  pushes `ghcr.io/storagebase/storagebase-studio-operator:<version>` (amd64+arm64) on
+  every app release. Chart releases (`storagebase-studio-x.y.z` tags) are skipped
   quietly. The embedded chart's declared dependencies are vendored with
   `helm dependency build` right before the image build; `charts/*.tgz` is
   never committed.
@@ -374,18 +374,18 @@ PR touches `operator/`. The operator Makefile derives `VERSION` from
 A community-operators-prod release in FBC mode always takes two merges, and
 only the first one is triggered by the bundle:
 
-1. **Bundle PR** — `operators/libredb-studio-operator/<version>/` (a copy of
+1. **Bundle PR** — `operators/storagebase-studio-operator/<version>/` (a copy of
    `operator/bundle`) plus `ci.yaml`, `Makefile` and `catalog-templates/`.
    Merging it runs the release pipeline, which publishes
-   `quay.io/community-operator-pipeline-prod/libredb-studio-operator:<version>`.
+   `quay.io/community-operator-pipeline-prod/storagebase-studio-operator:<version>`.
    The operator is released at this point but is in **no** catalog yet, so
    nothing is installable from the OpenShift console.
 2. **Catalog PR** — the rendered
-   `catalogs/v4.15..v4.22/libredb-studio-operator/catalog.yaml` files, one per
+   `catalogs/v4.15..v4.22/storagebase-studio-operator/catalog.yaml` files, one per
    OCP version in the `catalog_mapping`. Render them from a fork's checkout:
 
    ```bash
-   cd operators/libredb-studio-operator
+   cd operators/storagebase-studio-operator
    make catalogs           # opm alpha render-template, driven by ci.yaml
    make validate-catalogs  # opm validate; must pass for every mapped version
    ```
@@ -401,7 +401,7 @@ the manual instructions in its summary comment. 0.9.59 shipped without one, so
 its catalog PR
 ([community-operators-prod#10581](https://github.com/redhat-openshift-ecosystem/community-operators-prod/pull/10581))
 was rendered and opened by hand. Every submission since carries the file at
-`operators/libredb-studio-operator/<version>/release-config.yaml`, written by
+`operators/storagebase-studio-operator/<version>/release-config.yaml`, written by
 the `submit-catalogs` job rather than by hand:
 
 ```yaml
@@ -409,7 +409,7 @@ the `submit-catalogs` job rather than by hand:
 catalog_templates:
   - template_name: basic.yaml
     channels: [alpha]
-    replaces: libredb-studio-operator.v<previous version in this catalog>
+    replaces: storagebase-studio-operator.v<previous version in this catalog>
 ```
 
 `replaces` and not `skipRange`. A skipRange contributes no edge to the FBC
@@ -467,7 +467,7 @@ This is what lost VictoriaMetrics 0.48.2, and their record is the reason to take
 
 Detection is **path-based, never title-based**.
 The hub rewrites submission titles on open and on every push, inserting markers in a fixed order (`operator [O] [R] [N] [CI] [PK] <name> (<versions>)`) and listing more than one version for a multi-version pull request.
-Our own #8794 was accepted and renamed to `operator [N] [CI] libredb-studio-operator (0.9.59)`.
+Our own #8794 was accepted and renamed to `operator [N] [CI] storagebase-studio-operator (0.9.59)`.
 So the job searches for open pull requests mentioning the operator and then reads each one's changed files, treating `operators/<operator>/<version>/...` as the submission and ignoring a `ci.yaml` edit or the bot's `catalogs/v4.x/...` follow-up.
 `scripts/operator-catalog-submission.mjs` holds that logic as pure functions, tested in `tests/unit/operator-catalog-submission.test.ts`; the workflow step is a thin caller.
 
@@ -479,7 +479,7 @@ Our list is `cevheri` and `yusuf-gundogdu`, so the token must belong to one of t
 Signing is DCO, not GPG.
 `create-pull-request` writes the `Signed-off-by` trailer from its **committer** input, whose default is `github-actions[bot]`, so `committer` and `author` are both set to the same real identity; `sign-commits` stays off, because it recreates commits through the API and discards those identities, leaving a trailer that no longer matches the author.
 
-The forks are `libredb/community-operators` and `libredb/community-operators-prod`.
+The forks are `storagebase/community-operators` and `storagebase/community-operators-prod`.
 They were **transferred** from the `cevheri` account rather than re-forked, which is the only way that keeps `parent` pointing at the upstream: an org fork created from a personal fork records the personal fork as its parent, a parent cannot be changed afterwards, and the only escape ("leave fork network") is permanent and destroys the pull requests.
 The job asserts that parent on every run for the same reason.
 
@@ -508,7 +508,7 @@ Measured, with a local registry and two bundle images:
 
 | `--mode` | bundle | exit |
 |---|---|---|
-| `replaces` | committed bundle, skipRange only | 1, `add prunes bundle libredb-studio-operator.v0.9.59` |
+| `replaces` | committed bundle, skipRange only | 1, `add prunes bundle storagebase-studio-operator.v0.9.59` |
 | `replaces` | with `spec.replaces` injected | 0 |
 | `semver` | committed bundle, skipRange only | 0 |
 
@@ -543,30 +543,30 @@ tier in CI):
 
 > **Below the floor, npm pins rather than refuses.** `engines.node` does not produce an error for a
 > bare spec: npm's version picker silently resolves the newest *engine-compatible* release instead,
-> so a Node 20/22 user running `npx @libredb/studio` lands on the last release that still allowed
+> so a Node 20/22 user running `npx @storagebase/studio` lands on the last release that still allowed
 > their runtime - with no notice that a newer Studio exists. That pin is only acceptable while it
 > lands on a runnable release, which the `pinned` legs of `npx-engine-smoke.yml` assert against the
 > live registry (issue #130 was this mechanism dropping users onto an ancient, bin-less version).
 > To make the pin visible, the release runbook `npm deprecate`s the last pre-floor version with a
 > pointer to the Node 24 requirement - a deprecation notice is the one message npm *does* print on
-> install. A user who pins the new version explicitly (`npx @libredb/studio@<version>`) gets the
+> install. A user who pins the new version explicitly (`npx @storagebase/studio@<version>`) gets the
 > launcher's own preflight refusal naming the required runtime.
 
 The npm package stays a pure library for
 libredb-platform; the launcher downloads the matching standalone archive (tar.gz; the flat zip
 on Windows) from the GitHub release, verifies it against the `SHA256SUMS` release asset, caches
-it under `~/.libredb-studio/<version>/`, and starts `node server.js`:
+it under `~/.storagebase-studio/<version>/`, and starts `node server.js`:
 
 ```bash
-npx @libredb/studio                # first run downloads + verifies, then starts
-npx @libredb/studio --port 8080    # or set PORT
-npx @libredb/studio --help
+npx @storagebase/studio                # first run downloads + verifies, then starts
+npx @storagebase/studio --port 8080    # or set PORT
+npx @storagebase/studio --help
 ```
 
 `--archive` starts from a local tarball and **skips checksum verification** unless you pin a
 digest with `--archive-sha256 <hex>` - only use archives you built yourself or obtained from a
 trusted source. Downloads retry transient failures with
-backoff and abort when the connection stalls. The cache in `~/.libredb-studio/<version>/` lives
+backoff and abort when the connection stalls. The cache in `~/.storagebase-studio/<version>/` lives
 in your home directory's trust domain; `--verify-cache` re-checks the cached tarball against the
 cached `SHA256SUMS` and re-extracts the payload. Re-extraction (`--verify-cache` and every
 `--archive` run) preserves the payload's `data/` directory - generated `auth-bootstrap.json`
@@ -585,16 +585,16 @@ rebuilt archive never invalidates a previously printed admin password.
   re-extracted on every run).
 - On Windows the launcher downloads the win32 zip and extracts it with the built-in
   `System32\tar.exe` (bsdtar); see [Windows](#windows-winget--chocolatey--portable-zip)
-  ([issue #114](https://github.com/libredb/libredb-studio/issues/114)).
+  ([issue #114](https://github.com/storagebase/storagebase-studio/issues/114)).
 - Versions released before the standalone tarballs existed have no artifacts; the launcher
-  detects this (HTTP 404) and suggests `npx @libredb/studio@latest`.
+  detects this (HTTP 404) and suggests `npx @storagebase/studio@latest`.
 - The npm package is published with **npm provenance** (`npm publish --provenance` in
   `npm-publish.yml`, from 0.9.63). npmjs stores a Sigstore attestation naming the repo, workflow
   and commit that built the tarball, so `npm audit signatures` verifies the package against a
   trust root outside the release:
 
   ```bash
-  npm i @libredb/studio && npm audit signatures   # "verified registry signatures / attestations"
+  npm i @storagebase/studio && npm audit signatures   # "verified registry signatures / attestations"
   ```
 
   This covers the package you install from npm. The standalone archive the launcher downloads
@@ -629,48 +629,48 @@ e.g. during a GitHub attestation outage): `LIBREDB_STUDIO_SKIP_PROVENANCE=1`.
 Verify by hand at any time:
 
 ```bash
-gh attestation verify ~/.libredb-studio/<version>/libredb-studio-standalone-<version>-<os>-<arch>.tar.gz \
-  --repo libredb/libredb-studio \
-  --signer-workflow libredb/libredb-studio/.github/workflows/release-artifacts.yml
+gh attestation verify ~/.storagebase-studio/<version>/storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz \
+  --repo storagebase/storagebase-studio \
+  --signer-workflow storagebase/storagebase-studio/.github/workflows/release-artifacts.yml
 ```
 
 ## Homebrew
 
 The formula tracks the latest release (it is rendered and pushed to
-[`libredb/homebrew-tap`](https://github.com/libredb/homebrew-tap) by release CI):
+[`storagebase/homebrew-tap`](https://github.com/storagebase/homebrew-tap) by release CI):
 
 ```bash
 # One-time: Homebrew's untrusted-tap policy requires trusting third-party
 # taps. `brew trust` needs Homebrew 6+ - if it prints "Unknown command",
 # run `brew update` first (pre-6 Homebrew installs the tap without a trust
 # step, but the command below would stop the chain).
-brew trust libredb/tap
+brew trust storagebase/tap
 
-brew install libredb/tap/libredb-studio
+brew install storagebase/tap/storagebase-studio
 
 # Foreground (first run prints the generated admin password to the terminal)
-libredb-studio
+storagebase-studio
 
 # Or as a background service
-brew services start libredb-studio
+brew services start storagebase-studio
 ```
 
 - The formula depends on Homebrew's `node@24` — the reference runtime the payload is built and
   smoke-tested on — and installs the standalone payload into the keg's `libexec`;
-  `libredb-studio` on your PATH runs it. The pin used to be a hard requirement, because the
+  `storagebase-studio` on your PATH runs it. The pin used to be a hard requirement, because the
   bundled better-sqlite3 binding was compiled per Node ABI and a newer major could not load it.
   Since better-sqlite3 13 that is no longer true (N-API prebuilds, see the [npx](#npx) support
   table), so the pin is now conservatism rather than necessity: it keeps Homebrew users on the
   major CI actually exercises instead of whichever one the floating `node` formula points at.
-- `brew services start libredb-studio` runs the server on port 3000 with server-side SQLite
-  storage (it sets `STORAGE_PROVIDER=sqlite`) under `$(brew --prefix)/var/libredb-studio/` —
+- `brew services start storagebase-studio` runs the server on port 3000 with server-side SQLite
+  storage (it sets `STORAGE_PROVIDER=sqlite`) under `$(brew --prefix)/var/storagebase-studio/` —
   the data dir where generated credentials are persisted. The service does not capture stdout,
-  so read the generated password from `$(brew --prefix)/var/libredb-studio/auth-bootstrap.json`.
+  so read the generated password from `$(brew --prefix)/var/storagebase-studio/auth-bootstrap.json`.
   On Linux, `brew services` registers a per-user systemd unit (`~/.config/systemd/user`): it
   starts at login — not at boot — and stops when your last session ends unless lingering is
   enabled (`loginctl enable-linger $USER`).
-- Running `libredb-studio` directly also defaults `STORAGE_SQLITE_PATH` to
-  `$(brew --prefix)/var/libredb-studio/libredb-storage.db` — the same location `brew services`
+- Running `storagebase-studio` directly also defaults `STORAGE_SQLITE_PATH` to
+  `$(brew --prefix)/var/storagebase-studio/storagebase-storage.db` — the same location `brew services`
   uses — unless you set it explicitly. This keeps the zero-config `auth-bootstrap.json` (and any
   `STORAGE_PROVIDER=sqlite` data) outside the versioned keg so it survives `brew upgrade`, and
   lets both run modes share one data dir.
@@ -680,7 +680,7 @@ brew services start libredb-studio
 All configuration is environment-driven. The formula does not ship an env file (unlike
 `.deb`/`.rpm`).
 
-**Foreground** (`libredb-studio`): export variables in your shell, or prefix the command.
+**Foreground** (`storagebase-studio`): export variables in your shell, or prefix the command.
 Explicit values override [zero-config first run](#zero-config-first-run). Bind with
 `LIBREDB_BIND` (the wrapper maps it to `HOSTNAME` — see [Network exposure](#network-exposure-bind-address)):
 
@@ -688,9 +688,9 @@ Explicit values override [zero-config first run](#zero-config-first-run). Bind w
 # AI, auth, OIDC, or Postgres storage — same variables as .env.example
 export LLM_PROVIDER=openai LLM_API_KEY=sk-... LLM_MODEL=gpt-4o
 # export NEXT_PUBLIC_AUTH_PROVIDER=oidc OIDC_ISSUER=... OIDC_CLIENT_ID=... OIDC_CLIENT_SECRET=...
-# export STORAGE_PROVIDER=postgres STORAGE_POSTGRES_URL=postgresql://user:pass@127.0.0.1:5432/libredb
-# LIBREDB_BIND=0.0.0.0 libredb-studio   # expose beyond loopback
-libredb-studio
+# export STORAGE_PROVIDER=postgres STORAGE_POSTGRES_URL=postgresql://user:pass@127.0.0.1:5432/storagebase
+# LIBREDB_BIND=0.0.0.0 storagebase-studio   # expose beyond loopback
+storagebase-studio
 ```
 
 **`brew services`:** the service block only sets `STORAGE_PROVIDER=sqlite`,
@@ -706,86 +706,86 @@ Storage: [`docs/STORAGE.md`](STORAGE.md).
 
 Native packages for Debian/Ubuntu and RHEL/Fedora (amd64/x86_64 and arm64/aarch64) are attached
 to every GitHub release. They bundle the standalone server together
-with a private, checksum-verified Node.js runtime under `/usr/lib/libredb-studio` — nothing else
+with a private, checksum-verified Node.js runtime under `/usr/lib/storagebase-studio` — nothing else
 to install — and register a hardened systemd service:
 
 ```bash
 VERSION=<version>   # e.g. 0.9.42 - release tags have no v prefix
 
 # Debian / Ubuntu
-curl -fsSLO "https://github.com/libredb/libredb-studio/releases/download/${VERSION}/libredb-studio_${VERSION}_amd64.deb"
-curl -fsSLO "https://github.com/libredb/libredb-studio/releases/download/${VERSION}/libredb-studio_${VERSION}_amd64.deb.sha256"
-sha256sum -c "libredb-studio_${VERSION}_amd64.deb.sha256"
-sudo dpkg -i "libredb-studio_${VERSION}_amd64.deb"
+curl -fsSLO "https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/storagebase-studio_${VERSION}_amd64.deb"
+curl -fsSLO "https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/storagebase-studio_${VERSION}_amd64.deb.sha256"
+sha256sum -c "storagebase-studio_${VERSION}_amd64.deb.sha256"
+sudo dpkg -i "storagebase-studio_${VERSION}_amd64.deb"
 
 # RHEL / Fedora / Rocky
-curl -fsSLO "https://github.com/libredb/libredb-studio/releases/download/${VERSION}/libredb-studio-${VERSION}.x86_64.rpm"
-curl -fsSLO "https://github.com/libredb/libredb-studio/releases/download/${VERSION}/libredb-studio-${VERSION}.x86_64.rpm.sha256"
-sha256sum -c "libredb-studio-${VERSION}.x86_64.rpm.sha256"
-sudo rpm -i "libredb-studio-${VERSION}.x86_64.rpm"
+curl -fsSLO "https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/storagebase-studio-${VERSION}.x86_64.rpm"
+curl -fsSLO "https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/storagebase-studio-${VERSION}.x86_64.rpm.sha256"
+sha256sum -c "storagebase-studio-${VERSION}.x86_64.rpm.sha256"
+sudo rpm -i "storagebase-studio-${VERSION}.x86_64.rpm"
 ```
 
 Operate it with systemd:
 
 ```bash
-sudo systemctl enable --now libredb-studio   # start now and on boot
-journalctl -u libredb-studio                 # first run prints the generated admin password here
-sudo systemctl restart libredb-studio        # apply configuration changes
+sudo systemctl enable --now storagebase-studio   # start now and on boot
+journalctl -u storagebase-studio                 # first run prints the generated admin password here
+sudo systemctl restart storagebase-studio        # apply configuration changes
 ```
 
-- **Configuration** lives in `/etc/libredb-studio/env` (`KEY=value` lines, loaded by the unit
+- **Configuration** lives in `/etc/storagebase-studio/env` (`KEY=value` lines, loaded by the unit
   via `EnvironmentFile`). The installed file is a commented template covering `PORT`,
   `HOSTNAME`, `AUTH_BOOTSTRAP`, `JWT_SECRET`, `ADMIN_*` / `USER_*`, and `LLM_*`. It is mode
   0600 (read by systemd as root before privileges drop, so secrets stay away from other users)
   and marked as a config file — package upgrades never overwrite your edits.
 - **State** (server-side SQLite storage and generated credentials) lives in
-  `/var/lib/libredb-studio`, owned by the service's `DynamicUser` account.
+  `/var/lib/storagebase-studio`, owned by the service's `DynamicUser` account.
 - The unit runs with systemd hardening (`ProtectSystem=strict`, `NoNewPrivileges`, empty
   capability set, ...) and only writes its state directory.
-- The `libredb-studio` command (`/usr/bin/libredb-studio`) can also be run directly without
+- The `storagebase-studio` command (`/usr/bin/storagebase-studio`) can also be run directly without
   systemd; configuration then comes from your shell environment, and state defaults to
-  `${XDG_STATE_HOME:-~/.local/state}/libredb-studio/` when `STORAGE_SQLITE_PATH` is unset (the
+  `${XDG_STATE_HOME:-~/.local/state}/storagebase-studio/` when `STORAGE_SQLITE_PATH` is unset (the
   payload directory under `/usr/lib` is read-only).
 - Removal (`apt remove` / `rpm -e`) stops and disables the service; upgrades restart it if it
   is running (standard systemd maintainer scripts, `packaging/linux/scripts/`).
 
 ## Snap
 
-Published on the [Snap Store](https://snapcraft.io/libredb-studio) for amd64 and arm64 (live
+Published on the [Snap Store](https://snapcraft.io/storagebase-studio) for amd64 and arm64 (live
 since 0.9.52; release CI publishes every release to the `stable` channel):
 
 ```bash
-sudo snap install libredb-studio
-sudo snap logs libredb-studio   # first run prints the generated admin password here
+sudo snap install storagebase-studio
+sudo snap logs storagebase-studio   # first run prints the generated admin password here
 ```
 
 - Installing the snap starts a background daemon serving on port 3000.
 - State (SQLite storage, generated credentials) lives in `$SNAP_DATA`
-  (`/var/snap/libredb-studio/current`).
+  (`/var/snap/storagebase-studio/current`).
 - The snap is **strictly confined** with only the `network` / `network-bind` interfaces: TCP
   database connections are the supported path; unix-socket connections to databases on the
   host (e.g. `/var/run/postgresql/`) are not supported.
 - The `.snap` file is also attached to each GitHub release for offline installs
-  (`sudo snap install --dangerous libredb-studio_<version>_amd64.snap`).
+  (`sudo snap install --dangerous storagebase-studio_<version>_amd64.snap`).
 
 ### Configuration
 
-Unlike the `.deb`/`.rpm` packages (which ship `/etc/libredb-studio/env`), the snap has no
+Unlike the `.deb`/`.rpm` packages (which ship `/etc/storagebase-studio/env`), the snap has no
 dedicated config file. Override environment variables with a systemd drop-in on the unit snapd
 generates:
 
 ```bash
-sudo systemctl edit snap.libredb-studio.libredb-studio.service
+sudo systemctl edit snap.storagebase-studio.storagebase-studio.service
 ```
 
 Add `[Service]` `Environment=` lines, then restart:
 
 ```bash
-sudo systemctl restart snap.libredb-studio.libredb-studio.service
+sudo systemctl restart snap.storagebase-studio.storagebase-studio.service
 ```
 
 The drop-in is written to
-`/etc/systemd/system/snap.libredb-studio.libredb-studio.service.d/override.conf`
+`/etc/systemd/system/snap.storagebase-studio.storagebase-studio.service.d/override.conf`
 (root-owned). Explicit values override the defaults in
 [`snap/local/launch.sh`](../snap/local/launch.sh) and take precedence over
 [zero-config first run](#zero-config-first-run) generation. The snap manifest deliberately sets
@@ -795,7 +795,7 @@ creates the drop-in world-readable (mode 0644, like any systemd override), so af
 secrets tighten it — systemd reads drop-ins as root, so this does not affect the service:
 
 ```bash
-sudo chmod 600 /etc/systemd/system/snap.libredb-studio.libredb-studio.service.d/override.conf
+sudo chmod 600 /etc/systemd/system/snap.storagebase-studio.storagebase-studio.service.d/override.conf
 ```
 
 Example drop-in (uncomment and fill what you need):
@@ -808,7 +808,7 @@ Example drop-in (uncomment and fill what you need):
 # Auth (optional; omit to keep zero-config bootstrap)
 #Environment=AUTH_BOOTSTRAP=off
 #Environment=JWT_SECRET=change-me-to-a-random-32-char-string
-#Environment=ADMIN_EMAIL=admin@libredb.org
+#Environment=ADMIN_EMAIL=admin@storagebase.org
 #Environment=ADMIN_PASSWORD=
 
 # AI query assistance
@@ -825,11 +825,11 @@ Example drop-in (uncomment and fill what you need):
 
 # Persisted storage (default: sqlite under $SNAP_DATA — leave unset to keep it)
 #Environment=STORAGE_PROVIDER=postgres
-#Environment=STORAGE_POSTGRES_URL=postgresql://user:pass@127.0.0.1:5432/libredb?sslmode=disable
+#Environment=STORAGE_POSTGRES_URL=postgresql://user:pass@127.0.0.1:5432/storagebase?sslmode=disable
 ```
 
 **Storage:** by default the snap sets `STORAGE_PROVIDER=sqlite` and
-`STORAGE_SQLITE_PATH=$SNAP_DATA/libredb-storage.db` — no further config is required. To switch
+`STORAGE_SQLITE_PATH=$SNAP_DATA/storagebase-storage.db` — no further config is required. To switch
 to server-side Postgres, uncomment the `STORAGE_PROVIDER` / `STORAGE_POSTGRES_URL` lines above
 (TCP only; unix-socket Postgres on the host is not reachable under strict confinement).
 
@@ -839,14 +839,14 @@ Full variable reference: [`.env.example`](../.env.example). OIDC setup details:
 ## Windows (winget / Chocolatey / portable zip)
 
 The win32-x64 standalone zip is built and attached to every
-[GitHub release](https://github.com/libredb/libredb-studio/releases) since 0.9.59.
+[GitHub release](https://github.com/storagebase/storagebase-studio/releases) since 0.9.59.
 **winget is live**: the first listing
 ([microsoft/winget-pkgs#402985](https://github.com/microsoft/winget-pkgs/pull/402985)) merged on
-2026-07-31, so `winget install LibreDB.Studio` resolves from the community repository and every
+2026-07-31, so `winget install StorageBase.Studio` resolves from the community repository and every
 release now submits its update PR automatically. **Chocolatey is live as well**: the first push
-(0.9.59) was approved by a community moderator on 2026-08-24, so `choco install libredb-studio`
+(0.9.59) was approved by a community moderator on 2026-08-24, so `choco install storagebase-studio`
 resolves from the community repository and every release packs and pushes automatically (track
-[issue #114](https://github.com/libredb/libredb-studio/issues/114)).
+[issue #114](https://github.com/storagebase/storagebase-studio/issues/114)).
 
 > **Chocolatey was switched off in the inventory until its moderation cleared**
 > (`update.ci_enabled` in [`distribution/channels.yaml`](../distribution/channels.yaml) — see
@@ -863,13 +863,13 @@ resolves from the community repository and every release packs and pushes automa
 
 ```powershell
 # winget
-winget install LibreDB.Studio
+winget install StorageBase.Studio
 
 # Chocolatey
-choco install libredb-studio
+choco install storagebase-studio
 
 # Then, from any terminal - first run prints the generated admin credentials
-libredb-studio
+storagebase-studio
 ```
 
 > **Organizations:** from **2027-01-01** Chocolatey's Terms of Service restrict *using* the
@@ -878,19 +878,19 @@ libredb-studio
 > repository upstream, and install from there
 > ([policy update](https://blog.chocolatey.org/2026/06/updated-tos/)). The restriction is on
 > consumption, not publication: it does not touch this repository's ability to publish, personal
-> use stays permitted, and `choco install libredb-studio` is unchanged when it resolves from an
+> use stays permitted, and `choco install storagebase-studio` is unchanged when it resolves from an
 > internal mirror. winget carries no equivalent restriction.
 
 Open http://127.0.0.1:3000 and log in with the printed credentials. Both packages install the
 same standalone zip: the server payload, a bundled private Node.js runtime (`node\node.exe`),
-and the `libredb-studio.exe` launcher — nothing else to install.
+and the `storagebase-studio.exe` launcher — nothing else to install.
 
 The launcher mirrors the Linux packages' contract:
 
 - **Local-first bind (issue #134):** the server binds `127.0.0.1` regardless of any inherited
   `HOSTNAME`; set `LIBREDB_BIND=0.0.0.0` to expose it on the network.
 - **State:** server-side SQLite storage and generated first-run credentials live under
-  `%LOCALAPPDATA%\LibreDB\Studio\` (created on first run) unless `STORAGE_SQLITE_PATH` is set,
+  `%LOCALAPPDATA%\StorageBase\Studio\` (created on first run) unless `STORAGE_SQLITE_PATH` is set,
   so upgrades and reinstalls never wipe state.
 - **Configuration:** environment variables only — the same set as Docker and the Linux packages
   (`PORT`, `LIBREDB_BIND`, `JWT_SECRET`, `ADMIN_PASSWORD`, `LLM_*`, `OIDC_*`, `STORAGE_*`, ...).
@@ -898,38 +898,38 @@ The launcher mirrors the Linux packages' contract:
 
 ### Portable zip (no package manager)
 
-Download `libredb-studio-standalone-<version>-win32-x64.zip` and `SHA256SUMS` from the
-[release](https://github.com/libredb/libredb-studio/releases), verify, extract, run:
+Download `storagebase-studio-standalone-<version>-win32-x64.zip` and `SHA256SUMS` from the
+[release](https://github.com/storagebase/storagebase-studio/releases), verify, extract, run:
 
 ```powershell
 # Verify (compare against the SHA256SUMS line for the zip)
-Get-FileHash .\libredb-studio-standalone-<version>-win32-x64.zip -Algorithm SHA256
+Get-FileHash .\storagebase-studio-standalone-<version>-win32-x64.zip -Algorithm SHA256
 
 # Extract (Explorer "Extract All...", or - tar -C needs the directory to exist:)
-mkdir libredb-studio
-tar -xf .\libredb-studio-standalone-<version>-win32-x64.zip -C libredb-studio
+mkdir storagebase-studio
+tar -xf .\storagebase-studio-standalone-<version>-win32-x64.zip -C storagebase-studio
 
 # Run from the extracted directory
-cd libredb-studio
-.\libredb-studio.exe
+cd storagebase-studio
+.\storagebase-studio.exe
 ```
 
 The zip is flat by design (see [Release artifact naming](#release-artifact-naming)). `npx
-@libredb/studio` also works on Windows (Node 24+): it downloads this zip, verifies it against
+@storagebase/studio` also works on Windows (Node 24+): it downloads this zip, verifies it against
 `SHA256SUMS`, and runs the payload with your own Node runtime.
 
 ## Desktop app (AppImage, Debian package, FlatPark)
 
-Every other channel on this page ships LibreDB Studio as a server you open in a browser. The
+Every other channel on this page ships StorageBase Studio as a server you open in a browser. The
 desktop build ships it as an application window: a Tauri v2 shell starts the same standalone
 server as a local sidecar on a random loopback port, waits for it to become healthy, signs you in
 and shows the workspace. There is no browser tab, no port to remember and no password prompt for
 your own machine. Details of the shell itself are in
 [`desktop/README.md`](../desktop/README.md) (issue
-[#232](https://github.com/libredb/libredb-studio/issues/232)).
+[#232](https://github.com/storagebase/storagebase-studio/issues/232)).
 
-State lives in the per-user data directory - `~/.local/share/org.libredb.Studio` for the
-AppImage, `~/.var/app/org.libredb.Studio/data/org.libredb.Studio` under Flatpak - and holds the
+State lives in the per-user data directory - `~/.local/share/org.storagebase.Studio` for the
+AppImage, `~/.var/app/org.storagebase.Studio/data/org.storagebase.Studio` under Flatpak - and holds the
 SQLite storage database plus the generated admin credentials (`auth-bootstrap.json`, mode 0600).
 Deleting that directory resets the app.
 
@@ -943,11 +943,11 @@ proxy forwarded with `x-forwarded-proto: https`, still gets `Secure`.
 
 ```bash
 # Download the AppImage and its checksum sidecar from the release, verify, run
-curl -fLO https://github.com/libredb/libredb-studio/releases/download/<version>/libredb-studio-desktop-<version>-linux-x64.AppImage
-curl -fLO https://github.com/libredb/libredb-studio/releases/download/<version>/libredb-studio-desktop-<version>-linux-x64.AppImage.sha256
-sha256sum -c libredb-studio-desktop-<version>-linux-x64.AppImage.sha256
-chmod +x libredb-studio-desktop-<version>-linux-x64.AppImage
-./libredb-studio-desktop-<version>-linux-x64.AppImage
+curl -fLO https://github.com/storagebase/storagebase-studio/releases/download/<version>/storagebase-studio-desktop-<version>-linux-x64.AppImage
+curl -fLO https://github.com/storagebase/storagebase-studio/releases/download/<version>/storagebase-studio-desktop-<version>-linux-x64.AppImage.sha256
+sha256sum -c storagebase-studio-desktop-<version>-linux-x64.AppImage.sha256
+chmod +x storagebase-studio-desktop-<version>-linux-x64.AppImage
+./storagebase-studio-desktop-<version>-linux-x64.AppImage
 ```
 
 The AppImage needs FUSE to mount itself; on a system without it (or in a container), run it with
@@ -957,10 +957,10 @@ the server packages (.deb/.rpm, Snap, Docker) remain the path for headless or ol
 ### Debian package (GUI)
 
 ```bash
-curl -fLO https://github.com/libredb/libredb-studio/releases/download/<version>/libredb-studio-desktop_<version>_amd64.deb
-curl -fLO https://github.com/libredb/libredb-studio/releases/download/<version>/libredb-studio-desktop_<version>_amd64.deb.sha256
-sha256sum -c libredb-studio-desktop_<version>_amd64.deb.sha256
-sudo apt install ./libredb-studio-desktop_<version>_amd64.deb
+curl -fLO https://github.com/storagebase/storagebase-studio/releases/download/<version>/storagebase-studio-desktop_<version>_amd64.deb
+curl -fLO https://github.com/storagebase/storagebase-studio/releases/download/<version>/storagebase-studio-desktop_<version>_amd64.deb.sha256
+sha256sum -c storagebase-studio-desktop_<version>_amd64.deb.sha256
+sudo apt install ./storagebase-studio-desktop_<version>_amd64.deb
 ```
 
 Ships from 0.9.62 for `amd64` and `arm64`. Unlike the AppImage it needs no FUSE, integrates with
@@ -968,25 +968,25 @@ the desktop menu on install, and takes `libwebkit2gtk-4.1-0` and `libgtk-3-0` fr
 rather than bundling them - so it is the smaller, better-behaved choice on a Debian or Ubuntu
 desktop, and the older-distro caveat that applies to the AppImage applies here too.
 
-This is **not** the server package. `libredb-studio_<version>_<arch>.deb` installs a systemd
+This is **not** the server package. `storagebase-studio_<version>_<arch>.deb` installs a systemd
 service; this one installs an application. They have different dpkg package names and can be
 installed side by side.
 
-The bundled Node sidecar is installed as `/usr/bin/libredb-studio-node`, not `/usr/bin/node`:
+The bundled Node sidecar is installed as `/usr/bin/storagebase-studio-node`, not `/usr/bin/node`:
 that path belongs to the distribution's `nodejs` package and dpkg refuses to let a second package
 claim it.
 
 ### FlatPark (Flatpak)
 
 [FlatPark](https://flatpark.org/) is a signed Flatpak remote and **the** Flatpak channel for
-LibreDB Studio, live since 0.9.62 ([#241](https://github.com/libredb/libredb-studio/issues/241)):
+StorageBase Studio, live since 0.9.62 ([#241](https://github.com/storagebase/storagebase-studio/issues/241)):
 
 ```bash
 flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo
 # Flathub is added for the org.gnome.Platform runtime only - the app itself is not published there
 flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak --user install flatpark org.libredb.Studio
-flatpak run org.libredb.Studio
+flatpak --user install flatpark org.storagebase.Studio
+flatpak run org.storagebase.Studio
 ```
 
 FlatPark pins the **GUI `.deb` as `extra-data`**: it builds nothing itself, so your own machine
@@ -1000,13 +1000,13 @@ confined Snap makes:
 
 ```bash
 # Local Postgres over its unix socket
-flatpak override --user --filesystem=/run/postgresql:ro org.libredb.Studio
+flatpak override --user --filesystem=/run/postgresql:ro org.storagebase.Studio
 # Local MySQL/MariaDB over its unix socket
-flatpak override --user --filesystem=/var/run/mysqld:ro org.libredb.Studio
+flatpak override --user --filesystem=/var/run/mysqld:ro org.storagebase.Studio
 # A directory of SQLite database files
-flatpak override --user --filesystem=~/databases org.libredb.Studio
+flatpak override --user --filesystem=~/databases org.storagebase.Studio
 # Revert every override
-flatpak override --user --reset org.libredb.Studio
+flatpak override --user --reset org.storagebase.Studio
 ```
 
 The descriptor set, the local build flow and the submission checklist live in
@@ -1014,7 +1014,7 @@ The descriptor set, the local build flow and the submission checklist live in
 
 ### Flathub (submission declined)
 
-**LibreDB Studio is not on Flathub, and `flatpak install flathub org.libredb.Studio` will not
+**StorageBase Studio is not on Flathub, and `flatpak install flathub org.storagebase.Studio` will not
 work.** Install from the FlatPark remote above - same app id, same sandbox policy, same
 `flatpak override` commands.
 
@@ -1031,7 +1031,7 @@ still renders, and [`flatpak-smoke.yml`](../.github/workflows/flatpak-smoke.yml)
 AppImage and repacks it whenever those paths change. But a resubmission would also have to be built
 from source - repacking a released AppImage is a second, independent blocker under Flathub's
 requirements - so treat that directory as dormant rather than as pending work
-([#232](https://github.com/libredb/libredb-studio/issues/232)).
+([#232](https://github.com/storagebase/storagebase-studio/issues/232)).
 
 ### Building and running either Flatpak locally
 
@@ -1041,19 +1041,19 @@ Neither channel needs a published release to test. Both take a locally built art
 # FlatPark: build the GUI .deb, then the Flatpak that pins it.
 # --deb-only skips the AppImage, so the linuxdeploy GTK toolchain (librsvg2-dev
 # and friends) is not needed.
-gh release download <version> --repo libredb/libredb-studio \
-  --pattern "libredb-studio-standalone-<version>-linux-x64.tar.gz"
+gh release download <version> --repo storagebase/storagebase-studio \
+  --pattern "storagebase-studio-standalone-<version>-linux-x64.tar.gz"
 bash scripts/build-desktop-appimage.sh dist-desktop \
-  --payload libredb-studio-standalone-<version>-linux-x64.tar.gz --deb-only --smoke
+  --payload storagebase-studio-standalone-<version>-linux-x64.tar.gz --deb-only --smoke
 bash scripts/build-flatpark-local.sh \
-  dist-desktop/libredb-studio-desktop_<version>_amd64.deb --install
-flatpak run org.libredb.Studio//stable
+  dist-desktop/storagebase-studio-desktop_<version>_amd64.deb --install
+flatpak run org.storagebase.Studio//stable
 
 # packaging/flatpak (dormant, see above): build the AppImage, then the Flatpak that repacks it.
 bash scripts/build-desktop-appimage.sh dist-desktop --payload <tarball> --smoke
 bash scripts/build-flatpak-local.sh \
-  dist-desktop/libredb-studio-desktop-<version>-linux-x64.AppImage --install
-flatpak run org.libredb.Studio
+  dist-desktop/storagebase-studio-desktop-<version>-linux-x64.AppImage --install
+flatpak run org.storagebase.Studio
 ```
 
 Drop `--payload` to build the payload from the working tree instead of a released tarball - slower,
@@ -1066,23 +1066,23 @@ flatpak install -y flathub org.flatpak.Builder org.gnome.Platform//50 org.gnome.
 ```
 
 The FlatPark script builds on branch `stable`, so its ref does not collide with a Flathub-style
-local build of the same app id. Note that **both share `~/.var/app/org.libredb.Studio/`** - the app
+local build of the same app id. Note that **both share `~/.var/app/org.storagebase.Studio/`** - the app
 id is the same - so deleting that directory resets connections and query history for whichever
 builds you have installed. To remove a local FlatPark build:
 
 ```bash
-flatpak --user uninstall -y org.libredb.Studio//stable
-flatpak --user remote-delete libredb-flatpark-local
+flatpak --user uninstall -y org.storagebase.Studio//stable
+flatpak --user remote-delete storagebase-flatpark-local
 ```
 
 ## App catalogs (Unraid, Sealos)
 
 Both channels install the same published container image through a catalog the platform itself
-publishes, so a user browsing that platform finds LibreDB Studio without ever visiting this repo.
+publishes, so a user browsing that platform finds StorageBase Studio without ever visiting this repo.
 They are documented here rather than under `deploy/<provider>/` because neither descriptor lives in
 this repo: the Sealos template lives upstream in
 [`labring-actions/templates`](https://github.com/labring-actions/templates) and the Unraid template
-in [`libredb/unraid-templates`](https://github.com/libredb/unraid-templates), and neither has a
+in [`storagebase/unraid-templates`](https://github.com/storagebase/unraid-templates), and neither has a
 `deploy/<provider>/` folder here at all. They are two of the eight catalog channels with no such
 folder - the others are TrueNAS SCALE, CasaOS, the three open submissions (Umbrel, Easypanel,
 Portainer) and Google Cloud Marketplace, whose artefacts live in Google's Producer Portal. The
@@ -1096,14 +1096,14 @@ only when the template is bumped - `on_demand` for both in
 
 ### Unraid (Community Applications)
 
-Listed in [Community Applications](https://ca.unraid.net/apps/libredb-studio-0a5x41a1cy1kay) (CA)
-since 2026-08-04 ([issue #283](https://github.com/libredb/libredb-studio/issues/283)). In the Unraid
-web UI: **Apps** tab, search for **LibreDB Studio**, then **Install**.
+Listed in [Community Applications](https://ca.unraid.net/apps/storagebase-studio-0a5x41a1cy1kay) (CA)
+since 2026-08-04 ([issue #283](https://github.com/storagebase/storagebase-studio/issues/283)). In the Unraid
+web UI: **Apps** tab, search for **StorageBase Studio**, then **Install**.
 
 - **The web UI host port defaults to 3006**, mapped to container port 3000. Any free host port
   works; the template steers away from 3000 because it commonly collides with other apps.
-- **App Data** is `/mnt/user/appdata/libredb-studio` mapped to `/app/data`, holding the server-side
-  SQLite storage (`STORAGE_SQLITE_PATH=/app/data/libredb-storage.db`) - that database is what
+- **App Data** is `/mnt/user/appdata/storagebase-studio` mapped to `/app/data`, holding the server-side
+  SQLite storage (`STORAGE_SQLITE_PATH=/app/data/storagebase-storage.db`) - that database is what
   survives container updates and recreation. **No `auth-bootstrap.json` is written here**, because
   the template always supplies `ADMIN_PASSWORD` and `JWT_SECRET` and generation short-circuits when
   both are set: back up the database, and keep the credentials you typed into the template.
@@ -1120,14 +1120,14 @@ web UI: **Apps** tab, search for **LibreDB Studio**, then **Install**.
 - The container is unprivileged, on `bridge` networking, and needs no other service - databases are
   reached over TCP from the Unraid host's network.
 
-Because the template repo is LibreDB-owned, a version bump is a commit in
-`libredb/unraid-templates` rather than a PR here or upstream; CA then serves it after its next
+Because the template repo is StorageBase-owned, a version bump is a commit in
+`storagebase/unraid-templates` rather than a PR here or upstream; CA then serves it after its next
 catalog build, which is when Unraid offers the update.
 
 ### Sealos (App Store)
 
-Listed in the [Sealos App Store](https://sealos.io/products/app-store/libredb-studio) since
-2026-08-04 ([issue #276](https://github.com/libredb/libredb-studio/issues/276),
+Listed in the [Sealos App Store](https://sealos.io/products/app-store/storagebase-studio) since
+2026-08-04 ([issue #276](https://github.com/storagebase/storagebase-studio/issues/276),
 [labring-actions/templates#739](https://github.com/labring-actions/templates/pull/739)). Click
 **Deploy Now** and supply an administrator email and password (minimum 8 characters); the template
 provisions compute, networking, storage and ingress, so there is nothing to install locally.
@@ -1145,13 +1145,13 @@ provisions compute, networking, storage and ingress, so there is nothing to inst
 ## Google Cloud Marketplace
 
 Publicly listed since **2026-09-04** as a free **Terraform Kubernetes app**: a customer finds
-LibreDB Studio in the Marketplace catalog inside the Google Cloud console and deploys it into their
+StorageBase Studio in the Marketplace catalog inside the Google Cloud console and deploys it into their
 own GKE cluster. Deploying requires the **Kubernetes Engine Admin** role on the target project.
 
 It is the one channel in the inventory with **no public artefact to read a version from**, and that
 shapes everything below. The listing, its version and its Terraform module are all held in Google's
 Producer Portal; the Helm chart and the container image are served from a private Artifact Registry
-under the `libredb-public` project. So `pin.strategy` is `none` in
+under the `storagebase-public` project. So `pin.strategy` is `none` in
 [`distribution/channels.yaml`](../distribution/channels.yaml) and the listed version is checked by
 hand against the portal — the drift table cannot do it, and a pin that guessed would be worse than
 no pin.
@@ -1177,12 +1177,12 @@ bundled Node runtime and launcher, see [`packaging/windows/README.md`](../packag
 ```bash
 bun install
 bash scripts/build-standalone-payload.sh dist --smoke
-# -> dist/libredb-studio-standalone-<version>-<os>-<arch>.tar.gz
+# -> dist/storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz
 ```
 
 `--smoke` boots the packed payload with `node server.js` and requires
 `GET /api/db/health` to return 200. Run the result via the npx launcher:
-`npx @libredb/studio --archive dist/libredb-studio-standalone-<version>-<os>-<arch>.tar.gz`.
+`npx @storagebase/studio --archive dist/storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz`.
 
 ## Maintainer notes
 
@@ -1199,13 +1199,13 @@ Release publishing is driven by two workflows, both triggered on `release: publi
   Chocolatey push and winget update PR ([`packaging/chocolatey/`](../packaging/chocolatey) and
   [`packaging/winget/`](../packaging/winget) rendered by
   [`scripts/render-windows-packaging.mjs`](../scripts/render-windows-packaging.mjs)).
-- The npm package (`@libredb/studio`, which carries the npx launcher `bin/studio.js`) is
+- The npm package (`@storagebase/studio`, which carries the npx launcher `bin/studio.js`) is
   published by the separate npm-publish workflow, also on `release: published`.
 
 ### Embedded-sample channel E2E
 
 Every zero-config channel must prove — in a real browser — that a fresh install
-serves the embedded sample connections ("Sample (LibreDB)", "Sample
+serves the embedded sample connections ("Sample (StorageBase)", "Sample
 (Employees)"). One `bun run test:e2e` is not enough: each channel boots the
 payload through a different launcher, cwd, and `STORAGE_SQLITE_PATH`, so a
 packaging bug (a payload missing `seed-assets/`, a dropped fileset entry)
@@ -1222,8 +1222,8 @@ scripts/channel-embedded-sample-e2e.sh <channel> [artifact]
 scripts/channel-embedded-sample-e2e.sh all            # every channel feasible here
 
 # channels: tarball | npx | docker | deb | rpm | snap | homebrew
-scripts/channel-embedded-sample-e2e.sh tarball dist/libredb-studio-standalone-*.tar.gz
-scripts/channel-embedded-sample-e2e.sh docker ghcr.io/libredb/libredb-studio:main
+scripts/channel-embedded-sample-e2e.sh tarball dist/storagebase-studio-standalone-*.tar.gz
+scripts/channel-embedded-sample-e2e.sh docker ghcr.io/storagebase/storagebase-studio:main
 ```
 
 `all` skips infeasible channels (no docker daemon, no passwordless sudo, not
@@ -1248,22 +1248,22 @@ All channels have now had their first live run (the Snap publish completed its f
    [actions/runner-images](https://github.com/actions/runner-images) - do not fall back to
    retired `macos-13` or paid `-large` labels blindly), `.deb`/`.rpm` uploaded with `.sha256`
    sidecars, `SHA256SUMS` complete, tap push and snap jobs behaving per their secrets.
-2. `npx @libredb/studio@<version>` on a clean machine: download + checksum + first-run banner +
+2. `npx @storagebase/studio@<version>` on a clean machine: download + checksum + first-run banner +
    login. The `npx Engine Smoke` workflow (`npx-engine-smoke.yml`) runs automatically after a
    successful NPM Publish: it waits for the registry to serve the released version, then runs
-   **bare** `npx @libredb/studio` on Node 24/26 and asserts each resolves exactly that release,
+   **bare** `npx @storagebase/studio` on Node 24/26 and asserts each resolves exactly that release,
    and on Node 22 asserts the engines floor pins it to an older but still *runnable*
    release (the #130 regression class - npm's picker avoids engine-incompatible versions for bare
    specs and never says so). Check that it went green; dispatch it manually to re-run. Then run
    the `npm deprecate` step below so the pin stops being silent.
-3. `brew tap libredb/tap && brew install libredb-studio && brew services start libredb-studio`.
-4. Download the `.deb` on Debian/Ubuntu: `dpkg -i`, `systemctl start libredb-studio`, health 200
+3. `brew tap storagebase/tap && brew install storagebase-studio && brew services start storagebase-studio`.
+4. Download the `.deb` on Debian/Ubuntu: `dpkg -i`, `systemctl start storagebase-studio`, health 200
    on `127.0.0.1:3000`; verify the arm64 package on an arm64 machine (the CI smoke covers amd64
    only; the bundled node arch is statically asserted for both).
 5. Spot-check provenance on one downloaded asset and the image - a green release job proves the
    attestation step ran, not that the published asset is the one it covers:
-   `gh attestation verify <asset> --repo libredb/libredb-studio` and
-   `gh attestation verify oci://ghcr.io/libredb/libredb-studio:<version> --repo libredb/libredb-studio`,
+   `gh attestation verify <asset> --repo storagebase/storagebase-studio` and
+   `gh attestation verify oci://ghcr.io/storagebase/storagebase-studio:<version> --repo storagebase/storagebase-studio`,
    plus `npm audit signatures` after installing the package (see
    [Verifying a release artifact](#verifying-a-release-artifact)).
 6. **Only when a release raises `engines.node`**: deprecate the last version below the new floor,
@@ -1272,12 +1272,12 @@ All channels have now had their first live run (the Snap publish completed its f
    resolve a supported version never see it.
 
    ```bash
-   npm deprecate '@libredb/studio@<=0.10.0' \
-     'LibreDB Studio 0.11.0+ requires Node.js 24 LTS; npm pinned you to this release because your Node is older. Upgrade Node, or run: docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest'
+   npm deprecate '@storagebase/studio@<=0.10.0' \
+     'StorageBase Studio 0.11.0+ requires Node.js 24 LTS; npm pinned you to this release because your Node is older. Upgrade Node, or run: docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest'
    ```
 
    Deprecating a version does not unpublish or hide it: it keeps installing and running exactly as
-   before. Undo with `npm deprecate '@libredb/studio@<=0.10.0' ''`.
+   before. Undo with `npm deprecate '@storagebase/studio@<=0.10.0' ''`.
 
 ### Artifact provenance roadmap
 
@@ -1289,7 +1289,7 @@ replace an asset can replace its checksum line too. The `.snap` release asset sh
 
 Signed provenance moves the trust root out of the release — the signer is the workflow's GitHub
 OIDC identity (repo + workflow + commit), recorded in a public transparency log. All three steps of
-[issue #123](https://github.com/libredb/libredb-studio/issues/123) landed for 0.9.63:
+[issue #123](https://github.com/storagebase/storagebase-studio/issues/123) landed for 0.9.63:
 
 | Step | Scope | State |
 |---|---|---|
@@ -1305,12 +1305,12 @@ signature.
 
 ```bash
 # Any release asset (tarball, zip, .deb, .rpm, .AppImage, .snap)
-gh attestation verify libredb-studio-standalone-0.9.63-linux-x64.tar.gz \
-  --repo libredb/libredb-studio
+gh attestation verify storagebase-studio-standalone-0.9.63-linux-x64.tar.gz \
+  --repo storagebase/storagebase-studio
 
 # The container image, by digest or by tag
-gh attestation verify oci://ghcr.io/libredb/libredb-studio:0.9.63 \
-  --repo libredb/libredb-studio
+gh attestation verify oci://ghcr.io/storagebase/storagebase-studio:0.9.63 \
+  --repo storagebase/storagebase-studio
 ```
 
 A pass prints the workflow and commit that produced the artifact. `gh attestation verify` reaches
@@ -1345,10 +1345,10 @@ setups still publish the rest:
 
 | Secret | Gates | Without it |
 |---|---|---|
-| `TAP_GITHUB_TOKEN` | Rendering and pushing the Homebrew formula to `libredb/homebrew-tap` (needs write access to that repo) | Tap update skipped; tarballs still attach to the release |
+| `TAP_GITHUB_TOKEN` | Rendering and pushing the Homebrew formula to `storagebase/homebrew-tap` (needs write access to that repo) | Tap update skipped; tarballs still attach to the release |
 | `SNAPCRAFT_STORE_CREDENTIALS` | The entire snap build/publish job (exported via `snapcraft export-login`) | Snap job skipped |
-| `DOCKER_HUB_TOKEN` (+ `DOCKER_HUB_USERNAME` and `DOCKER_HUB_ORGANIZATION` variables) | The Docker Hub mirror push. Two variables, not one: `DOCKER_HUB_USERNAME` is the **owner who logs in** (an organization cannot sign in), `DOCKER_HUB_ORGANIZATION` is the **namespace the image is published under**. They were the same value while `libredb` was a user account; converting it to an organization on 2026-09-01 split them | GHCR-only publish |
-| `CHOCO_API_KEY` | The chocolatey job: `choco pack` + `choco push` to `https://push.chocolatey.org/` (API key of the `libredb` community account) | Chocolatey publish skipped; the win32 zip still attaches to the release |
+| `DOCKER_HUB_TOKEN` (+ `DOCKER_HUB_USERNAME` and `DOCKER_HUB_ORGANIZATION` variables) | The Docker Hub mirror push. Two variables, not one: `DOCKER_HUB_USERNAME` is the **owner who logs in** (an organization cannot sign in), `DOCKER_HUB_ORGANIZATION` is the **namespace the image is published under**. They were the same value while `storagebase` was a user account; converting it to an organization on 2026-09-01 split them | GHCR-only publish |
+| `CHOCO_API_KEY` | The chocolatey job: `choco pack` + `choco push` to `https://push.chocolatey.org/` (API key of the `storagebase` community account) | Chocolatey publish skipped; the win32 zip still attaches to the release |
 | — | Every row above whose channel is switchable also needs `update.ci_enabled: true` in [`distribution/channels.yaml`](../distribution/channels.yaml): the secret says CI *can* publish, the flag says it *should*. See [Turning a channel's automation off](#turning-a-channels-automation-off) | Channel skipped with a notice; the release publishes normally |
 | `OPERATOR_CATALOG_TOKEN` | The `submit-catalogs` job in `operator-release.yml`: bundle PRs to `k8s-operatorhub/community-operators` and `redhat-openshift-ecosystem/community-operators-prod`. Classic PAT with `public_repo` on an account in the operator's upstream `ci.yaml` reviewers list, because that login is what upstream authorizes | Catalog submission skipped with a notice |
 | `WINGETCREATE_GITHUB_TOKEN` | The winget job: `wingetcreate update --submit` PRs to `microsoft/winget-pkgs`. Classic PAT with `public_repo` scope — wingetcreate does not support fine-grained PATs | winget submission skipped |
@@ -1369,7 +1369,7 @@ npx on win32.
 ### Windows first-listing checklist
 
 The win32 zip has shipped in every release since **0.9.59**. The release automation for winget
-and Chocolatey is secret-gated and ready — both `CHOCO_API_KEY` (API key of the `libredb`
+and Chocolatey is secret-gated and ready — both `CHOCO_API_KEY` (API key of the `storagebase`
 account on community.chocolatey.org) and `WINGETCREATE_GITHUB_TOKEN` are configured in the
 repo's Actions secrets. The FIRST listing in each community catalog is a one-time human step
 (same pattern as the Snap Store name registration). Both first submissions were made with
@@ -1378,7 +1378,7 @@ repo's Actions secrets. The FIRST listing in each community catalog is a one-tim
 
 1. **Chocolatey** — DONE: the 0.9.59 push was approved by moderator `flcdrg` on 2026-08-24 and
    the package is listed at
-   [community.chocolatey.org/packages/libredb-studio](https://community.chocolatey.org/packages/libredb-studio).
+   [community.chocolatey.org/packages/storagebase-studio](https://community.chocolatey.org/packages/storagebase-studio).
    The release's chocolatey job packs and pushes every version automatically. The first push
    enters [human moderation](https://docs.chocolatey.org/en-us/community-repository/moderation/);
    while a version sits in the moderation queue, pushing further versions can be rejected —
@@ -1396,15 +1396,15 @@ repo's Actions secrets. The FIRST listing in each community catalog is a one-tim
    VERSION=<version>
    gh release download "$VERSION" --pattern SHA256SUMS --dir dist
    for t in packaging/winget/*.tmpl; do
-     out="manifests/l/LibreDB/Studio/$VERSION/$(basename "${t%.tmpl}")"
+     out="manifests/l/StorageBase/Studio/$VERSION/$(basename "${t%.tmpl}")"
      node scripts/render-windows-packaging.mjs "$t" dist/SHA256SUMS "$VERSION" "$out"
    done
    ```
 
-   Then either `wingetcreate submit --token <classic-PAT> manifests/l/LibreDB/Studio/$VERSION`
+   Then either `wingetcreate submit --token <classic-PAT> manifests/l/StorageBase/Studio/$VERSION`
    (Windows only — wingetcreate ships a win-x64 binary), or, from any OS, commit the three files
    to a branch on a `microsoft/winget-pkgs` fork and open the PR with `gh` — the whole submission
-   is "add `manifests/l/LibreDB/Studio/<version>/`", nothing else changes. Title convention:
+   is "add `manifests/l/StorageBase/Studio/<version>/`", nothing else changes. Title convention:
    `New package: <id> version <version>` for a first listing, `New version: <id> version
    <version>` for an update. Upstream's validation pipeline downloads the `InstallerUrl` and
    verifies `InstallerSha256`, so the release must already be published.
@@ -1431,7 +1431,7 @@ version is human-reviewed before approval** — only *trusted packages* skip tha
 team's own figure for the wait is "a few days to a few weeks"
 ([moderation](https://docs.chocolatey.org/en-us/community-repository/moderation/),
 [Behind the Curtain](https://blog.chocolatey.org/2025/06/ccr-moderation-behind-the-curtain/)).
-An unapproved version stays unlisted, so `choco install libredb-studio` keeps serving the previous
+An unapproved version stays unlisted, so `choco install storagebase-studio` keeps serving the previous
 one until a moderator clicks approve.
 
 This is the one structural difference from winget. There is no PR to open and nothing manual per
@@ -1449,7 +1449,7 @@ encoded in the release path:
   still fails the run. `tests/unit/release-chocolatey.test.ts` locks both halves.
 - **The run's job summary carries a "Chocolatey" section** with the push outcome and what the feed
   says about that exact version. It reads
-  `Packages(Id='libredb-studio',Version='<version>')` — the only public read that answers for a
+  `Packages(Id='storagebase-studio',Version='<version>')` — the only public read that answers for a
   version the feed does not list yet, since a feed-wide `$filter=IsApproved eq false` returns
   nothing while `eq true` returns rows.
 
@@ -1458,7 +1458,7 @@ write the underlying software that the package installs"* and a track record of 
 and is equally clear that switching a package to trusted *"is a manual change by a moderator. It is
 not an automated process, and does not happen immediately even if you are the software author"*, in
 most cases only *"after a few versions have been approved by moderators without any changes being
-required"*. LibreDB qualifies on the first route and has one clean approval (0.9.59). After two or
+required"*. StorageBase qualifies on the first route and has one clean approval (0.9.59). After two or
 three more, ask on the Chocolatey Community Hub (`#community-maintainers`) as the software vendor —
 tracked as REL3 in [`docs/BACKLOG.md`](BACKLOG.md). A trusted package skips human review entirely,
 and the channel then behaves the way winget does today.
@@ -1486,7 +1486,7 @@ pin or editing a channel entry is always a human commit.
 |---|---|---|
 | 0 | Core registries, published directly by release CI | GitHub Releases, GHCR, Docker Hub, npm |
 | 1 | Packaged formats owned by this repo, CI-published | Helm, Homebrew tap, Snap, .deb/.rpm, desktop AppImage |
-| 2 | LibreDB-owned copies and listings, bumped by hand | Railway, Koyeb button, Fly.io config, Render Blueprint, Unraid CA template |
+| 2 | StorageBase-owned copies and listings, bumped by hand | Railway, Koyeb button, Fly.io config, Render Blueprint, Unraid CA template |
 | 3 | Upstream community catalogs, bumped via PR | CapRover official, Dokploy, Cosmos, Kubero, Sealos, TrueNAS SCALE |
 | 4 | Partner or curated catalogs (not self-serve) | Rancher partner charts, Koyeb catalog, DigitalOcean, Google Cloud Marketplace, winget, Chocolatey, Flathub |
 
@@ -1495,7 +1495,7 @@ pin or editing a channel entry is always a human commit.
 `kubernetes-operators`, `package-managers`, `os-desktop`, `paas-catalogs`,
 `deploy-recipes`, `cloud-marketplaces`. They are independent of tier (who
 publishes). `paas-catalogs` and `deploy-recipes` look similar but answer different
-questions: `paas-catalogs` means the platform itself lists LibreDB Studio in its own
+questions: `paas-catalogs` means the platform itself lists StorageBase Studio in its own
 catalog, so a user browsing that platform discovers it without visiting this repo;
 `deploy-recipes` means we publish a config file or instructions and the platform does
 not list us anywhere, so discovery only happens through our repo. There is no `closed`
@@ -1570,7 +1570,7 @@ scripting.
 
 #### The inventory also drives the login page
 
-Since [#425](https://github.com/libredb/libredb-studio/issues/425) `channels.yaml` is read by the
+Since [#425](https://github.com/storagebase/storagebase-studio/issues/425) `channels.yaml` is read by the
 product itself, not only by the docs and the drift table. `bun run channels:showcase`
 ([`scripts/generate-channel-showcase.mjs`](../scripts/generate-channel-showcase.mjs)) emits
 [`src/lib/distribution/channels.generated.ts`](../src/lib/distribution/channels.generated.ts) — the
@@ -1653,17 +1653,17 @@ auto-detects the config at the working-directory root: `fly launch`/`fly deploy`
 the documented "clone and deploy" flow only works from that location. Catalog-based channels
 instead keep whatever they own under `deploy/<provider>/`, because the consumable artifact lives in
 an external catalog. Only **CapRover** and **Railway** own a source descriptor there
-(`deploy/caprover/libredb-studio.yml`, `deploy/railway/template.json`): the in-repo file is the
+(`deploy/caprover/storagebase-studio.yml`, `deploy/railway/template.json`): the in-repo file is the
 source that gets pushed or PR'd upstream, which is why Railway is pinned `local_file`. CapRover is
 pinned `remote_file` even so - that pin must measure what the catalog actually serves, which leaves
 its in-repo descriptor unmeasured by any gate
-([#268](https://github.com/libredb/libredb-studio/issues/268)); it fell 45 patch versions behind the
+([#268](https://github.com/storagebase/storagebase-studio/issues/268)); it fell 45 patch versions behind the
 catalog before anyone noticed. **Dokploy**, **Kubero** and **Cosmos** keep only a README there -
 their descriptors are authored in the upstream catalog repo, so all three are pinned `remote_file`
 and a bump is an upstream PR with nothing to change here. **Eight catalog channels keep no
 descriptor here at all.** Two of them are pinned `remote_file` against the repository that does
 hold it — the Sealos template in `labring-actions/templates`, the Unraid CA template in
-`libredb/unraid-templates` — and both are documented under
+`storagebase/unraid-templates` — and both are documented under
 [App catalogs](#app-catalogs-unraid-sealos); TrueNAS SCALE is pinned the same way against
 `truenas/apps`, and CasaOS against `IceWhaleTech/CasaOS-AppStore`. The three open submissions (Umbrel, Easypanel, Portainer) have nothing to
 pin until their upstream PR merges, and each entry's note names the pin to add on that day.
@@ -1688,7 +1688,7 @@ versioned build, test, submit and verify checklist to its summary. See the
   Submissions are automated, see [Automated submission](#automated-submission).
   What follows is how the first ones landed.
   The controller image was the first half:
-  `ghcr.io/libredb/libredb-studio-operator:0.9.59` was built once by manual
+  `ghcr.io/storagebase/storagebase-studio-operator:0.9.59` was built once by manual
   `workflow_dispatch` from the post-merge `main` commit (the `0.9.59` tag
   carries neither `operator/` nor the workflow file, and GitHub only dispatches
   workflows that exist on the chosen ref) and the GHCR package is public, which
@@ -1706,15 +1706,15 @@ versioned build, test, submit and verify checklist to its summary. See the
   k8s-operatorhub/community-operators#9219 and community-operators-prod#11106.
   One thing a merge still does not finish: operatorhub.io serves from its own
   index build, which lags by hours.
-  `https://operatorhub.io/api/operator?packageName=libredb-studio-operator` is
+  `https://operatorhub.io/api/operator?packageName=storagebase-studio-operator` is
   the read that answers for it, and it returned "can't find" for hours after
   #8794 merged while a control query for `argocd-operator` returned a full
   record.
 - **Snap Store listing screenshots**: the description and icon ship with the snap
   (`snap/snapcraft.yaml`, `public/logo.svg`), but screenshots are a manual upload in the
-  Snap Store web UI (https://snapcraft.io/libredb-studio/listing). The snap name is registered
+  Snap Store web UI (https://snapcraft.io/storagebase-studio/listing). The snap name is registered
   and `SNAPCRAFT_STORE_CREDENTIALS` is configured — the channel went live with 0.9.52.
-- **Website install docs**: the libredb-website documentation must be updated with the new
+- **Website install docs**: the storagebase-website documentation must be updated with the new
   channels (npx, Homebrew, .deb/.rpm, Snap) — a cross-repo step and part of issue #111's
   "README and website docs" acceptance criterion (and implicitly of #110/#112/#113).
 - **Windows first listings — done.** winget:
@@ -1722,15 +1722,15 @@ versioned build, test, submit and verify checklist to its summary. See the
   2026-07-31. Chocolatey: the 0.9.59 push cleared human moderation on 2026-08-24. Both channels
   are `live` with release-CI updates enabled, per the
   [Windows first-listing checklist](#windows-first-listing-checklist) —
-  tracked in [issue #114](https://github.com/libredb/libredb-studio/issues/114).
+  tracked in [issue #114](https://github.com/storagebase/storagebase-studio/issues/114).
 - **Flathub submission — closed, not shipping.**
   [flathub/flathub#9538](https://github.com/flathub/flathub/pull/9538) was declined on 2026-07-30
   under Flathub's generative AI policy and closed from our side; see
   [Flathub (submission declined)](#flathub-submission-declined). The Flatpak channel is
   [FlatPark](#flatpark-flatpak), live since 0.9.62. The domain-verification file at
-  `https://libredb.org/.well-known/org.flathub.VerifiedApps.txt` is served but carries no token,
+  `https://storagebase.org/.well-known/org.flathub.VerifiedApps.txt` is served but carries no token,
   since Flathub only issues one after publication. Tracked in
-  [issue #232](https://github.com/libredb/libredb-studio/issues/232).
+  [issue #232](https://github.com/storagebase/storagebase-studio/issues/232).
 - **Desktop app, remaining channels**: the Tauri v2 wrapper now ships as an AppImage on Linux
   (see [Desktop app](#desktop-app-appimage-debian-package-flatpark)). The macOS `.dmg` plus brew cask, the
   Microsoft Store MSIX and the Tauri updater are still open and need paid signing identities —
@@ -1743,7 +1743,7 @@ record matches the implementation:
 
 - **#110 (npx)**: the "Works on Linux, macOS, and Windows" acceptance criterion was initially
   NOT delivered for Windows (the launcher exited on `win32` with a Docker pointer); the win32
-  path shipped with [#114](https://github.com/libredb/libredb-studio/issues/114) — the npx
+  path shipped with [#114](https://github.com/storagebase/storagebase-studio/issues/114) — the npx
   launcher now downloads the win32 zip and runs it with the user's Node runtime.
 - **#111 (Homebrew)**: the website half of "Install instructions added to README and website
   docs" is a cross-repo step (see Manual steps above).

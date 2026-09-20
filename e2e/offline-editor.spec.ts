@@ -10,7 +10,7 @@
  * nothing the workspace needs comes from another host.
  *
  * Runs under playwright.config.ts's "chromium-offline-editor" project, against its own server
- * process, not the shared one every other spec uses. It logs in as the same user@libredb.org
+ * process, not the shared one every other spec uses. It logs in as the same user@storagebase.org
  * account as everything else in this suite and asserts on the query's actual result value, so it
  * is the one spec that visibly breaks if that account's "query" rate-limit bucket
  * (src/lib/api/rate-limit.ts) is already spent by the ~30 other tests' auto-hydration on the
@@ -20,7 +20,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function loginAsUser(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.locator('input[type="email"]').fill("user@libredb.org");
+  await page.locator('input[type="email"]').fill("user@storagebase.org");
   await page.locator('input[type="password"]').fill("test-user");
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL("/");

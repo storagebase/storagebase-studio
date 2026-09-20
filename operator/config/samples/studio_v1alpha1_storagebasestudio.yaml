@@ -1,0 +1,14 @@
+apiVersion: studio.storagebase.org/v1alpha1
+kind: StorageBaseStudio
+metadata:
+  name: storagebasestudio-sample
+spec:
+  # Minimal example. Every field left unset falls back to the chart defaults.
+  # With no credentials provided the chart runs in zero-config bootstrap mode:
+  # JWT_SECRET is auto-generated and a first-run admin account is bootstrapped.
+  # For production, set config.authBootstrap to "off" and provide
+  # secrets.existingSecret (see the chart values for details).
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 1Gi

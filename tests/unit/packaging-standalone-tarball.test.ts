@@ -1,6 +1,6 @@
 /**
  * Unit test for the standalone tarball layout fix (issue #133): the release
- * tarball must extract under a top-level `libredb-studio-<version>/` root
+ * tarball must extract under a top-level `storagebase-studio-<version>/` root
  * instead of spilling its ~50 files into the caller's current directory
  * (a tarbomb). Exercises the real `scripts/lib/pack-standalone-tarball.sh`
  * as a subprocess against a small fixture payload dir - no full `bun run
@@ -73,7 +73,7 @@ describeIf(CANNOT_PACK, "scripts/lib/pack-standalone-tarball.sh (#133)", () => {
       .filter(Boolean);
   }
 
-  test("packs the payload under a top-level libredb-studio-<version>/ root", () => {
+  test("packs the payload under a top-level storagebase-studio-<version>/ root", () => {
     const { payloadDir, tarball } = makeFixturePayload();
 
     const run = Bun.spawnSync([SHELL!, SCRIPT, payloadDir, VERSION, tarball], { stdout: "pipe", stderr: "pipe" });
@@ -82,9 +82,9 @@ describeIf(CANNOT_PACK, "scripts/lib/pack-standalone-tarball.sh (#133)", () => {
     const entries = listEntries(tarball);
     expect(entries.length).toBeGreaterThan(0);
     for (const entry of entries) {
-      expect(entry.startsWith(`libredb-studio-${VERSION}/`)).toBe(true);
+      expect(entry.startsWith(`storagebase-studio-${VERSION}/`)).toBe(true);
     }
-    expect(entries).toContain(`libredb-studio-${VERSION}/server.js`);
+    expect(entries).toContain(`storagebase-studio-${VERSION}/server.js`);
     expect(entries.some((entry) => entry === "./" || entry.startsWith("./"))).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describeIf(CANNOT_PACK, "scripts/lib/pack-standalone-tarball.sh (#133)", () => {
 
     const tarball = join(root, "out:1.tar.gz");
     expect(existsSync(tarball)).toBe(true);
-    expect(listEntries(tarball)).toContain(`libredb-studio-${VERSION}/server.js`);
+    expect(listEntries(tarball)).toContain(`storagebase-studio-${VERSION}/server.js`);
   });
 
   test("rejects a wrong number of arguments", () => {

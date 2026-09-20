@@ -1,8 +1,8 @@
 # Azure Marketplace (Azure Application → solution template)
 
-LibreDB Studio's Microsoft Marketplace channel: a free ("Get It Now")
+StorageBase Studio's Microsoft Marketplace channel: a free ("Get It Now")
 solution template that deploys one Ubuntu 24.04 LTS VM running the
-`ghcr.io/libredb/libredb-studio` container behind a Caddy reverse proxy with
+`ghcr.io/storagebase/storagebase-studio` container behind a Caddy reverse proxy with
 automatic HTTPS. The listing texts Partner Center needs are in
 [`listing/listing-fields.md`](listing/listing-fields.md).
 
@@ -23,7 +23,7 @@ node scripts/build-azure-package.mjs                # pins package.json version
 node scripts/build-azure-package.mjs --version 0.9.66 --package-version 1.0.1
 ```
 
-Output: `dist/azure/libredb-studio-azure-<packageVersion>.zip` — exactly two
+Output: `dist/azure/storagebase-studio-azure-<packageVersion>.zip` — exactly two
 files at the zip root, images pinned by manifest digest. The build fails if an
 `apiVersion` in the template is ≥700 days old (certification rejects at 730;
 warnings start at 540) — refresh values against `az provider show` when it
@@ -59,12 +59,12 @@ do next.
   cookie `Secure` for any non-loopback host, the browser discards it, and login loops
   back silently while every health probe still passes. The installer writes
   `AUTH_COOKIE_SECURE=false` only for the `:80` deployment; verify with
-  `sudo grep AUTH_COOKIE_SECURE /etc/libredb-studio.env` (HTTPS → absent, `:80` → `false`).
+  `sudo grep AUTH_COOKIE_SECURE /etc/storagebase-studio.env` (HTTPS → absent, `:80` → `false`).
 - `GET https://<fqdn>/api/db/health` → `{"status":"healthy",…}`.
 - Port 3000 closed from outside and open on the VM; port 22 closed when
-  `sshSourceAddressPrefix` is empty; `/etc/libredb-studio.env` mode `0600`.
-- The two secret-bearing directories are private — `stat -c '%a %n' /opt/libredb/data
-  /opt/libredb/caddy/data` → `700` for both. The SQLite store holds connection records
+  `sshSourceAddressPrefix` is empty; `/etc/storagebase-studio.env` mode `0600`.
+- The two secret-bearing directories are private — `stat -c '%a %n' /opt/storagebase/data
+  /opt/storagebase/caddy/data` → `700` for both. The SQLite store holds connection records
   with plaintext passwords, and the Caddy data directory holds the TLS private keys; the
   files inside are created with the containers' umask (`0644`), so the directory mode is
   what keeps them away from other local accounts.
@@ -75,12 +75,12 @@ do next.
   **fresh** `dnsLabelPrefix`. Expected: deployment still `Succeeded`; `curl -fsSk
   https://<fqdn>/api/db/health` works while the same probe without `-k` fails (Caddy's
   internal CA); no `Caddyfile.https` / `Caddyfile.fallback` exists, because nothing
-  rewrites the config; `/etc/libredb-studio.info` explains the warning and offers no
-  restore procedure. Then delete the NSG rule and `systemctl restart libredb-caddy` — a
+  rewrites the config; `/etc/storagebase-studio.info` explains the warning and offers no
+  restore procedure. Then delete the NSG rule and `systemctl restart storagebase-caddy` — a
   trusted certificate arrives on its own, with no manual step.
   > Let's Encrypt limits **failed** validations per hostname (5/hour today), so never
   > retry this on a hostname that already burned the budget; use a fresh DNS label.
-- VM restart: the app comes back (`systemctl is-enabled libredb-studio`) with data intact.
+- VM restart: the app comes back (`systemctl is-enabled storagebase-studio`) with data intact.
 - Delete every resource group you created — each holds a running VM, a static public IP
   and a managed disk.
 

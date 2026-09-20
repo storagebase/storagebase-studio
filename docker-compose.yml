@@ -13,7 +13,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gemini-2.5-flash}
       - LLM_API_URL=${LLM_API_URL}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
-      - STORAGE_SQLITE_PATH=${STORAGE_SQLITE_PATH:-/app/data/libredb-storage.db}
+      - STORAGE_SQLITE_PATH=${STORAGE_SQLITE_PATH:-/app/data/storagebase-storage.db}
       - STORAGE_POSTGRES_URL=${STORAGE_POSTGRES_URL}
       # The agent's run history, and half of what decides whether the agent exists
       # at all: it appears once LLM_API_KEY above is set AND this path is writable
@@ -38,13 +38,13 @@ services:
     volumes:
       - storage-data:/app/data
 
-  libredb-postgres:
+  storagebase-postgres:
     image: postgres:18
-    container_name: libredb-postgres
+    container_name: storagebase-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: libredb_storage
+      POSTGRES_DB: storagebase_storage
     ports:
       - "5432:5432"
     volumes:

@@ -1,24 +1,24 @@
-# FlatPark catalog descriptor for LibreDB Studio (issue #241).
+# FlatPark catalog descriptor for StorageBase Studio (issue #241).
 #
 # FlatPark (https://flatpark.org/) is a signed Flatpak remote that repackages
 # official vendor downloads as extra-data - it does not build from source. This
-# file is the catalog entry; org.libredb.Studio.yml is the Flatpak manifest it
+# file is the catalog entry; org.storagebase.Studio.yml is the Flatpak manifest it
 # points at.
 #
 # read-descriptor.mjs in flatpark/flatpark is a line scanner, not a YAML parser,
 # so keep the plain two-space block style below exactly as it is.
-id: org.libredb.Studio
-name: LibreDB Studio
+id: org.storagebase.Studio
+name: StorageBase Studio
 summary: AI-powered SQL IDE for PostgreSQL, MySQL, MongoDB and more
-website: https://libredb.org
-source_url: https://github.com/libredb/libredb-studio
+website: https://storagebase.org
+source_url: https://github.com/storagebase/storagebase-studio
 build:
-  manifest: org.libredb.Studio.yml
+  manifest: org.storagebase.Studio.yml
   branch: stable
   mode: extra-data
 catalog:
   category: Development
-  # LibreDB packages its own application - FlatPark's "approved by construction"
+  # StorageBase packages its own application - FlatPark's "approved by construction"
   # case, which earns the developer-approved badge. The flag is only valid
   # alongside a row in their docs/upstream-approvals.md citing the submission PR
   # (flatpark/flatpark#158); their check-approvals.sh fails a true flag without

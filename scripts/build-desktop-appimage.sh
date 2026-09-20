@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Build the LibreDB Studio desktop Linux artifacts (issues #232, #241).
+# Build the StorageBase Studio desktop Linux artifacts (issues #232, #241).
 #
 # The desktop shell (desktop/src-tauri, Tauri v2) is a thin native window that
 # runs the SAME standalone server payload every other channel ships as a sidecar
@@ -8,18 +8,18 @@
 # the results to the repo's release-asset convention:
 #
 #   desktop/src-tauri/payload/            <- standalone payload (server.js + .next)
-#   desktop/src-tauri/bin/libredb-studio-node-<triple>
+#   desktop/src-tauri/bin/storagebase-studio-node-<triple>
 #                                         <- pinned, checksum-verified Node runtime
 #   desktop/src-tauri/target/.../*.AppImage
-#     -> <out>/libredb-studio-desktop-<version>-linux-<arch>.AppImage (+ .sha256)
+#     -> <out>/storagebase-studio-desktop-<version>-linux-<arch>.AppImage (+ .sha256)
 #   desktop/src-tauri/target/.../*.deb
-#     -> <out>/libredb-studio-desktop_<version>_<debarch>.deb (+ .sha256)
+#     -> <out>/storagebase-studio-desktop_<version>_<debarch>.deb (+ .sha256)
 #
 # Both come out of one bundler run. The GUI .deb exists because FlatPark
 # (issue #241) repackages a vendor download as Flatpak extra-data and rejects
 # AppImages outright - its runtime has no libfuse, so an AppImage cannot be
 # unpacked at install time. It is also the natural package for Debian/Ubuntu
-# desktop users; the similarly named libredb-studio_<version>_<arch>.deb is the
+# desktop users; the similarly named storagebase-studio_<version>_<arch>.deb is the
 # headless systemd server and is built by packaging/linux/nfpm.yaml instead.
 #
 # The script name still says "appimage": it is referenced by name from
@@ -30,7 +30,7 @@
 # Usage: scripts/build-desktop-appimage.sh <output-dir> [options]
 #
 #   --payload <tarball>  reuse an existing standalone tarball
-#                        (libredb-studio-standalone-<version>-linux-<arch>.tar.gz)
+#                        (storagebase-studio-standalone-<version>-linux-<arch>.tar.gz)
 #                        instead of building one. This is what release CI does:
 #                        the tarball is already built by the `build` job.
 #   --smoke              after bundling, extract the AppImage and boot the
@@ -63,7 +63,7 @@ TAURI_CLI_VERSION="2.11.4"
 # Name the bundled Node sidecar ships under. Must match `externalBin` in
 # desktop/src-tauri/tauri.conf.json and NODE_BIN in
 # desktop/src-tauri/src/layout.rs.
-NODE_BIN="libredb-studio-node"
+NODE_BIN="storagebase-studio-node"
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <output-dir> [--payload <tarball>] [--smoke] [--keep-stage] [--deb-only]" >&2
@@ -137,12 +137,12 @@ case "$(uname -m)" in
     ;;
 esac
 
-ASSET="libredb-studio-desktop-${VERSION}-linux-${ARCH}.AppImage"
+ASSET="storagebase-studio-desktop-${VERSION}-linux-${ARCH}.AppImage"
 # Debian arch naming, and an underscore-separated name, because that is what
 # dpkg tooling and every downstream resolver expect. Distinct from the headless
-# server package libredb-studio_<version>_<arch>.deb in both file name and
+# server package storagebase-studio_<version>_<arch>.deb in both file name and
 # dpkg package name, so the two can coexist in one release and on one machine.
-ASSET_DEB="libredb-studio-desktop_${VERSION}_${DEB_ARCH}.deb"
+ASSET_DEB="storagebase-studio-desktop_${VERSION}_${DEB_ARCH}.deb"
 
 WORK_DIR=$(mktemp -d)
 SERVER_PID=""
@@ -164,7 +164,7 @@ trap cleanup EXIT
 if [ -z "$PAYLOAD_TARBALL" ]; then
   echo "==> Building the standalone payload (no --payload given)"
   "$ROOT_DIR/scripts/build-standalone-payload.sh" "$WORK_DIR/dist"
-  PAYLOAD_TARBALL="$WORK_DIR/dist/libredb-studio-standalone-${VERSION}-linux-${ARCH}.tar.gz"
+  PAYLOAD_TARBALL="$WORK_DIR/dist/storagebase-studio-standalone-${VERSION}-linux-${ARCH}.tar.gz"
 fi
 if [ ! -f "$PAYLOAD_TARBALL" ]; then
   echo "Payload tarball not found: $PAYLOAD_TARBALL" >&2
@@ -251,7 +251,7 @@ done
 # 2. Sidecar runtime: the same pinned, checksum-verified Node the .deb/.rpm and
 #    snap packages bundle. Tauri's externalBin wants the target triple suffix.
 #
-#    It ships as libredb-studio-node, not node: the GUI .deb installs it into
+#    It ships as storagebase-studio-node, not node: the GUI .deb installs it into
 #    the real /usr/bin, where node belongs to the distro's nodejs package, and
 #    dpkg refuses to unpack a second package claiming that path (issue #241).
 #    desktop/src-tauri/src/layout.rs probes this name first and still falls back
@@ -383,10 +383,10 @@ if [ "$RUN_SMOKE" = "true" ]; then
   # version; normalise so the assertions below do not depend on the build host.
   dpkg-deb -c "$OUT_DIR/$ASSET_DEB" | awk '{ sub(/^\.\//, "", $6); print $6 }' > "$DEB_PATHS"
   for required in \
-    "usr/bin/libredb-studio-desktop" \
+    "usr/bin/storagebase-studio-desktop" \
     "usr/bin/${NODE_BIN}" \
-    "usr/lib/libredb-studio-desktop/payload/server.js" \
-    "usr/share/applications/libredb-studio-desktop.desktop"; do
+    "usr/lib/storagebase-studio-desktop/payload/server.js" \
+    "usr/share/applications/storagebase-studio-desktop.desktop"; do
     if ! grep -qxF "$required" "$DEB_PATHS"; then
       echo "Smoke test FAILED: the .deb is missing $required" >&2
       exit 1
@@ -455,7 +455,7 @@ if [ "$RUN_SMOKE" = "true" ]; then
       HOSTNAME=127.0.0.1 \
       PORT="$PORT" \
       STORAGE_PROVIDER=sqlite \
-      STORAGE_SQLITE_PATH="$STORAGE_DIR/libredb-storage.db" \
+      STORAGE_SQLITE_PATH="$STORAGE_DIR/storagebase-storage.db" \
       "$APPDIR_NODE" server.js
   ) > "$WORK_DIR/server.log" 2>&1 &
   SERVER_PID=$!

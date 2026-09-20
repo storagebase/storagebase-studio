@@ -40,7 +40,7 @@ test("production deployment behind a path-preserving reverse proxy", async ({ pa
   }
   expect((await request.get(`${prefix}/apple-touch-icon.png`)).status()).toBe(200);
 
-  await page.locator('input[type="email"]:visible').fill("user@libredb.org");
+  await page.locator('input[type="email"]:visible').fill("user@storagebase.org");
   await page.locator('input[type="password"]:visible').fill("test-user");
   await page.getByRole("button", { name: /sign in/i }).click();
   await expect(page).toHaveURL(new RegExp(`${prefix}/?$`));
@@ -82,7 +82,7 @@ test("production deployment behind a path-preserving reverse proxy", async ({ pa
   await page.goto(`${prefix}/`);
   await expect(page).toHaveURL(`${baseURL}${prefix}/login`);
 
-  await page.locator('input[type="email"]:visible').fill("admin@libredb.org");
+  await page.locator('input[type="email"]:visible').fill("admin@storagebase.org");
   await page.locator('input[type="password"]:visible').fill("test-admin");
   await page.getByRole("button", { name: /sign in/i }).click();
   await expect(page).toHaveURL(`${baseURL}${prefix}/admin/overview`);

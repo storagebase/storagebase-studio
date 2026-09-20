@@ -9,7 +9,7 @@ packer {
 
 variable "version" {
   type        = string
-  description = "LibreDB Studio release tag — image pin + snapshot name (e.g. 0.14.1). Must exist on ghcr.io/libredb/libredb-studio."
+  description = "StorageBase Studio release tag — image pin + snapshot name (e.g. 0.14.1). Must exist on ghcr.io/storagebase/storagebase-studio."
 }
 
 source "digitalocean" "ubuntu" {
@@ -17,7 +17,7 @@ source "digitalocean" "ubuntu" {
   region        = "nyc3"
   size          = "s-1vcpu-1gb"
   ssh_username  = "root"
-  snapshot_name = "libredb-studio-${var.version}-${formatdate("YYYYMMDD", timestamp())}"
+  snapshot_name = "storagebase-studio-${var.version}-${formatdate("YYYYMMDD", timestamp())}"
   # api_token is read from the DIGITALOCEAN_TOKEN env var
 }
 

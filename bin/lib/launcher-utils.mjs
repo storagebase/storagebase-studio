@@ -71,7 +71,7 @@ export function assertReleaseVersion(version) {
 /**
  * Map a Node process.platform/process.arch pair to the release artifact name.
  * The naming must mirror scripts/build-standalone-payload.sh:
- * libredb-studio-standalone-<version>-<os>-<arch>.tar.gz (.zip on win32).
+ * storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz (.zip on win32).
  * Throws for targets the release workflow does not build.
  *
  * @param {string} version
@@ -88,7 +88,7 @@ export function artifactName(version, platform, arch) {
         "Supported targets: linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64.",
     );
   }
-  return `libredb-studio-standalone-${version}-${platform}-${arch}${ARCHIVE_EXTENSION[platform]}`;
+  return `storagebase-studio-standalone-${version}-${platform}-${arch}${ARCHIVE_EXTENSION[platform]}`;
 }
 
 /**
@@ -100,22 +100,22 @@ export function artifactName(version, platform, arch) {
  * @returns {string}
  */
 export function releaseDownloadUrl(version, fileName) {
-  return `https://github.com/libredb/libredb-studio/releases/download/${assertReleaseVersion(version)}/${encodeURIComponent(fileName)}`;
+  return `https://github.com/storagebase/storagebase-studio/releases/download/${assertReleaseVersion(version)}/${encodeURIComponent(fileName)}`;
 }
 
 /**
- * Per-version cache directory: <home>/.libredb-studio/<version>
+ * Per-version cache directory: <home>/.storagebase-studio/<version>
  *
  * @param {string} version
  * @param {string} homeDir
  * @returns {string}
  */
 export function resolveCacheDir(version, homeDir) {
-  return path.join(homeDir, ".libredb-studio", assertReleaseVersion(version));
+  return path.join(homeDir, ".storagebase-studio", assertReleaseVersion(version));
 }
 
 /**
- * Per-user agent ledger directory: <home>/.libredb-studio/workflow-data
+ * Per-user agent ledger directory: <home>/.storagebase-studio/workflow-data
  *
  * The agent's run history (#331 T5). Two things this deliberately is not.
  *
@@ -133,7 +133,7 @@ export function resolveCacheDir(version, homeDir) {
  * @returns {string}
  */
 export function resolveLedgerDir(homeDir) {
-  return path.join(homeDir, ".libredb-studio", "workflow-data");
+  return path.join(homeDir, ".storagebase-studio", "workflow-data");
 }
 
 /**
@@ -194,7 +194,7 @@ export function preservePayloadData(payloadDir, stagingDir) {
 /**
  * Build the archive extraction command for extractArchive. Pure so the
  * per-format/per-platform branches are unit-testable on any host:
- * - .tar.gz: system `tar`, stripping the top-level libredb-studio-<version>/
+ * - .tar.gz: system `tar`, stripping the top-level storagebase-studio-<version>/
  *   root the tarballs are packed under (issue #133,
  *   scripts/lib/pack-standalone-tarball.sh).
  * - .zip (the win32-x64 payload, issue #114): flat by design - winget's
@@ -285,7 +285,7 @@ export function assessNodeRuntime(version) {
       message: [
         `StorageBase Studio requires Node.js ${MINIMUM_NODE.major}.${MINIMUM_NODE.minor} or newer; this is Node ${version}.`,
         "Install Node 24 LTS (https://nodejs.org) or run Studio with Docker:",
-        "  docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest",
+        "  docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest",
       ].join("\n"),
     };
   }
@@ -300,7 +300,7 @@ export function assessNodeRuntime(version) {
 const FIRST_ATTESTED_VERSION = { major: 0, minor: 9, patch: 63 };
 
 /** The repository whose attestations are trusted for release archives. */
-export const PROVENANCE_REPO = "libredb/libredb-studio";
+export const PROVENANCE_REPO = "storagebase/storagebase-studio";
 
 /**
  * The only workflow allowed to have signed a release archive - passed to
@@ -376,8 +376,8 @@ export function assessProvenance({ spawnError, exitCode, stderr, version, artifa
       `Provenance REJECTED for ${artifactName}: ${reason}.\n` +
       "Refusing to start - the archive matches its published checksum but its origin cannot be " +
       "established, which is what a replaced release asset looks like.\n" +
-      "  - delete the cache and retry: rm -rf ~/.libredb-studio && npx @libredb/studio@latest\n" +
-      "  - if it persists, please report it: https://github.com/libredb/libredb-studio/issues\n" +
+      "  - delete the cache and retry: rm -rf ~/.storagebase-studio && npx @storagebase/studio@latest\n" +
+      "  - if it persists, please report it: https://github.com/storagebase/storagebase-studio/issues\n" +
       "  - to start anyway (accepting the risk): LIBREDB_STUDIO_SKIP_PROVENANCE=1",
   });
 

@@ -1,5 +1,5 @@
 # ==============================================================================
-# Snapcraft recipe for the LibreDB Studio server snap (issue #113).
+# Snapcraft recipe for the StorageBase Studio server snap (issue #113).
 #
 # Packs the prebuilt standalone Next.js server payload plus the pinned
 # Node.js runtime and runs it as a strictly confined daemon on port 3000.
@@ -11,7 +11,7 @@
 # Local build (from the repo root, needs snapcraft + LXD):
 #   bash scripts/build-standalone-payload.sh dist
 #   mkdir -p snap-payload
-#   tar -xzf dist/libredb-studio-standalone-<version>-linux-<arch>.tar.gz -C snap-payload --strip-components=1
+#   tar -xzf dist/storagebase-studio-standalone-<version>-linux-<arch>.tar.gz -C snap-payload --strip-components=1
 #   snapcraft
 # When rebuilding after refreshing snap-payload/, run `snapcraft clean payload`
 # first: the payload part has no `source:` key, so snapcraft cannot detect the
@@ -26,8 +26,8 @@
 # out of scope - strict confinement offers no unprivileged interface for
 # arbitrary host sockets. Server-side SQLite storage lives under $SNAP_DATA.
 # ==============================================================================
-name: libredb-studio
-title: LibreDB Studio
+name: storagebase-studio
+title: StorageBase Studio
 base: core24
 # Version is adopted from the payload part, which reads package.json at
 # build time (craftctl set version=...).
@@ -42,19 +42,19 @@ description: |
   Installing the snap starts a background service that serves the app on
   port 3000 (http://localhost:3000). State (SQLite storage, generated
   admin credentials) lives in $SNAP_DATA
-  (/var/snap/libredb-studio/current). On first run the service generates
+  (/var/snap/storagebase-studio/current). On first run the service generates
   admin credentials and logs the admin password once:
 
-      sudo snap logs libredb-studio
+      sudo snap logs storagebase-studio
 
   Databases are reached over TCP; under strict confinement, unix-socket
   connections to databases on the host are not supported.
 icon: public/logo.svg
 license: MIT
-website: https://github.com/libredb/libredb-studio
-source-code: https://github.com/libredb/libredb-studio
-contact: https://github.com/libredb/libredb-studio/issues
-issues: https://github.com/libredb/libredb-studio/issues
+website: https://github.com/storagebase/storagebase-studio
+source-code: https://github.com/storagebase/storagebase-studio
+contact: https://github.com/storagebase/storagebase-studio/issues
+issues: https://github.com/storagebase/storagebase-studio/issues
 grade: stable
 confinement: strict
 
@@ -66,11 +66,11 @@ platforms:
   arm64:
 
 apps:
-  libredb-studio:
+  storagebase-studio:
     # Launcher script staged by the launcher part; snap.yaml command lines
     # cannot expand $SNAP in arguments, so the script execs the bundled
     # node against $SNAP/server.js.
-    command: bin/libredb-studio-launch
+    command: bin/storagebase-studio-launch
     daemon: simple
     restart-condition: on-failure
     plugs:
@@ -81,7 +81,7 @@ apps:
     # a systemd drop-in. The defaults (loopback bind, port 3000, SQLite
     # storage under $SNAP_DATA) live in snap/local/launch.sh and apply only
     # when the operator set nothing:
-    #   sudo systemctl edit snap.libredb-studio.libredb-studio.service
+    #   sudo systemctl edit snap.storagebase-studio.storagebase-studio.service
     # with [Service] Environment=HOSTNAME=0.0.0.0
 
 parts:
@@ -101,7 +101,7 @@ parts:
         echo "snap-payload/server.js not found - build the payload first:" >&2
         echo "  bash scripts/build-standalone-payload.sh dist" >&2
         echo "  mkdir -p snap-payload" >&2
-        echo "  tar -xzf dist/libredb-studio-standalone-<version>-linux-<arch>.tar.gz -C snap-payload --strip-components=1" >&2
+        echo "  tar -xzf dist/storagebase-studio-standalone-<version>-linux-<arch>.tar.gz -C snap-payload --strip-components=1" >&2
         exit 1
       fi
       cp -R "$PAYLOAD_SRC/." "$CRAFT_PART_INSTALL/"
@@ -137,4 +137,4 @@ parts:
     plugin: dump
     source: snap/local
     organize:
-      launch.sh: bin/libredb-studio-launch
+      launch.sh: bin/storagebase-studio-launch

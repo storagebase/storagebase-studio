@@ -52,7 +52,7 @@ export type HelmProbe = {
  * Why Helm is not usable here, or null when it is.
  *
  * Usable means two things, because every `helm template` of this chart needs both: the binary,
- * and the chart's PostgreSQL dependency built into `charts/libredb-studio/charts/`, which is
+ * and the chart's PostgreSQL dependency built into `charts/storagebase-studio/charts/`, which is
  * gitignored and so absent from every fresh clone. Without it Helm refuses every render with
  * "missing in charts/ directory: postgresql", whatever the render asks for.
  */
@@ -61,7 +61,7 @@ export function missingHelm(probe: HelmProbe): string | null {
     return "Helm is not installed. The chart tests drive the real helm binary; install Helm 4.1.3 to run them (CONTRIBUTING.md, Prerequisites).";
   }
   if (!probe.subchartBuilt()) {
-    return "The chart's postgresql dependency is not built, and every chart render needs it. Run: helm repo add bitnami https://charts.bitnami.com/bitnami, then helm dependency build charts/libredb-studio --skip-refresh";
+    return "The chart's postgresql dependency is not built, and every chart render needs it. Run: helm repo add bitnami https://charts.bitnami.com/bitnami, then helm dependency build charts/storagebase-studio --skip-refresh";
   }
   return null;
 }
@@ -70,7 +70,7 @@ export function systemHelmProbe(root: string): HelmProbe {
   return {
     which: (name) => Bun.which(name),
     subchartBuilt: () => {
-      const vendored = path.join(root, "charts/libredb-studio/charts");
+      const vendored = path.join(root, "charts/storagebase-studio/charts");
       return (
         existsSync(vendored) &&
         readdirSync(vendored).some((entry) => entry.startsWith("postgresql-") && entry.endsWith(".tgz"))

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chocolatey community package template for StorageBase Studio (issue #114).
+  Rendered by scripts/render-windows-packaging.mjs; packed and pushed by the
+  chocolatey job in .github/workflows/release-artifacts.yml. The payload zip
+  is NOT embedded: tools/chocolateyinstall.ps1 downloads it from the GitHub
+  release and verifies the pinned sha256 (moderation-friendly - the nupkg
+  stays small).
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>storagebase-studio</id>
+    <version>{{VERSION}}</version>
+    <packageSourceUrl>https://github.com/storagebase/storagebase-studio/tree/main/packaging/chocolatey</packageSourceUrl>
+    <owners>storagebase</owners>
+    <title>StorageBase Studio</title>
+    <authors>StorageBase</authors>
+    <!-- projectUrl (product page) deliberately differs from projectSourceUrl
+         (source code) - duplicate URLs are a moderation guideline flag
+         (CPMR0041, raised on the 0.9.59 review). -->
+    <projectUrl>https://storagebase.org</projectUrl>
+    <!-- jsDelivr CDN (raw.githubusercontent.com is a moderation rejection,
+         CPMR0076), pinned to the immutable release tag. -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/storagebase/storagebase-studio@{{VERSION}}/public/logo.svg</iconUrl>
+    <licenseUrl>https://github.com/storagebase/storagebase-studio/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/storagebase/storagebase-studio</projectSourceUrl>
+    <docsUrl>https://github.com/storagebase/storagebase-studio/blob/main/docs/DISTRIBUTION.md</docsUrl>
+    <bugTrackerUrl>https://github.com/storagebase/storagebase-studio/issues</bugTrackerUrl>
+    <tags>storagebase-studio database sql ide editor postgres postgresql mysql sqlite oracle mssql mongodb redis</tags>
+    <!-- No engine count in the summary or the description: nothing
+         regenerates this template from the provider registry, so a number
+         here is stale the day the next engine lands (issue #445). Name the
+         engines instead - the description below is the exhaustive list. -->
+    <summary>Web-based SQL IDE for PostgreSQL, MySQL, SQL Server, Oracle, MongoDB, Redis, ClickHouse, Cassandra, Elasticsearch and more, with AI query assistance.</summary>
+    <description><![CDATA[
+StorageBase Studio is an open-source, web-based SQL IDE for cloud-native teams. It connects to PostgreSQL, MySQL, SQLite, libSQL, DuckDB, Oracle, SQL Server, MongoDB, Redis, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra, and ships a Monaco-powered editor with AI query assistance, schema browsing, ER diagrams, charts, and import/export tooling.
+
+This package installs the standalone server together with a bundled, private Node.js runtime - nothing else to install.
+
+### Usage
+
+```
+storagebase-studio
+```
+
+Then browse to `localhost:3000`. The first run prints generated admin credentials to the terminal (zero-config bootstrap). The server binds to the loopback interface by default; set `LIBREDB_BIND=0.0.0.0` to expose it on the network. Server-side state is stored under `%LOCALAPPDATA%\StorageBase\Studio`.
+
+### Configuration
+
+All configuration is environment-variable driven (same variables as the Docker image and the Linux packages) - see the [Distribution & Install Guide](https://github.com/storagebase/storagebase-studio/blob/main/docs/DISTRIBUTION.md).
+]]></description>
+    <releaseNotes>https://github.com/storagebase/storagebase-studio/releases/tag/{{VERSION}}</releaseNotes>
+  </metadata>
+  <files>
+    <!-- Forward slashes on purpose: this nuspec is packed by the Mono choco
+         build inside the Linux container (release-artifacts.yml). -->
+    <file src="tools/**" target="tools" />
+  </files>
+</package>

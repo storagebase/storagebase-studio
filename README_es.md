@@ -43,9 +43,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 ## Inicio rápido
@@ -54,10 +51,10 @@ Un IDE SQL completo con un solo comando: sin clonar, sin compilar.
 
 ```bash
 # Docker (recomendado)
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # o con Node.js 24+ (sin Docker)
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 Luego abrí **http://localhost:3000**. En el primer arranque la contraseña de administrador se imprime en el log, sin ningún archivo de configuración.
@@ -177,17 +174,17 @@ La superficie principal de IA es un **panel de agente** al lado del editor. Se p
 
 | Método | Comando |
 | :--- | :--- |
-| **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` |
-| **npx** | `npx @libredb/studio` |
-| **Helm** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` |
-| **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` |
-| **Snap** | `sudo snap install libredb-studio` |
-| **winget** | `winget install LibreDB.Studio` |
-| **deb / rpm** (servidor, con servicio systemd) | [Página de releases](https://github.com/libredb/libredb-studio/releases/latest) |
-| **Aplicación de escritorio** (AppImage / deb) | [Página de releases](https://github.com/libredb/libredb-studio/releases/latest). Ventana nativa, con el servidor corriendo como sidecar local y sin pantalla de login. **No es el paquete de servidor de la fila anterior.** |
-| **Aplicación de escritorio** (Flatpak, en sandbox) | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` |
+| **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` |
+| **npx** | `npx @storagebase/studio` |
+| **Helm** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` |
+| **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` |
+| **Snap** | `sudo snap install storagebase-studio` |
+| **winget** | `winget install StorageBase.Studio` |
+| **deb / rpm** (servidor, con servicio systemd) | [Página de releases](https://github.com/storagebase/storagebase-studio/releases/latest) |
+| **Aplicación de escritorio** (AppImage / deb) | [Página de releases](https://github.com/storagebase/storagebase-studio/releases/latest). Ventana nativa, con el servidor corriendo como sidecar local y sin pantalla de login. **No es el paquete de servidor de la fila anterior.** |
+| **Aplicación de escritorio** (Flatpak, en sandbox) | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` |
 
-`brew trust` se ejecuta una sola vez (requiere Homebrew 6+; si dice que el comando no existe, correr `brew update` primero). Docker, Helm y Snap no necesitan configuración: la contraseña de administrador del primer arranque se imprime en el log del contenedor, en el log del pod y en `sudo snap logs libredb-studio`, respectivamente. Las instrucciones completas de cada canal (comandos, configuración, uso con systemd, modelo de etiquetas de las imágenes Docker) están en [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md).
+`brew trust` se ejecuta una sola vez (requiere Homebrew 6+; si dice que el comando no existe, correr `brew update` primero). Docker, Helm y Snap no necesitan configuración: la contraseña de administrador del primer arranque se imprime en el log del contenedor, en el log del pod y en `sudo snap logs storagebase-studio`, respectivamente. Las instrucciones completas de cada canal (comandos, configuración, uso con systemd, modelo de etiquetas de las imágenes Docker) están en [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md).
 
 Plantillas de despliegue en un clic: Railway, Dokploy, CapRover, Sealos, Kubero, Cosmos, DigitalOcean Marketplace, Unraid Community Apps, Render Blueprint, Fly.io y Koyeb. La lista completa está en [`docs/CHANNELS.md`](docs/CHANNELS.md).
 
@@ -196,7 +193,7 @@ Para Kubernetes también hay un bundle de Operator para OpenShift y OLM.
 ### Integrarlo en tu propio producto
 
 ```bash
-npm i @libredb/studio
+npm i @storagebase/studio
 ```
 
 Studio también se publica como paquete de npm, así que se puede incrustar directamente en tu aplicación. Si tu producto crea bases de datos para sus usuarios, ese es el lugar donde el editor más sirve.
