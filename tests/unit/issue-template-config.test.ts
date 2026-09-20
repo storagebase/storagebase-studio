@@ -15,8 +15,8 @@ describe("issue template contacts", () => {
     const links = readConfig().contact_links;
     expect(links).toHaveLength(2);
     expect(links.map((link: { url: string }) => link.url)).toEqual([
-      "https://github.com/libredb/libredb-studio/discussions",
-      "https://github.com/libredb/libredb-studio/blob/main/SECURITY.md#reporting-a-vulnerability",
+      "https://github.com/storagebase/storagebase-studio/discussions",
+      "https://github.com/storagebase/storagebase-studio/blob/main/SECURITY.md#reporting-a-vulnerability",
     ]);
     for (const link of links) {
       expect(link.name.trim().length).toBeGreaterThan(0);

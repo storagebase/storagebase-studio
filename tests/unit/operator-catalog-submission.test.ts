@@ -32,8 +32,8 @@ import {
   withReplaces,
 } from "../../scripts/operator-catalog-submission.mjs";
 
-const OPERATOR = "libredb-studio-operator";
-const FORK = "libredb/community-operators";
+const OPERATOR = "storagebase-studio-operator";
+const FORK = "storagebase/community-operators";
 
 describe("catalogVersions", () => {
   test("keeps semver directories and sorts them ascending", () => {
@@ -149,7 +149,7 @@ describe("submittedVersions", () => {
 });
 
 describe("isManagedSubmission", () => {
-  const fork = "libredb/community-operators";
+  const fork = "storagebase/community-operators";
 
   test("recognises the branch this workflow pushes", () => {
     expect(isManagedSubmission({ headRepo: fork, headRef: `${OPERATOR}-0.14.1` }, fork, OPERATOR, "0.14.1")).toBe(true);
@@ -381,7 +381,7 @@ describe("withReplaces", () => {
     // with nested version keys, block scalars and quoted strings, so this runs
     // against the file that is actually submitted.
     const real = readFileSync(
-      join(import.meta.dir, "../../operator/bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml"),
+      join(import.meta.dir, "../../operator/bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml"),
       "utf8",
     );
     const patched = withReplaces(real, `${OPERATOR}.v0.9.59`);
@@ -392,7 +392,7 @@ describe("withReplaces", () => {
 
   test("leaves the nested API versions of the real CSV untouched", () => {
     const real = readFileSync(
-      join(import.meta.dir, "../../operator/bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml"),
+      join(import.meta.dir, "../../operator/bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml"),
       "utf8",
     );
     // A control: the real document does contain deeper `version:` keys, so the
@@ -520,7 +520,7 @@ describe("CLI", () => {
    *
    * Measured on windows-latest: every CLI case in this file got exit 0 and an
    * empty stdout, because argv[1] arrives as
-   * `D:\a\libredb-studio\libredb-studio\scripts\operator-catalog-submission.mjs`
+   * `D:\a\storagebase-studio\storagebase-studio\scripts\operator-catalog-submission.mjs`
    * while the URL holds `file:///D:/a/...`. The same defect is reachable from a
    * POSIX machine, which is what this drives: a directory name with a space is
    * percent-encoded in the URL and not in argv[1].
@@ -980,13 +980,13 @@ describe("the submit-catalogs matrix", () => {
     // mirrors the upstream repository name, which is what makes this checkable
     // without the network.
     for (const entry of catalogs) {
-      expect(entry.fork).toBe(`libredb/${entry.upstream.split("/")[1]}`);
+      expect(entry.fork).toBe(`storagebase/${entry.upstream.split("/")[1]}`);
     }
   });
 
   test("every fork is org-owned, because they were transferred there", () => {
     for (const entry of catalogs) {
-      expect(entry.fork.startsWith("libredb/")).toBe(true);
+      expect(entry.fork.startsWith("storagebase/")).toBe(true);
     }
   });
 

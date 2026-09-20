@@ -81,7 +81,7 @@ describe("the release SBOM job", () => {
   });
 
   test("names the asset after the released version", () => {
-    expect(generate?.run).toContain("libredb-studio-${VERSION}.cdx.json");
+    expect(generate?.run).toContain("storagebase-studio-${VERSION}.cdx.json");
     expect(upload?.run).toContain("gh release upload");
   });
 
@@ -145,7 +145,7 @@ describe("the sbom job names its root component, so it does not import as a proj
   test("patches metadata.component.name after generating, before verifying or attesting", () => {
     expect(rename).toBeDefined();
     expect(rename?.run).toContain("metadata.component");
-    expect(rename?.run).toContain("libredb-studio");
+    expect(rename?.run).toContain("storagebase-studio");
   });
 
   test("also sets metadata.component.version, so successive releases do not collapse into one project", () => {
@@ -174,6 +174,6 @@ describe("publish-release refuses to publish without the SBOM", () => {
   test("requires the SBOM asset by name", () => {
     // The verification list is what makes a missing asset a failed run instead
     // of a published release that is quietly incomplete forever.
-    expect(verify?.run).toContain('"libredb-studio-${TAG}.cdx.json"');
+    expect(verify?.run).toContain('"storagebase-studio-${TAG}.cdx.json"');
   });
 });

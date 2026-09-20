@@ -18,21 +18,21 @@ import * as path from "path";
 const DROPLET = path.join(__dirname, "../../deploy/digitalocean/droplet");
 const read = (relative: string): string => fs.readFileSync(path.join(DROPLET, relative), "utf8");
 
-const firstBoot = read("files/var/lib/cloud/scripts/per-instance/99-libredb-first-boot.sh");
+const firstBoot = read("files/var/lib/cloud/scripts/per-instance/99-storagebase-first-boot.sh");
 
 /**
- * The body of the heredoc that becomes /etc/libredb-studio.env, and nothing else.
+ * The body of the heredoc that becomes /etc/storagebase-studio.env, and nothing else.
  * Asserting against the whole script would match the explanatory comments above it,
  * which name the same variables: a test that passes because of a comment is worse
  * than no test.
  */
-const OPEN = "cat > /etc/libredb-studio.env <<EOF\n";
+const OPEN = "cat > /etc/storagebase-studio.env <<EOF\n";
 const envFile = (() => {
   const start = firstBoot.indexOf(OPEN);
-  if (start < 0) throw new Error("the first-boot script no longer writes /etc/libredb-studio.env with a heredoc");
+  if (start < 0) throw new Error("the first-boot script no longer writes /etc/storagebase-studio.env with a heredoc");
   const body = firstBoot.slice(start + OPEN.length);
   const end = body.indexOf("\nEOF");
-  if (end < 0) throw new Error("the heredoc that writes /etc/libredb-studio.env is not terminated");
+  if (end < 0) throw new Error("the heredoc that writes /etc/storagebase-studio.env is not terminated");
   return body.slice(0, end);
 })();
 
@@ -53,11 +53,11 @@ describe("DigitalOcean Droplet first boot", () => {
   });
 
   test("the environment file is written with a restrictive mode", () => {
-    expect(firstBoot).toMatch(/chmod 600 \/etc\/libredb-studio\.env/);
+    expect(firstBoot).toMatch(/chmod 600 \/etc\/storagebase-studio\.env/);
   });
 
   test("no comment leaks into the environment file", () => {
-    // The heredoc is copied verbatim into /etc/libredb-studio.env, which systemd
+    // The heredoc is copied verbatim into /etc/storagebase-studio.env, which systemd
     // reads as KEY=value. A '#' line inside it would be written to the file.
     for (const line of envFile.split("\n").filter((l) => l.trim() !== "")) {
       expect(line).toMatch(/^[A-Z_][A-Z0-9_]*=/);

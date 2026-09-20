@@ -31,8 +31,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "../..");
-const CSV = join(ROOT, "operator/bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml");
-const BASE_CSV = join(ROOT, "operator/config/manifests/bases/libredb-studio-operator.clusterserviceversion.yaml");
+const CSV = join(ROOT, "operator/bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml");
+const BASE_CSV = join(ROOT, "operator/config/manifests/bases/storagebase-studio-operator.clusterserviceversion.yaml");
 
 function packageVersion(): string {
   return JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version;

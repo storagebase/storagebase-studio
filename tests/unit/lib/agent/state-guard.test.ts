@@ -350,12 +350,13 @@ describe("assertPersistableState — CREDENTIAL_KEY", () => {
         "privateKey",
         "passphrase",
         // The resource layer's sibling map (StorageBase fork), registered in
-        // SECRET_FIELD_MAPS alongside the three above: its four credential
+        // SECRET_FIELD_MAPS alongside the three above: its five credential
         // fields join the same aggregate the guard derives from.
         "secretAccessKey",
         "sessionToken",
         "token",
         "clientSecret",
+        "accountKey",
       ]),
     );
   });

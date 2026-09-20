@@ -7,8 +7,8 @@ import { parse } from "yaml";
 const workflow = parse(readFileSync(join(import.meta.dir, "../../.github/workflows/ci.yml"), "utf8")) as {
   jobs: { sonarcloud: { if: string } };
 };
-const canonical = "libredb/libredb-studio";
-const fork = "contributor/libredb-studio";
+const canonical = "storagebase/storagebase-studio";
+const fork = "contributor/storagebase-studio";
 
 describe("SonarCloud workflow", () => {
   test.each([

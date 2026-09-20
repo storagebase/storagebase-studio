@@ -35,6 +35,7 @@ describe("resource connection credential classification", () => {
       tenantId: "t",
       clientId: "c",
       clientSecret: "s",
+      accountKey: "k",
       vaultName: "v",
       namespace: "n",
       sshTunnel: {

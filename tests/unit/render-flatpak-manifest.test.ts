@@ -15,7 +15,7 @@ import {
   renderFlatpakManifest,
 } from "../../scripts/render-flatpak-manifest.mjs";
 
-const TEMPLATE_PATH = path.join(__dirname, "../../packaging/flatpak/org.libredb.Studio.yml.tmpl");
+const TEMPLATE_PATH = path.join(__dirname, "../../packaging/flatpak/org.storagebase.Studio.yml.tmpl");
 const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
 
 const VERSION = "0.9.60";
@@ -24,7 +24,7 @@ const DIGESTS = { x64: "a".repeat(64), arm64: "b".repeat(64) };
 function fixtureSums(digests: Record<string, string> = DIGESTS, version = VERSION): string {
   return (
     Object.entries(digests)
-      .map(([arch, digest]) => `${digest}  libredb-studio-desktop-${version}-linux-${arch}.AppImage`)
+      .map(([arch, digest]) => `${digest}  storagebase-studio-desktop-${version}-linux-${arch}.AppImage`)
       .join("\n") + "\n"
   );
 }
@@ -55,8 +55,8 @@ function renderAndParse(sums = fixtureSums(), version = VERSION): Manifest {
 
 describe("appImageName", () => {
   test("mirrors the release asset naming convention", () => {
-    expect(appImageName("0.9.60", "x64")).toBe("libredb-studio-desktop-0.9.60-linux-x64.AppImage");
-    expect(appImageName("0.9.60", "arm64")).toBe("libredb-studio-desktop-0.9.60-linux-arm64.AppImage");
+    expect(appImageName("0.9.60", "x64")).toBe("storagebase-studio-desktop-0.9.60-linux-x64.AppImage");
+    expect(appImageName("0.9.60", "arm64")).toBe("storagebase-studio-desktop-0.9.60-linux-arm64.AppImage");
   });
 });
 
@@ -72,11 +72,11 @@ describe("renderFlatpakManifest", () => {
     const arm64 = sources.find((source) => source["only-arches"]?.includes("aarch64"));
 
     expect(x64?.url).toBe(
-      `https://github.com/libredb/libredb-studio/releases/download/${VERSION}/${appImageName(VERSION, "x64")}`,
+      `https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/${appImageName(VERSION, "x64")}`,
     );
     expect(x64?.sha256).toBe(DIGESTS.x64);
     expect(arm64?.url).toBe(
-      `https://github.com/libredb/libredb-studio/releases/download/${VERSION}/${appImageName(VERSION, "arm64")}`,
+      `https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/${appImageName(VERSION, "arm64")}`,
     );
     expect(arm64?.sha256).toBe(DIGESTS.arm64);
   });
@@ -88,7 +88,7 @@ describe("renderFlatpakManifest", () => {
     expect(manifest.runtime).toBe("org.gnome.Platform");
     expect(manifest.sdk).toBe("org.gnome.Sdk");
     expect(manifest["runtime-version"]).toBe("50");
-    expect(manifest.command).toBe("libredb-studio");
+    expect(manifest.command).toBe("storagebase-studio");
     expect(manifest.modules).toHaveLength(1);
     expect(manifest.modules[0].buildsystem).toBe("simple");
   });
@@ -116,13 +116,13 @@ describe("renderFlatpakManifest", () => {
       ["arm64", "aarch64"],
     ]) {
       const source = sources.find((entry) => entry["only-arches"]?.includes(flatpakArch));
-      expect(source?.["dest-filename"]).toBe("libredb-studio.AppImage");
+      expect(source?.["dest-filename"]).toBe("storagebase-studio.AppImage");
       const checker = source?.["x-checker-data"];
       expect(checker?.type).toBe("json");
-      expect(checker?.url).toBe("https://api.github.com/repos/libredb/libredb-studio/releases/latest");
+      expect(checker?.url).toBe("https://api.github.com/repos/storagebase/storagebase-studio/releases/latest");
       // Release tags in this repo carry no "v" prefix, so no jq stripping.
       expect(checker?.["version-query"]).toBe(".tag_name");
-      expect(checker?.["url-query"]).toContain(`libredb-studio-desktop-" + $version + "-linux-${assetArch}.AppImage`);
+      expect(checker?.["url-query"]).toContain(`storagebase-studio-desktop-" + $version + "-linux-${assetArch}.AppImage`);
     }
   });
 
@@ -131,7 +131,7 @@ describe("renderFlatpakManifest", () => {
       .modules[0].sources.map((source) => source.path)
       .filter(Boolean);
     expect(paths).toEqual(
-      expect.arrayContaining(["libredb-studio.sh", "org.libredb.Studio.desktop", "org.libredb.Studio.metainfo.xml"]),
+      expect.arrayContaining(["storagebase-studio.sh", "org.storagebase.Studio.desktop", "org.storagebase.Studio.metainfo.xml"]),
     );
   });
 
@@ -161,17 +161,17 @@ describe("localizeFlatpakManifest", () => {
   const rendered = renderFlatpakManifest(template, fixtureSums(), VERSION);
 
   test("swaps the remote source for a local file and drops the other arch", () => {
-    const localized = parseYaml(localizeFlatpakManifest(rendered, "x86_64", "libredb-studio.AppImage")) as Manifest;
+    const localized = parseYaml(localizeFlatpakManifest(rendered, "x86_64", "storagebase-studio.AppImage")) as Manifest;
     const sources = localized.modules[0].sources;
-    const appImage = sources.find((source) => source["dest-filename"] === "libredb-studio.AppImage");
+    const appImage = sources.find((source) => source["dest-filename"] === "storagebase-studio.AppImage");
 
-    expect(appImage?.path).toBe("libredb-studio.AppImage");
+    expect(appImage?.path).toBe("storagebase-studio.AppImage");
     expect(appImage?.url).toBeUndefined();
     expect(appImage?.sha256).toBeUndefined();
     // A local build must not consult the update checker either.
     expect(appImage?.["x-checker-data"]).toBeUndefined();
     expect(appImage?.["only-arches"]).toBeUndefined();
-    expect(sources.filter((source) => source["dest-filename"] === "libredb-studio.AppImage")).toHaveLength(1);
+    expect(sources.filter((source) => source["dest-filename"] === "storagebase-studio.AppImage")).toHaveLength(1);
   });
 
   test("keeps the launcher, desktop entry and metainfo sources", () => {
@@ -180,9 +180,9 @@ describe("localizeFlatpakManifest", () => {
     expect(paths).toEqual(
       expect.arrayContaining([
         "../../dist/local.AppImage",
-        "libredb-studio.sh",
-        "org.libredb.Studio.desktop",
-        "org.libredb.Studio.metainfo.xml",
+        "storagebase-studio.sh",
+        "org.storagebase.Studio.desktop",
+        "org.storagebase.Studio.metainfo.xml",
       ]),
     );
   });
