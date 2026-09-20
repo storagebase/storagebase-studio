@@ -16,8 +16,7 @@
   "ignoreDependencies": [
     "tailwindcss",
     "@workflow/world-postgres",
-    "@ai-sdk/anthropic",
-    "@types/amqplib"
+    "@ai-sdk/anthropic"
   ],
   "ignoreBinaries": [
     "genhtml",

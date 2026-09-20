@@ -76,7 +76,7 @@ describe("AWS Marketplace listing fields", () => {
       .split("\n")
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith("<!--") && !line.startsWith("#"));
-    expect(title).toBe("LibreDB Studio");
+    expect(title).toBe("StorageBase Studio");
     expect((title as string).length).toBeLessThanOrEqual(limit);
   });
 

@@ -1211,9 +1211,9 @@ accept, a single line, a range and a comma pair, and one negative that fails whe
 
 ### D85. The `@/lib/auth` mock is hand-copied across a layer, untyped, and already misses two exports
 
-`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 40 hits, measured 2026-09-19. Six of
+`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 44 hits, measured 2026-09-20. Six of
 them spread the real module and replace one function (`{ ...realAuth, getSession: mockGetSession }`,
-the agent routes' pattern). Thirty-two write out the same five-key object - `getSession`, `signJWT`,
+the agent routes' pattern). Thirty-six write out the same five-key object - `getSession`, `signJWT`,
 `verifyJWT`, `login`, `logout` - down to the same `mock(async () => "mock-token")` for a token
 nothing reads, and one of those thirty-two is `tests/helpers/object-edit-route-harness.ts`, a shared
 harness that could have been the factory and copied the stub instead. The remaining two write a
