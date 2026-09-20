@@ -104,7 +104,9 @@ describe("SecretViewer", () => {
       expect(props.onChanged).toHaveBeenCalledTimes(1);
     });
     const writeCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("secret/write"));
-    const body = JSON.parse((writeCall?.[1] as RequestInit).body as string) as Record<string, unknown>;
+    expect(writeCall).toBeDefined();
+    if (writeCall === undefined) throw new Error("expected write call");
+    const body = JSON.parse((writeCall[1] as RequestInit).body as string) as Record<string, unknown>;
     // The tree id's scheme prefix is stripped: the route reads mount/rest.
     expect(body).toMatchObject({ path: "storagebase/fixture", value: "fresh-value" });
     expect(screen.getByText("Saved.")).toBeDefined();
