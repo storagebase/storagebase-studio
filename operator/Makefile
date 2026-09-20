@@ -31,8 +31,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# libredb.org/libredb-studio-operator-bundle:$VERSION and libredb.org/libredb-studio-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= ghcr.io/libredb/libredb-studio-operator
+# storagebase.org/storagebase-studio-operator-bundle:$VERSION and storagebase.org/storagebase-studio-operator-catalog:$VERSION.
+IMAGE_TAG_BASE ?= ghcr.io/storagebase/storagebase-studio-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -89,7 +89,7 @@ run: helm-operator helm-dep ## Run against the configured Kubernetes cluster in 
 .PHONY: helm-dep
 helm-dep: ## Vendor the embedded chart's declared dependencies (charts/*.tgz is gitignored).
 	helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-	helm dependency build helm-charts/libredb-studio
+	helm dependency build helm-charts/storagebase-studio
 
 .PHONY: docker-build
 docker-build: helm-dep ## Build docker image with the manager.
@@ -199,13 +199,13 @@ bundle: kustomize operator-sdk ## Generate bundle manifests and metadata, then v
 	# 0.0.0 placeholder and no bundle validator flags its absence).
 	# Two-step write instead of sed -i: BSD/macOS sed treats -i's argument as
 	# a backup suffix, which would leak a stray duplicate CSV into bundle/.
-	sed -e 's|containerImage: ghcr.io/libredb/libredb-studio-operator:.*|containerImage: $(IMG)|' \
-		bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml > bundle/manifests/.csv.tmp
-	mv bundle/manifests/.csv.tmp bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml
+	sed -e 's|containerImage: ghcr.io/storagebase/storagebase-studio-operator:.*|containerImage: $(IMG)|' \
+		bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml > bundle/manifests/.csv.tmp
+	mv bundle/manifests/.csv.tmp bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml
 	# sed exits 0 on zero matches and no validator checks containerImage, so
 	# verify the stamp landed - a removed/reformatted base annotation must
 	# fail the build, not ship an unstamped CSV.
-	@grep -q 'containerImage: $(IMG)$$' bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml || \
+	@grep -q 'containerImage: $(IMG)$$' bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml || \
 		{ echo "ERROR: containerImage stamp failed - restore the containerImage annotation in config/manifests/bases"; exit 1; }
 	# Stamp the half of the update graph this repo can know. "Supersede
 	# everything below me" is derivable from $(VERSION) and stays true however
@@ -215,12 +215,12 @@ bundle: kustomize operator-sdk ## Generate bundle manifests and metadata, then v
 	# The upper bound is exclusive on purpose; a <= would make the bundle skip
 	# itself.
 	sed -e "s|olm.skipRange: '>=0.0.0 <.*'|olm.skipRange: '>=0.0.0 <$(VERSION)'|" \
-		bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml > bundle/manifests/.csv.tmp
-	mv bundle/manifests/.csv.tmp bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml
+		bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml > bundle/manifests/.csv.tmp
+	mv bundle/manifests/.csv.tmp bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml
 	# Upstream IGNORES an unparseable skipRange with a log warning instead of
 	# rejecting it, so a botched stamp would reach the catalogs as "no
 	# skipRange" and fail there as a dangling bundle. Verify it landed here.
-	@grep -q "olm.skipRange: '>=0.0.0 <$(VERSION)'$$" bundle/manifests/libredb-studio-operator.clusterserviceversion.yaml || \
+	@grep -q "olm.skipRange: '>=0.0.0 <$(VERSION)'$$" bundle/manifests/storagebase-studio-operator.clusterserviceversion.yaml || \
 		{ echo "ERROR: olm.skipRange stamp failed - restore the olm.skipRange annotation in config/manifests/bases"; exit 1; }
 	# The operatorframework suite is what the community-operator pipelines run
 	# (operator-pipelines static tests); default validators alone skip the

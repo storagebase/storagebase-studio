@@ -1,18 +1,18 @@
-# LibreDB Studio on Kubero
+# StorageBase Studio on Kubero
 
 [Kubero](https://www.kubero.dev) is a self-hosted, open-source PaaS — a
 "Heroku alternative for Kubernetes" — that deploys 12-factor apps onto a cluster
 from a built-in template catalog.
 
-LibreDB Studio is listed in the official
+StorageBase Studio is listed in the official
 [Kubero template catalog](https://www.kubero.dev/templates)
 (merged in [kubero-dev/kubero#754](https://github.com/kubero-dev/kubero/pull/754)).
 The canonical template lives in the Kubero repo at
-[`services/libredb-studio/app.yaml`](https://github.com/kubero-dev/kubero/blob/main/services/libredb-studio/app.yaml)
+[`services/storagebase-studio/app.yaml`](https://github.com/kubero-dev/kubero/blob/main/services/storagebase-studio/app.yaml)
 as a `KuberoApp` custom resource; this folder is a documentation mirror, not the
 source of truth.
 
-> Tracking issue: [libredb-studio#173](https://github.com/libredb/libredb-studio/issues/173)
+> Tracking issue: [storagebase-studio#173](https://github.com/storagebase/storagebase-studio/issues/173)
 
 ## Install
 
@@ -22,14 +22,14 @@ to set one up):
 
 1. **Open your Kubero dashboard** → create or pick a pipeline/app, then browse
    **Templates**.
-2. **Search** for **LibreDB Studio**.
+2. **Search** for **StorageBase Studio**.
 3. **Fill in the variables** — admin/user credentials, a strong `JWT_SECRET`
    (32+ chars), and any optional AI/storage settings.
 4. **Deploy.**
 
 ## What the template does
 
-- Runs the prebuilt `ghcr.io/libredb/libredb-studio` image (pinned tag, never
+- Runs the prebuilt `ghcr.io/storagebase/storagebase-studio` image (pinned tag, never
   `:latest`) with the `docker` deployment strategy on container HTTP port `3000`.
 - Persists saved connections & settings with **SQLite** (`STORAGE_PROVIDER=sqlite`)
   on a `5Gi` ReadWriteOnce volume mounted at `/app/data`, surviving restarts and
@@ -42,9 +42,9 @@ to set one up):
 
 After deploy, open the app's public URL and log in:
 
-- **Admin** (full access incl. maintenance tools): `admin@libredb.org` + your
+- **Admin** (full access incl. maintenance tools): `admin@storagebase.org` + your
   `ADMIN_PASSWORD`.
-- **User** (query execution only): `user@libredb.org` + your `USER_PASSWORD`.
+- **User** (query execution only): `user@storagebase.org` + your `USER_PASSWORD`.
 
 ## Environment variables
 
@@ -72,7 +72,7 @@ Add these variables on the app to extend the deployment:
 ## Version bumps
 
 The catalog template pins a specific image tag. On each release, bump the tag in
-the Kubero repo's `services/libredb-studio/app.yaml` (same manual-bump caveat as
+the Kubero repo's `services/storagebase-studio/app.yaml` (same manual-bump caveat as
 the Railway and CapRover Docker-image templates).
 
-More details and docs: https://github.com/libredb/libredb-studio
+More details and docs: https://github.com/storagebase/storagebase-studio

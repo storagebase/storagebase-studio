@@ -42,7 +42,7 @@ function report(content: string | null) {
 describe("DigitalOcean published listing pin (#910)", () => {
   test("measures the public listing rather than local build inputs", () => {
     expect(channel.pin.strategy).toBe("remote_file");
-    expect(channel.pin.url).toBe("https://marketplace.digitalocean.com/apps/libredb-studio");
+    expect(channel.pin.url).toBe("https://marketplace.digitalocean.com/apps/storagebase-studio");
     expect(channel.update.method).toBe("manual_ui");
   });
 
@@ -149,7 +149,7 @@ describe("DigitalOcean manual release handoff (#910)", () => {
           env: {
             ...process.env,
             VERSION: expected,
-            REPOSITORY: "libredb/libredb-studio",
+            REPOSITORY: "storagebase/storagebase-studio",
             GITHUB_STEP_SUMMARY: summary.replaceAll("\\", "/"),
           },
           stdout: "pipe",
@@ -165,7 +165,7 @@ describe("DigitalOcean manual release handoff (#910)", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain("::notice::");
       const text = readFileSync(summary, "utf8");
-      expect(text).toContain(`ghcr.io/libredb/libredb-studio:${expected}`);
+      expect(text).toContain(`ghcr.io/storagebase/storagebase-studio:${expected}`);
       expect(text).toContain("actions/workflows/do-packer-build.yml");
       expect(text).toContain(`version=${expected}`);
       expect(text).toContain("AUTH_COOKIE_SECURE=false");

@@ -1,7 +1,7 @@
 # Distribution channel inventory
 
 [`channels.yaml`](channels.yaml) is the human-maintained inventory of every place users can
-obtain LibreDB Studio - registries, package managers, PaaS catalogs, partner listings - with
+obtain StorageBase Studio - registries, package managers, PaaS catalogs, partner listings - with
 each channel's business `category`, update policy, provenance links, and (where measurable)
 where its pinned version lives.
 

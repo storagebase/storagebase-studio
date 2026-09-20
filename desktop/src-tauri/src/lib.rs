@@ -1,4 +1,4 @@
-//! LibreDB Studio desktop shell.
+//! StorageBase Studio desktop shell.
 //!
 //! The shell owns three things and nothing else: a webview, the sidecar process
 //! that serves the app on loopback, and the handoff that logs the local user in.
@@ -41,13 +41,13 @@ pub const TARGET_TRIPLE: &str = env!("LIBREDB_TARGET_TRIPLE");
 /// Storage database file name inside the per-user data directory. Matches the
 /// default in `src/lib/data-dir.ts` so the desktop app and a manually launched
 /// server agree on the layout.
-pub const STORAGE_DB_FILE: &str = "libredb-storage.db";
+pub const STORAGE_DB_FILE: &str = "storagebase-storage.db";
 
 /// Label of the window declared in tauri.conf.json.
 const MAIN_WINDOW: &str = "main";
 
 /// Prefix for the shell's own stderr lines (the sidecar's are tagged `[server]`).
-const LOG_PREFIX: &str = "[libredb-studio]";
+const LOG_PREFIX: &str = "[storagebase-studio]";
 
 /// How long the server may take to answer the health check before the shell
 /// gives up on this attempt (mirrors the release smoke test's 30 s budget).
@@ -133,7 +133,7 @@ impl DesktopState {
 pub fn failure_script(summary: &str, detail: &str) -> String {
     let summary = serde_json::to_string(summary).unwrap_or_else(|_| "\"\"".to_string());
     let detail = serde_json::to_string(detail).unwrap_or_else(|_| "\"\"".to_string());
-    format!("window.__libredbDesktopFailure && window.__libredbDesktopFailure({summary}, {detail});")
+    format!("window.__storagebaseDesktopFailure && window.__storagebaseDesktopFailure({summary}, {detail});")
 }
 
 /// Entry point called by `main.rs`.
@@ -149,7 +149,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("failed to start the LibreDB Studio desktop shell");
+        .expect("failed to start the StorageBase Studio desktop shell");
 
     app.run(|handle, event| {
         if matches!(event, RunEvent::Exit) {
@@ -183,7 +183,7 @@ fn on_page_load(webview: &Webview<Wry>, payload: &tauri::webview::PageLoadPayloa
 /// Resolve the per-user data directory, creating it on first run.
 fn data_dir(handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     // app_data_dir() is $XDG_DATA_HOME/<identifier> on Linux, which becomes
-    // ~/.var/app/org.libredb.Studio/data/org.libredb.Studio inside Flatpak - a
+    // ~/.var/app/org.storagebase.Studio/data/org.storagebase.Studio inside Flatpak - a
     // writable location in both the sandboxed and the plain AppImage case.
     let dir = handle
         .path()
@@ -205,7 +205,7 @@ fn boot(handle: tauri::AppHandle) {
             if let Some(window) = window.as_ref() {
                 let _ = window.eval(failure_script(&message, &detail));
             }
-            eprintln!("LibreDB Studio desktop: {message}\n{detail}");
+            eprintln!("StorageBase Studio desktop: {message}\n{detail}");
         }
     }
 }
@@ -296,7 +296,7 @@ fn supervise(handle: &tauri::AppHandle, window: Option<&WebviewWindow>) -> Resul
             }
             None => {
                 return Err(format!(
-                    "the LibreDB Studio server stopped {} times in a row and was not restarted again.",
+                    "the StorageBase Studio server stopped {} times in a row and was not restarted again.",
                     backoff::MAX_RESTARTS + 1
                 ))
             }
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn failure_script_escapes_both_arguments() {
         let script = failure_script("It \"broke\"", "line1\nline2\\end");
-        assert!(script.starts_with("window.__libredbDesktopFailure && window.__libredbDesktopFailure("));
+        assert!(script.starts_with("window.__storagebaseDesktopFailure && window.__storagebaseDesktopFailure("));
         assert!(script.contains(r#""It \"broke\"""#));
         assert!(script.contains(r#""line1\nline2\\end""#));
     }

@@ -42,16 +42,16 @@ afterAll(() => {
 
 describe("artifactName", () => {
   test("maps every supported platform-arch pair to the release tarball name", () => {
-    expect(artifactName("0.9.41", "linux", "x64")).toBe("libredb-studio-standalone-0.9.41-linux-x64.tar.gz");
-    expect(artifactName("0.9.41", "linux", "arm64")).toBe("libredb-studio-standalone-0.9.41-linux-arm64.tar.gz");
-    expect(artifactName("0.9.41", "darwin", "x64")).toBe("libredb-studio-standalone-0.9.41-darwin-x64.tar.gz");
-    expect(artifactName("1.0.0", "darwin", "arm64")).toBe("libredb-studio-standalone-1.0.0-darwin-arm64.tar.gz");
+    expect(artifactName("0.9.41", "linux", "x64")).toBe("storagebase-studio-standalone-0.9.41-linux-x64.tar.gz");
+    expect(artifactName("0.9.41", "linux", "arm64")).toBe("storagebase-studio-standalone-0.9.41-linux-arm64.tar.gz");
+    expect(artifactName("0.9.41", "darwin", "x64")).toBe("storagebase-studio-standalone-0.9.41-darwin-x64.tar.gz");
+    expect(artifactName("1.0.0", "darwin", "arm64")).toBe("storagebase-studio-standalone-1.0.0-darwin-arm64.tar.gz");
   });
 
   test("maps win32-x64 to the release zip name (issue #114)", () => {
     // Windows ships a .zip (winget InstallerType zip; bsdtar-extractable),
     // not a .tar.gz - the extension is part of the artifact contract.
-    expect(artifactName("0.9.41", "win32", "x64")).toBe("libredb-studio-standalone-0.9.41-win32-x64.zip");
+    expect(artifactName("0.9.41", "win32", "x64")).toBe("storagebase-studio-standalone-0.9.41-win32-x64.zip");
   });
 
   test("throws for targets the release workflow does not build", () => {
@@ -134,14 +134,14 @@ describe("assertReleaseVersion", () => {
 describe("releaseDownloadUrl", () => {
   test("builds the GitHub release asset URL without a v prefix", () => {
     expect(releaseDownloadUrl("0.9.41", "SHA256SUMS")).toBe(
-      "https://github.com/libredb/libredb-studio/releases/download/0.9.41/SHA256SUMS",
+      "https://github.com/storagebase/storagebase-studio/releases/download/0.9.41/SHA256SUMS",
     );
   });
 });
 
 describe("resolveCacheDir", () => {
-  test("resolves to <home>/.libredb-studio/<version>", () => {
-    expect(resolveCacheDir("0.9.41", "/home/alice")).toBe(path.join("/home/alice", ".libredb-studio", "0.9.41"));
+  test("resolves to <home>/.storagebase-studio/<version>", () => {
+    expect(resolveCacheDir("0.9.41", "/home/alice")).toBe(path.join("/home/alice", ".storagebase-studio", "0.9.41"));
   });
 });
 
@@ -156,7 +156,7 @@ describe("resolveLedgerDir", () => {
    * release they happened to start.
    */
   test("resolves beside the payload cache, not inside a versioned one", () => {
-    expect(resolveLedgerDir("/home/alice")).toBe(path.join("/home/alice", ".libredb-studio", "workflow-data"));
+    expect(resolveLedgerDir("/home/alice")).toBe(path.join("/home/alice", ".storagebase-studio", "workflow-data"));
   });
 
   test("does not depend on the working directory, which is what loses a run's history", () => {
@@ -172,12 +172,12 @@ describe("parseSha256Sums", () => {
 
   test("parses sha256sum output into a name-to-digest map", () => {
     const sums = parseSha256Sums(
-      `${digestA}  libredb-studio-standalone-0.9.41-linux-x64.tar.gz\n` +
-        `${digestB}  libredb-studio-standalone-0.9.41-darwin-arm64.tar.gz\n`,
+      `${digestA}  storagebase-studio-standalone-0.9.41-linux-x64.tar.gz\n` +
+        `${digestB}  storagebase-studio-standalone-0.9.41-darwin-arm64.tar.gz\n`,
     );
     expect(sums.size).toBe(2);
-    expect(sums.get("libredb-studio-standalone-0.9.41-linux-x64.tar.gz")).toBe(digestA);
-    expect(sums.get("libredb-studio-standalone-0.9.41-darwin-arm64.tar.gz")).toBe(digestB);
+    expect(sums.get("storagebase-studio-standalone-0.9.41-linux-x64.tar.gz")).toBe(digestA);
+    expect(sums.get("storagebase-studio-standalone-0.9.41-darwin-arm64.tar.gz")).toBe(digestB);
   });
 
   test("accepts the binary marker and normalizes uppercase digests", () => {
@@ -369,12 +369,12 @@ describe("preservePayloadData", () => {
     const { payloadDir, staging } = makeDirs();
     fs.mkdirSync(path.join(payloadDir, "data"));
     fs.writeFileSync(path.join(payloadDir, "data", "auth-bootstrap.json"), '{"password":"A"}');
-    fs.writeFileSync(path.join(payloadDir, "data", "libredb-storage.db"), "binary-sqlite-bytes");
+    fs.writeFileSync(path.join(payloadDir, "data", "storagebase-storage.db"), "binary-sqlite-bytes");
     fs.mkdirSync(path.join(staging, "data"));
 
     preservePayloadData(payloadDir, staging);
 
-    expect(fs.readdirSync(path.join(staging, "data")).sort()).toEqual(["auth-bootstrap.json", "libredb-storage.db"]);
+    expect(fs.readdirSync(path.join(staging, "data")).sort()).toEqual(["auth-bootstrap.json", "storagebase-storage.db"]);
   });
 
   test("is a no-op on first extraction (no previous payload directory)", () => {
@@ -399,7 +399,7 @@ describe("preservePayloadData", () => {
 });
 
 describeIf(missingUnixTool("tar"), "extractArchive", () => {
-  // Release tarballs are packed with a top-level libredb-studio-<version>/
+  // Release tarballs are packed with a top-level storagebase-studio-<version>/
   // root (issue #133, scripts/lib/pack-standalone-tarball.sh) instead of a
   // tarbomb; extractArchive must strip that one path component so the
   // payload (server.js, etc.) lands directly in destDir, matching every
@@ -422,8 +422,8 @@ describeIf(missingUnixTool("tar"), "extractArchive", () => {
     return tarballPath;
   }
 
-  test("strips the top-level libredb-studio-<version>/ root so the payload lands directly in destDir", () => {
-    const tarballPath = buildFixtureTarball("libredb-studio-9.9.9");
+  test("strips the top-level storagebase-studio-<version>/ root so the payload lands directly in destDir", () => {
+    const tarballPath = buildFixtureTarball("storagebase-studio-9.9.9");
     const destDir = fs.mkdtempSync(path.join(tempDir, "extract-dest-"));
 
     const { status, error } = extractArchive(tarballPath, destDir);
@@ -432,7 +432,7 @@ describeIf(missingUnixTool("tar"), "extractArchive", () => {
     expect(status).toBe(0);
     expect(fs.readFileSync(path.join(destDir, "server.js"), "utf8")).toBe("// stub server");
     expect(fs.readFileSync(path.join(destDir, "nested", "file.txt"), "utf8")).toBe("nested contents");
-    expect(fs.existsSync(path.join(destDir, "libredb-studio-9.9.9"))).toBe(false);
+    expect(fs.existsSync(path.join(destDir, "storagebase-studio-9.9.9"))).toBe(false);
   });
 });
 
@@ -445,17 +445,17 @@ describeIf(missingUnixTool("tar"), "extractArchive", () => {
  * that separates "cannot verify" from "verification says no".
  */
 const ATTESTATION_404 =
-  "\nError: HTTP 404: Not Found (https://api.github.com/repos/libredb/libredb-studio/attestations/" +
+  "\nError: HTTP 404: Not Found (https://api.github.com/repos/storagebase/storagebase-studio/attestations/" +
   "sha256:ebac3f4cf5b31b3d64b5336aa194a4810e5ae45373e5efbb47ffde837fa24dc1?per_page=30&" +
   "predicate_type=https://slsa.dev/provenance/v1)\n";
 const ATTESTATION_401 =
-  "\nError: HTTP 401: Bad credentials (https://api.github.com/repos/libredb/libredb-studio/attestations/" +
+  "\nError: HTTP 401: Bad credentials (https://api.github.com/repos/storagebase/storagebase-studio/attestations/" +
   "sha256:ebac3f4cf5b31b3d64b5336aa194a4810e5ae45373e5efbb47ffde837fa24dc1)\n";
 const POLICY_MISMATCH = '\nError: verifying with issuer "sigstore.dev"\n';
 const GH_NEVER_LOGGED_IN =
   "To get started with GitHub CLI, please run:  gh auth login\n" +
   "Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.\n";
-const ARTIFACT = "libredb-studio-standalone-0.9.63-linux-x64.tar.gz";
+const ARTIFACT = "storagebase-studio-standalone-0.9.63-linux-x64.tar.gz";
 
 const assess = (overrides: Record<string, unknown> = {}) =>
   assessProvenance({
@@ -623,7 +623,7 @@ describe("launcher startup URL", () => {
     const home = fs.mkdtempSync(path.join(tempDir, "startup-"));
     const root = path.resolve(import.meta.dir, "../..");
     const version = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
-    const payload = path.join(home, ".libredb-studio", version, "payload");
+    const payload = path.join(home, ".storagebase-studio", version, "payload");
     fs.mkdirSync(payload, { recursive: true });
     fs.writeFileSync(path.join(payload, "server.js"), 'console.log("BIND=" + process.env.HOSTNAME);');
     const preload = path.join(home, "home-fixture.mjs");

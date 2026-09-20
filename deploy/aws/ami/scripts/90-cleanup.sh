@@ -41,7 +41,7 @@ cloud-init clean --logs
 #    first-boot signal, so -f there would fail a correct image.
 [ ! -f /home/ubuntu/.ssh/authorized_keys ] || fail "authorized_keys survived"
 [ ! -f /root/.ssh/authorized_keys ]        || fail "root authorized_keys survived"
-[ ! -f /etc/libredb-studio.env ]           || fail "a generated env file is baked into the image"
+[ ! -f /etc/storagebase-studio.env ]           || fail "a generated env file is baked into the image"
 [ -f /etc/machine-id ] && [ ! -s /etc/machine-id ] || fail "machine-id is missing or not empty"
 if ls /etc/ssh/*_key >/dev/null 2>&1; then fail "host keys survived"; fi
 exit 0

@@ -90,7 +90,7 @@ test.describe("Functional smoke: connect to PostgreSQL and run a query", () => {
 
     // Login (user role: lands directly on the studio).
     await page.goto("/login");
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.waitForURL("/");

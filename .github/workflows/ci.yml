@@ -102,9 +102,9 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
       - name: Build library package (tsup)
@@ -150,7 +150,7 @@ jobs:
 
       # --skip-refresh: the `helm repo add` above already fetched the index; Helm 4's `dependency build` re-fetches it by default and takes no --timeout.
       - name: Build chart dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Run the test suite with coverage
         # tests/run-tests.ts runs every test file in its own bun process, several
@@ -164,9 +164,9 @@ jobs:
           # runner refuses the run instead of listing it as not run (tests/runner/requirements.ts).
           LIBREDB_REQUIRE_HELM: "1"
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
       # The project holds 100% line coverage (#196). Fail fast with the exact
@@ -251,7 +251,7 @@ jobs:
         run: helm repo add bitnami https://charts.bitnami.com/bitnami --timeout 5m
 
       - name: Build chart dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Report the toolchain
         # A red leg on a platform nobody here runs is only actionable if the run
@@ -279,9 +279,9 @@ jobs:
           # runner refuses the run instead of listing it as not run (tests/runner/requirements.ts).
           LIBREDB_REQUIRE_HELM: "1"
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
   e2e:
@@ -343,9 +343,9 @@ jobs:
         run: bunx playwright test --grep-invert "Functional smoke"
         env:
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
       - name: Run subpath deployment E2E
@@ -395,9 +395,9 @@ jobs:
         run: bunx playwright test --project=chromium --grep "Functional smoke"
         env:
           JWT_SECRET: test-secret-for-ci-build-only-32ch
-          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_EMAIL: admin@storagebase.org
           ADMIN_PASSWORD: test-admin
-          USER_EMAIL: user@libredb.org
+          USER_EMAIL: user@storagebase.org
           USER_PASSWORD: test-user
 
       - name: Upload Playwright report
@@ -446,7 +446,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: engine-smoke-payload
-          path: dist-payload/libredb-studio-standalone-*.tar.gz
+          path: dist-payload/storagebase-studio-standalone-*.tar.gz
           retention-days: 1
 
   engine-smoke:
@@ -483,7 +483,7 @@ jobs:
           path: dist-payload
 
       - name: Run engine smoke (${{ matrix.tier }})
-        run: bash scripts/engine-smoke.sh dist-payload/libredb-studio-standalone-*.tar.gz ${{ matrix.tier }}
+        run: bash scripts/engine-smoke.sh dist-payload/storagebase-studio-standalone-*.tar.gz ${{ matrix.tier }}
 
   # Browser E2E of the embedded samples against the PACKAGED artifact: the
   # tarball channel (extract + node server.js) and the npx channel
@@ -527,10 +527,10 @@ jobs:
           path: dist-payload
 
       - name: Channel E2E - tarball
-        run: bash scripts/channel-embedded-sample-e2e.sh tarball dist-payload/libredb-studio-standalone-*.tar.gz
+        run: bash scripts/channel-embedded-sample-e2e.sh tarball dist-payload/storagebase-studio-standalone-*.tar.gz
 
       - name: Channel E2E - npx
-        run: bash scripts/channel-embedded-sample-e2e.sh npx dist-payload/libredb-studio-standalone-*.tar.gz
+        run: bash scripts/channel-embedded-sample-e2e.sh npx dist-payload/storagebase-studio-standalone-*.tar.gz
 
   helm-lint:
     name: Helm Chart Lint
@@ -550,10 +550,10 @@ jobs:
 
       # --skip-refresh: the `helm repo add` above already fetched the index; Helm 4's `dependency build` re-fetches it by default and takes no --timeout.
       - name: Build chart dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Lint Helm chart
-        run: helm lint charts/libredb-studio --strict
+        run: helm lint charts/storagebase-studio --strict
 
       # Deployability with DEFAULT values is a certified-catalog requirement
       # (Rancher partner-charts) and the chart's zero-config promise, but until
@@ -577,15 +577,15 @@ jobs:
           fi
           # Image gate, the same one helm-release's preflight applies (#161): with
           # default values the chart deploys
-          # ghcr.io/libredb/libredb-studio:<appVersion>, and a version-bump commit
+          # ghcr.io/storagebase/storagebase-studio:<appVersion>, and a version-bump commit
           # precedes that image by the whole release chain - so an ungated install
           # fails on every bump with ImagePullBackOff for an image that does not
           # exist yet. Nothing is lost by skipping: helm-release's lint-test runs
           # the same default-values install once the image is published.
-          app_version=$(grep '^appVersion:' charts/libredb-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
-          if ! docker manifest inspect "ghcr.io/libredb/libredb-studio:${app_version}" >/dev/null 2>&1; then
+          app_version=$(grep '^appVersion:' charts/storagebase-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
+          if ! docker manifest inspect "ghcr.io/storagebase/storagebase-studio:${app_version}" >/dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::ghcr.io/libredb/libredb-studio:${app_version} is not on GHCR yet - skipping the default-values install. helm-release runs it after the image is published."
+            echo "::notice::ghcr.io/storagebase/storagebase-studio:${app_version} is not on GHCR yet - skipping the default-values install. helm-release runs it after the image is published."
             exit 0
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -609,7 +609,7 @@ jobs:
         run: |
           ct install \
             --target-branch ${{ github.event.repository.default_branch }} \
-            --charts charts/libredb-studio
+            --charts charts/storagebase-studio
 
       # The operator embeds a copy of the chart (checked by the required
       # chart:check gate) and commits the OLM bundle generated from
@@ -657,7 +657,7 @@ jobs:
     # The SonarCloud project belongs to the canonical repository; fork-owned
     # runs cannot authenticate to it, including pushes and fork-local PRs.
     if: >-
-      github.repository == 'libredb/libredb-studio'
+      github.repository == 'storagebase/storagebase-studio'
       && github.actor != 'dependabot[bot]'
       && (github.event.pull_request.head.repo.full_name == github.repository
         || github.event_name == 'push')

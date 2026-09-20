@@ -1,6 +1,6 @@
 # SUSE Partner Certification & Solutions Catalog — Listing Content
 
-Canonical listing content for LibreDB Studio in the SUSE Partner Certification &
+Canonical listing content for StorageBase Studio in the SUSE Partner Certification &
 Solutions Catalog (PCSC), requested by SUSE as part of the SUSE Ready for Rancher
 certification (see rancher/partner-charts#1158 and tracking issue #166). This file is
 the single source for the catalog text.
@@ -15,11 +15,11 @@ propagate automatically — SUSE owns the page, so any change has to be mailed t
 partner contact.
 
 > **Accuracy gate — engine count.** The wording below says sixteen engines. That is true only
-> from the release that carries **DuckDB** ([#424](https://github.com/libredb/libredb-studio/issues/424)),
+> from the release that carries **DuckDB** ([#424](https://github.com/storagebase/storagebase-studio/issues/424)),
 > which followed libSQL; fourteen was true from **0.13.0** onwards, the release that carried
 > Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra alongside the ten of 0.11.0.
 > The number is the `SHIPPED` record in
-> `src/lib/db/compatibility.ts` minus the embedded `libredb`, which `EXTERNAL` in the same
+> `src/lib/db/compatibility.ts` minus the embedded `storagebase`, which `EXTERNAL` in the same
 > file already splits out; read it from there rather than from this file. The catalog entry
 > is version-scoped, so do not publish the sixteen-engine wording against a version that
 > predates DuckDB — send the fourteen-engine variant (0.13.0 onwards), the ten-engine one
@@ -53,7 +53,7 @@ partner contact.
 > MySQL, SQLite, Couchbase, ClickHouse, Apache Druid and Apache Trino — so name that set rather
 > than a count, and check it by grepping `explainFormat:` under `src/lib/db/providers/` rather
 > than by trusting this line. Alongside it is the read-only agent rail
-> ([`docs/AGENT.md`](https://github.com/libredb/libredb-studio/blob/main/docs/AGENT.md)),
+> ([`docs/AGENT.md`](https://github.com/storagebase/storagebase-studio/blob/main/docs/AGENT.md)),
 > which executes statements on PostgreSQL and SQLite only (`queryReadOnly` exists on those
 > two providers alone) in a session the database enforces as read-only. "Executes nothing it
 > recommends" is an overclaim this product already rejected: the consented editor hand-over
@@ -66,21 +66,21 @@ partner contact.
 >
 > **The chart's own `description` is not release-coupled and does name Cassandra.** An
 > earlier revision of this note said it deliberately did not, on the reasoning that
-> `charts/libredb-studio/` is a packaged path and editing it drags in a `Chart.yaml` version
+> `charts/storagebase-studio/` is a packaged path and editing it drags in a `Chart.yaml` version
 > bump (#167's required check), the README `--version` examples and the `operator/helm-charts`
 > mirror. Those four edits are the cost, not a reason to defer: the chart has been carried
-> with the engine since [#438](https://github.com/libredb/libredb-studio/pull/438), which
+> with the engine since [#438](https://github.com/storagebase/storagebase-studio/pull/438), which
 > moved the description to thirteen and 0.1.39 to 0.1.40 in the PR that added Trino. Cassandra
 > followed the same path at chart 0.1.43. So a PR that adds an engine updates all four files;
 > it does not hand them to whoever cuts the next chart. Note the mirror must stay
 > byte-identical — run `bun run chart:bump` rather than editing
-> `operator/helm-charts/libredb-studio/` by hand, or the sync guard fails the required check.
+> `operator/helm-charts/storagebase-studio/` by hand, or the sync guard fails the required check.
 >
 > What *is* release-coupled is every marketplace description that spells the count:
 > `deploy/azure`, `deploy/railway` and `deploy/caprover` all say sixteen as of the DuckDB
 > release - and all three were still on fourteen when it landed, a full engine behind, because
 > libSQL had moved the code and not them. `deploy/railway/template.json` and
-> `deploy/caprover/libredb-studio.yml` were on thirteen once for the same reason: each channel
+> `deploy/caprover/storagebase-studio.yml` were on thirteen once for the same reason: each channel
 > spells the count in a second file nobody reads while editing the first. Each of these
 > describes an artifact a user can already download, so the number has to be true at the tag it
 > names. Read the number from `SHIPPED` when a tag carries it, and see BACKLOG D39 - nothing
@@ -96,31 +96,31 @@ partner contact.
 
 | Field | Value |
 |-------|-------|
-| Product name | LibreDB Studio |
-| Vendor (public listing) | LibreDB — as published, the page heads the partner as **Sekoya** with the product as LibreDB Studio |
+| Product name | StorageBase Studio |
+| Vendor (public listing) | StorageBase — as published, the page heads the partner as **Sekoya** with the product as StorageBase Studio |
 | Partner of record (legal entity) | Sekoya Grup Bilisim ve Teknoloji Ltd. Sti., Istanbul, Turkiye |
 | Category | Data Management & Analysis (assigned by SUSE; we had proposed Database / Developer Tools) |
 | License | MIT (open source) |
 | Specialization | SUSE One — INNOVATE |
 | Certification | SUSE Ready, Platform: SUSE Rancher — granted, live since 2026-08-05 |
 | Catalog listing | https://www.suse.com/pcsc/viewVersionPage?versionID=26969 |
-| Website | https://libredb.org |
-| Source | https://github.com/libredb/libredb-studio |
-| Helm repository | https://libredb.org/libredb-studio/ (also OCI: `oci://ghcr.io/libredb/charts/libredb-studio`) |
-| Container image | `ghcr.io/libredb/libredb-studio` (GHCR, linux/amd64 + linux/arm64) |
-| Rancher support documentation | https://github.com/libredb/libredb-studio/blob/main/docs/RANCHER.md |
+| Website | https://storagebase.org |
+| Source | https://github.com/storagebase/storagebase-studio |
+| Helm repository | https://storagebase.org/storagebase-studio/ (also OCI: `oci://ghcr.io/storagebase/charts/storagebase-studio`) |
+| Container image | `ghcr.io/storagebase/storagebase-studio` (GHCR, linux/amd64 + linux/arm64) |
+| Rancher support documentation | https://github.com/storagebase/storagebase-studio/blob/main/docs/RANCHER.md |
 | Support | Commercial support by the vendor on the documented Rancher / RKE2 / K3s / Kubernetes versions |
 
 ## Short description (one sentence)
 
-LibreDB Studio is an MIT-licensed, AI-assisted open source SQL IDE that connects to
+StorageBase Studio is an MIT-licensed, AI-assisted open source SQL IDE that connects to
 PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase,
 ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra
 directly from the browser.
 
 ## Long description
 
-LibreDB Studio brings a full SQL IDE to Rancher-managed Kubernetes clusters: browse
+StorageBase Studio brings a full SQL IDE to Rancher-managed Kubernetes clusters: browse
 schemas and run queries across PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB,
 MongoDB, Redis, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino
 and Apache Cassandra from a single web interface, with no desktop client to install. Editing
@@ -140,9 +140,9 @@ configured.
 The Helm chart installs from the Rancher Apps catalog with default values: first-run
 admin credentials are generated automatically and printed to the pod log, so a working
 instance is one click away, while production installs can supply their own secrets, an
-existing Kubernetes Secret, or strict fail-closed mode. LibreDB Studio runs entirely
+existing Kubernetes Secret, or strict fail-closed mode. StorageBase Studio runs entirely
 on your own infrastructure, supports linux/amd64 and linux/arm64, and is developed and
-commercially supported by the LibreDB team. Supported Rancher, RKE2/K3s and Kubernetes
+commercially supported by the StorageBase team. Supported Rancher, RKE2/K3s and Kubernetes
 versions are documented and validated for every release.
 
 ## Key features (bullet form, if the catalog template asks for them)
@@ -171,10 +171,10 @@ partner contact rather than sending them one at a time.
 
 | Field on the page | Published value | Should be |
 |---|---|---|
-| Version | LibreDB Studio 0.9.44 | 0.13.5, with the release link pointing at <https://github.com/libredb/libredb-studio/releases/tag/0.13.5> — the sixteen-engine wording in this file is accurate as of that release, which is the one DuckDB ships in |
+| Version | StorageBase Studio 0.9.44 | 0.13.5, with the release link pointing at <https://github.com/storagebase/storagebase-studio/releases/tag/0.13.5> — the sixteen-engine wording in this file is accurate as of that release, which is the one DuckDB ships in |
 | Key features | "Seven database engines" | sixteen — the accuracy gate above is satisfied as of 0.13.5, the release DuckDB ships in |
 | Short and long description | the pre-0.11.0 revision, which names seven engines and an AI that writes SQL from natural language | the text in this file — sixteen engines, and no natural-language-to-SQL claim: that feature was removed from the product |
-| Hardware Architecture | x86-64 | x86-64 and Arm64 (`ghcr.io/libredb/libredb-studio` is linux/amd64 + linux/arm64) |
+| Hardware Architecture | x86-64 | x86-64 and Arm64 (`ghcr.io/storagebase/storagebase-studio` is linux/amd64 + linux/arm64) |
 
 Two open questions for the same mail: whether the version field can track the latest
 release or whether certification is bound to a specific version, and which exact
@@ -196,7 +196,7 @@ pre-Couchbase app-readme, so merging it would have offered a months-old version 
 Rancher catalog. The overlay in that PR now carries the ten-engine wording from this
 file. The corrections above have **not** been mailed to SUSE yet.
 
-**2026-09-09.** rancher/partner-charts#1168 is OPEN, submitted from `libredb/partner-charts`,
+**2026-09-09.** rancher/partner-charts#1168 is OPEN, submitted from `storagebase/partner-charts`,
 and refreshes the overlay to the sixteen-engine wording.
 The catalog keeps rendering the ten-engine text until it merges.
 It had stayed on the ten-engine text from 2026-08-18 while the chart's own description moved
@@ -212,19 +212,19 @@ The overlay had written "manage data across sixteen engines", which the rule abo
 by name and which prose alone did not prevent; the checker now derives the editable set
 from `supportsInlineRowEdit` and fails any manage-data sentence that names an engine
 outside it.
-It had also called SQLite the default storage, where `charts/libredb-studio/values.yaml`
+It had also called SQLite the default storage, where `charts/storagebase-studio/values.yaml`
 sets `config.storageProvider` to `local`; a storage default named in the overlay is now
 read back from the chart.
 
 Chart versions need no submission of their own: partner-charts runs
-`partner-charts-ci update` nightly against <https://libredb.org/libredb-studio/> and has
+`partner-charts-ci update` nightly against <https://storagebase.org/storagebase-studio/> and has
 carried our releases since the 0.1.36 listing without a pull request, taking the newest
 chart version at each run rather than every version in between.
 An overlay edit reaches the catalog with the next version that CI integrates, because the
 overlay is copied in only when a new chart version is built.
 
 Vendor naming, as settled: the page heads the partner as **Sekoya** (the legal entity,
-Sekoya Grup Bilisim ve Teknoloji Ltd. Sti.) with the product named **LibreDB Studio**.
-We had asked for the vendor line to read LibreDB; the split SUSE applied achieves the
+Sekoya Grup Bilisim ve Teknoloji Ltd. Sti.) with the product named **StorageBase Studio**.
+We had asked for the vendor line to read StorageBase; the split SUSE applied achieves the
 same thing — brand on the product, certification on the company — so it is accepted and
 not worth re-litigating.

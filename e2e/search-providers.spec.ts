@@ -14,7 +14,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Search providers in the connection dialog", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.waitForURL("/");

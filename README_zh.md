@@ -44,9 +44,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 ## 快速开始
@@ -55,10 +52,10 @@
 
 ```bash
 # Docker（推荐）
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # 或者用 Node.js 24+（不装 Docker）
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 然后打开 **http://localhost:3000**。首次启动时管理员密码会打印到日志里，无需任何配置文件。
@@ -165,7 +162,7 @@ PostgreSQL · MySQL · Oracle · SQL Server · SQLite · libSQL · DuckDB · Mon
   注意开关不是密钥：Ollama 和自定义端点无需密钥也算配置了模型，此时 AI 就是启用的。具体外发内容见
   [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md)。
 
-仅限独立部署：嵌入式 `@libredb/studio` 包不包含任何 Agent 界面。
+仅限独立部署：嵌入式 `@storagebase/studio` 包不包含任何 Agent 界面。
 指南：[`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) ·
 数据出网说明：[`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) ·
 行为与限制：[`docs/AGENT.md`](docs/AGENT.md)
@@ -210,17 +207,17 @@ PostgreSQL · MySQL · Oracle · SQL Server · SQLite · libSQL · DuckDB · Mon
 
 | 方式 | 命令 |
 | :--- | :--- |
-| **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` |
-| **npx** | `npx @libredb/studio` |
-| **Helm** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` |
-| **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` |
-| **Snap** | `sudo snap install libredb-studio` |
-| **winget** | `winget install LibreDB.Studio` |
-| **deb / rpm**（服务端，自带 systemd 服务） | [Releases 页面](https://github.com/libredb/libredb-studio/releases/latest) |
-| **桌面应用**（AppImage / deb） | [Releases 页面](https://github.com/libredb/libredb-studio/releases/latest)。原生窗口，服务端作为本地 sidecar 运行，没有登录页。**不是上面那个服务端包。** |
-| **桌面应用**（Flatpak，沙箱） | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` |
+| **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` |
+| **npx** | `npx @storagebase/studio` |
+| **Helm** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` |
+| **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` |
+| **Snap** | `sudo snap install storagebase-studio` |
+| **winget** | `winget install StorageBase.Studio` |
+| **deb / rpm**（服务端，自带 systemd 服务） | [Releases 页面](https://github.com/storagebase/storagebase-studio/releases/latest) |
+| **桌面应用**（AppImage / deb） | [Releases 页面](https://github.com/storagebase/storagebase-studio/releases/latest)。原生窗口，服务端作为本地 sidecar 运行，没有登录页。**不是上面那个服务端包。** |
+| **桌面应用**（Flatpak，沙箱） | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` |
 
-`brew trust` 只需执行一次（要求 Homebrew 6+；如果提示未知命令，先 `brew update`）。Docker、Helm 和 Snap 都是零配置的：首次启动生成的管理员密码分别打印在容器日志、Pod 日志和 `sudo snap logs libredb-studio` 里。每个渠道的完整说明（命令、配置、systemd 用法、Docker 镜像标签模型）见 [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)。
+`brew trust` 只需执行一次（要求 Homebrew 6+；如果提示未知命令，先 `brew update`）。Docker、Helm 和 Snap 都是零配置的：首次启动生成的管理员密码分别打印在容器日志、Pod 日志和 `sudo snap logs storagebase-studio` 里。每个渠道的完整说明（命令、配置、systemd 用法、Docker 镜像标签模型）见 [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)。
 
 一键部署模板：Railway、Dokploy、CapRover、Sealos、Kubero、Cosmos、DigitalOcean Marketplace、Unraid Community Apps、Render Blueprint、Fly.io、Koyeb。完整清单见 [`docs/CHANNELS.md`](docs/CHANNELS.md)。
 
@@ -228,17 +225,17 @@ Kubernetes 用户还有一个 OpenShift / OLM Operator bundle。
 
 ### 中国大陆网络下的拉取加速
 
-在部分国内网络下，从 GHCR 拉取镜像会很慢或超时。镜像只有一份，`ghcr.io/libredb/libredb-studio`，下面只是换一个拉取域名：
+在部分国内网络下，从 GHCR 拉取镜像会很慢或超时。镜像只有一份，`ghcr.io/storagebase/storagebase-studio`，下面只是换一个拉取域名：
 
 ```bash
 # 南京大学镜像：把 ghcr.io 换成 ghcr.nju.edu.cn
-docker pull ghcr.nju.edu.cn/libredb/libredb-studio:latest
+docker pull ghcr.nju.edu.cn/storagebase/storagebase-studio:latest
 
 # DaoCloud 镜像：在完整镜像名前加 m.daocloud.io/
-docker pull m.daocloud.io/ghcr.io/libredb/libredb-studio:latest
+docker pull m.daocloud.io/ghcr.io/storagebase/storagebase-studio:latest
 
 # npx / npm：使用 npmmirror 源
-npx --registry=https://registry.npmmirror.com @libredb/studio
+npx --registry=https://registry.npmmirror.com @storagebase/studio
 ```
 
 镜像站会变动（上海交通大学镜像已于 2026 年 6 月停止服务），以上只是当前可用的例子。拉取失败时，请到 [dongyubin/DockerHub](https://github.com/dongyubin/DockerHub) 查看仍在服务的镜像列表。
@@ -246,16 +243,16 @@ npx --registry=https://registry.npmmirror.com @libredb/studio
 ### 嵌入到你自己的产品里
 
 ```bash
-npm i @libredb/studio
+npm i @storagebase/studio
 ```
 
 Studio 同时以 npm 包形式发布，可以直接嵌进你的应用。如果你的产品会替用户创建数据库，这是编辑器最该待的地方。
 
-**在你自己的 Next.js 配置里复用 Studio 的安全响应头。** `@libredb/studio/security` 这个子路径把整套策略以纯数据的形式发布出来：`securityHeaders()` 返回一个普通的 `Record<string, string>`，而它所在的模块不 import 任何东西，所以可以直接在 `next.config.ts` 里加载——那里还没有路径别名，也没有 Studio 运行时。
+**在你自己的 Next.js 配置里复用 Studio 的安全响应头。** `@storagebase/studio/security` 这个子路径把整套策略以纯数据的形式发布出来：`securityHeaders()` 返回一个普通的 `Record<string, string>`，而它所在的模块不 import 任何东西，所以可以直接在 `next.config.ts` 里加载——那里还没有路径别名，也没有 Studio 运行时。
 
 ```ts
 // next.config.ts
-import { securityHeaders } from "@libredb/studio/security";
+import { securityHeaders } from "@storagebase/studio/security";
 
 export default {
   async headers() {

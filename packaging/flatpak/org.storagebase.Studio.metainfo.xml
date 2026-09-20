@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metainfo for the Flathub listing (issue #232).
+
+  Installed as ${FLATPAK_ID}.metainfo.xml by packaging/flatpak/org.storagebase.Studio.yml.
+  Validated by scripts/build-flatpak-local.sh (appstreamcli validate) and by the
+  flatpak-smoke workflow.
+
+  Screenshot URLs are pinned to a commit (Flathub requires a tag or commit, never
+  a branch) and the releases list below must gain an entry for every version
+  pushed to Flathub. See packaging/flatpak/README.md.
+-->
+<component type="desktop-application">
+  <id>org.storagebase.Studio</id>
+  <name>StorageBase Studio</name>
+  <summary>AI-powered SQL IDE for PostgreSQL, MySQL, MongoDB and more</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer id="org.storagebase">
+    <name>StorageBase</name>
+  </developer>
+
+  <description>
+    <p>
+      StorageBase Studio is an open-source SQL IDE for developers and data teams. The desktop
+      app runs entirely on your machine: it starts a local StorageBase Studio server in the
+      background and shows it in a native window. Nothing is sent to a cloud service.
+    </p>
+    <p>Databases it speaks:</p>
+    <ul>
+      <li>PostgreSQL</li>
+      <li>MySQL, MariaDB and TiDB</li>
+      <li>SQLite</li>
+      <li>libSQL and Turso Cloud</li>
+      <li>DuckDB</li>
+      <li>Microsoft SQL Server</li>
+      <li>Oracle Database</li>
+      <li>MongoDB and FerretDB</li>
+      <li>Redis, Valkey, DragonflyDB and KeyDB</li>
+      <li>Couchbase</li>
+      <li>ClickHouse</li>
+      <li>Apache Druid (read-only)</li>
+      <li>Elasticsearch (read-only)</li>
+      <li>OpenSearch (read-only)</li>
+      <li>Apache Trino</li>
+      <li>Apache Cassandra and ScyllaDB</li>
+    </ul>
+    <p>What you get:</p>
+    <ul>
+      <li>A Monaco-based SQL editor with schema-aware completion and formatting</li>
+      <li>A virtualized results grid built for large result sets, with CSV and JSON export</li>
+      <li>Schema browser, entity-relationship diagrams and index advice</li>
+      <li>Query plans, slow-query and session monitoring</li>
+      <li>Optional AI assistance (natural language to SQL, query explanation) using your own API key</li>
+      <li>An embedded sample database, so there is something to query on first launch</li>
+    </ul>
+    <p>
+      Connections are made over TCP. The sandbox has no access to your home directory by
+      default; grant it explicitly if you need to open SQLite files or reach a database
+      through a Unix socket - the project documentation lists the exact commands.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">org.storagebase.Studio.desktop</launchable>
+
+  <url type="homepage">https://storagebase.org</url>
+  <url type="bugtracker">https://github.com/storagebase/storagebase-studio/issues</url>
+  <url type="vcs-browser">https://github.com/storagebase/storagebase-studio</url>
+  <url type="help">https://github.com/storagebase/storagebase-studio/tree/main/docs</url>
+  <url type="contribute">https://github.com/storagebase/storagebase-studio/blob/main/CONTRIBUTING.md</url>
+
+  <categories>
+    <category>Development</category>
+    <category>Database</category>
+  </categories>
+
+  <keywords>
+    <keyword>SQL</keyword>
+    <keyword>database</keyword>
+    <keyword>PostgreSQL</keyword>
+    <keyword>MySQL</keyword>
+    <keyword>SQLite</keyword>
+    <keyword>MongoDB</keyword>
+    <keyword>Redis</keyword>
+    <keyword>Oracle</keyword>
+    <keyword>IDE</keyword>
+  </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/storagebase/storagebase-studio/raw/cb74378ddef24ec543a7b84154fadd8b7e1f8694/public/screenshots/hero-editor.png</image>
+      <caption>Running a query and browsing results in the SQL editor</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://github.com/storagebase/storagebase-studio/raw/cb74378ddef24ec543a7b84154fadd8b7e1f8694/public/screenshots/connection-modal.png</image>
+      <caption>Adding a database connection</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://github.com/storagebase/storagebase-studio/raw/cb74378ddef24ec543a7b84154fadd8b7e1f8694/public/screenshots/erd-diagram.png</image>
+      <caption>Entity-relationship diagram of a schema</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://github.com/storagebase/storagebase-studio/raw/cb74378ddef24ec543a7b84154fadd8b7e1f8694/public/screenshots/nl2sql.png</image>
+      <caption>Turning a question in plain language into SQL</caption>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.9.64" date="2026-07-31">
+      <description>
+        <p>A JWT signing secret shorter than 32 characters now stops the app at startup with an explanatory message, instead of starting up and failing every login.</p>
+      </description>
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.64</url>
+    </release>
+    <release version="0.9.63" date="2026-07-31">
+      <description>
+        <p>Every download for this release is now cryptographically attested, and the npx launcher verifies that attestation before it starts the app. The SQL editor also serves its own Monaco assets, so the workspace opens on a machine with no internet access.</p>
+      </description>
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.63</url>
+    </release>
+    <release version="0.9.62" date="2026-07-30">
+      <description>
+        <p>The desktop build now also ships a GUI Debian package alongside the AppImage, and the bundled Node runtime is installed as storagebase-studio-node so it cannot claim a path the distribution's nodejs package owns.</p>
+      </description>
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.62</url>
+    </release>
+    <release version="0.9.61" date="2026-07-29">
+      <description>
+        <p>Auth cookies can now drop the Secure flag on a deployment the browser reaches over plain HTTP, so a login holds on a trusted local network.</p>
+      </description>
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.61</url>
+    </release>
+    <release version="0.9.60" date="2026-07-28">
+      <description>
+        <p>First release with the desktop application: the AppImage this Flatpak repacks.</p>
+      </description>
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.60</url>
+    </release>
+    <release version="0.9.59" date="2026-07-15">
+      <url type="details">https://github.com/storagebase/storagebase-studio/releases/tag/0.9.59</url>
+    </release>
+  </releases>
+</component>

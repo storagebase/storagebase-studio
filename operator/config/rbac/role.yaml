@@ -29,14 +29,14 @@ rules:
   - create
 
 ##
-## Rules for studio.libredb.org/v1alpha1, Kind: LibreDBStudio
+## Rules for studio.storagebase.org/v1alpha1, Kind: StorageBaseStudio
 ##
 - apiGroups:
-  - studio.libredb.org
+  - studio.storagebase.org
   resources:
-  - libredbstudios
-  - libredbstudios/status
-  - libredbstudios/finalizers
+  - storagebasestudios
+  - storagebasestudios/status
+  - storagebasestudios/finalizers
   verbs:
   - create
   - delete

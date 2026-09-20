@@ -1,6 +1,6 @@
-// libredb-studio.exe - the Windows launcher shipped at the root of the
+// storagebase-studio.exe - the Windows launcher shipped at the root of the
 // win32-x64 standalone zip (issue #114), installed by winget (portable) and
-// Chocolatey. The win32 sibling of packaging/linux/libredb-studio: it execs
+// Chocolatey. The win32 sibling of packaging/linux/storagebase-studio: it execs
 // the bundled private Node runtime against the standalone server payload
 // sitting next to the executable, with the same local-first defaults.
 //
@@ -36,7 +36,7 @@ func main() {
 	for _, required := range []string{paths.Node, paths.Server} {
 		if _, statErr := os.Stat(required); statErr != nil {
 			fatal(fmt.Sprintf(
-				"%s not found - libredb-studio.exe must stay at the root of the extracted LibreDB Studio zip (next to node\\ and server.js)",
+				"%s not found - storagebase-studio.exe must stay at the root of the extracted StorageBase Studio zip (next to node\\ and server.js)",
 				required,
 			))
 		}
@@ -84,6 +84,6 @@ func main() {
 }
 
 func fatal(message string) {
-	fmt.Fprintln(os.Stderr, "libredb-studio launcher: "+message)
+	fmt.Fprintln(os.Stderr, "storagebase-studio launcher: "+message)
 	os.Exit(1)
 }

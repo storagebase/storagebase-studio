@@ -1,3 +1,3 @@
-module github.com/libredb/libredb-studio/packaging/windows/launcher
+module github.com/storagebase/storagebase-studio/packaging/windows/launcher
 
 go 1.25

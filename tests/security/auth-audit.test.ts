@@ -10,7 +10,7 @@ import { AuthConfigError } from "@/lib/auth-errors";
  */
 
 const mockGetSession = mock(
-  async (): Promise<{ role: string; username: string } | null> => ({ role: "admin", username: "admin@libredb.org" }),
+  async (): Promise<{ role: string; username: string } | null> => ({ role: "admin", username: "admin@storagebase.org" }),
 );
 const mockLogout = mock(async () => {});
 const mockLogin = mock(async () => {});
@@ -70,7 +70,7 @@ function callbackRequest(): Request {
 }
 
 beforeEach(() => {
-  mockGetSession.mockImplementation(async () => ({ role: "admin", username: "admin@libredb.org" }));
+  mockGetSession.mockImplementation(async () => ({ role: "admin", username: "admin@storagebase.org" }));
   mockLogout.mockClear();
   cookieStore.get.mockImplementation((name: string) =>
     name === "oidc-state" ? { name, value: "state-cookie" } : undefined,
@@ -89,7 +89,7 @@ describe("logout", () => {
 
       expect(lines).toHaveLength(1);
       expect(lines[0].event).toBe("logout");
-      expect(lines[0].actor).toBe("admin@libredb.org");
+      expect(lines[0].actor).toBe("admin@storagebase.org");
       expect(lines[0].outcome).toBe("success");
       expect(mockLogout).toHaveBeenCalledTimes(1);
     } finally {

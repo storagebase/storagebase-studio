@@ -53,7 +53,7 @@ describe("whether Helm is usable here", () => {
 
   test("a helm binary without the chart's built dependency names the command that builds it", () => {
     expect(missingHelm({ which: () => "/usr/bin/helm", subchartBuilt: () => false })).toContain(
-      "helm dependency build charts/libredb-studio --skip-refresh",
+      "helm dependency build charts/storagebase-studio --skip-refresh",
     );
   });
 

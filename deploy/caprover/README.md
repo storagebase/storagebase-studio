@@ -1,38 +1,38 @@
-# LibreDB Studio — CapRover One-Click App
+# StorageBase Studio — CapRover One-Click App
 
-This folder is the **source of truth** for deploying LibreDB Studio on
+This folder is the **source of truth** for deploying StorageBase Studio on
 [CapRover](https://caprover.com) as a one-click app.
 
-> Tracking issue: [libredb-studio#56](https://github.com/libredb/libredb-studio/issues/56)
+> Tracking issue: [storagebase-studio#56](https://github.com/storagebase/storagebase-studio/issues/56)
 
 | File | Purpose |
 |------|---------|
-| `libredb-studio.yml` | CapRover `captainVersion: 4` template (Docker-Compose + `caproverOneClickApp` block). |
-| `libredb-studio.png` | 256×256 app logo used by the CapRover one-click UI. |
+| `storagebase-studio.yml` | CapRover `captainVersion: 4` template (Docker-Compose + `caproverOneClickApp` block). |
+| `storagebase-studio.png` | 256×256 app logo used by the CapRover one-click UI. |
 
 Both files are submitted as a PR to
 [`caprover/one-click-apps`](https://github.com/caprover/one-click-apps)
-(`public/v4/apps/libredb-studio.yml` + `public/v4/logos/libredb-studio.png`) —
+(`public/v4/apps/storagebase-studio.yml` + `public/v4/logos/storagebase-studio.png`) —
 the official listing, merged and live.
 
 ## Install (official one-click apps catalog)
 
-CapRover dashboard → **Apps → One-Click Apps/Databases** → search **LibreDB Studio**.
+CapRover dashboard → **Apps → One-Click Apps/Databases** → search **StorageBase Studio**.
 No third-party repo to add.
 
-The LibreDB 3rd-party repo that served this app while the official submission was
+The StorageBase 3rd-party repo that served this app while the official submission was
 in review is now retired. Source for that repo:
-<https://github.com/libredb/caprover-one-click-apps>.
+<https://github.com/storagebase/caprover-one-click-apps>.
 
 ## Install (manual template — works today, no repo needed)
 
 CapRover dashboard → **Apps → One-Click Apps/Databases** → select
 **`>> TEMPLATE <<`** at the bottom of the dropdown → paste the contents of
-`libredb-studio.yml` → **Next**.
+`storagebase-studio.yml` → **Next**.
 
 ## What the template does
 
-- Runs `ghcr.io/libredb/libredb-studio` (pinned version, never `:latest`) on
+- Runs `ghcr.io/storagebase/storagebase-studio` (pinned version, never `:latest`) on
   container HTTP port `3000`.
 - Generates a strong `JWT_SECRET` and admin/user passwords automatically and
   echoes the login credentials on the final install screen.
@@ -53,7 +53,7 @@ Set these under the app's **App Configs** tab to extend the deployment:
 
 ## Maintaining this template
 
-When a new Studio version is released, bump the version in `libredb-studio.yml`
+When a new Studio version is released, bump the version in `storagebase-studio.yml`
 and submit an update PR to the official repo. The version appears **twice** in
 that file — the `defaultValue` of `$$cap_version` and the example inside its
 `description` — and both must move together. Validate locally with the CapRover
@@ -69,7 +69,7 @@ Two things to know before you bump:
   `caprover-official` with `remote_file` against the catalog, which is
   deliberate: that pin must measure what upstream actually serves. No gate
   measures the copy in this folder, so it can silently fall behind a release.
-  Tracked in [#268](https://github.com/libredb/libredb-studio/issues/268).
+  Tracked in [#268](https://github.com/storagebase/storagebase-studio/issues/268).
 - **Check upstream first.** This folder leads and the catalog follows, but that
   order has been broken once: [caprover/one-click-apps#1315](https://github.com/caprover/one-click-apps/pull/1315)
   bumped the catalog to 0.9.59 directly, leaving this file on 0.9.14 until it
@@ -77,6 +77,6 @@ Two things to know before you bump:
   ahead:
 
   ```bash
-  curl -s https://raw.githubusercontent.com/caprover/one-click-apps/master/public/v4/apps/libredb-studio.yml \
-    | diff -u libredb-studio.yml -
+  curl -s https://raw.githubusercontent.com/caprover/one-click-apps/master/public/v4/apps/storagebase-studio.yml \
+    | diff -u storagebase-studio.yml -
   ```

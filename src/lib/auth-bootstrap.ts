@@ -131,7 +131,7 @@ function writeBootstrapFile(filePath: string, data: BootstrapFile): void {
 }
 
 function printFirstRunBanner(filePath: string, adminPassword: string): void {
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@libredb.org"; // mirrors local-auth.ts default
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@storagebase.org"; // mirrors local-auth.ts default
   console.log(
     [
       "",

@@ -1,6 +1,6 @@
 # Distribution channel inventory (the "visibility matrix").
 #
-# One entry per place users can obtain LibreDB Studio. Human-maintained:
+# One entry per place users can obtain StorageBase Studio. Human-maintained:
 # scripts/distribution-check.mjs READS this file and reports drift against
 # package.json - it never writes version numbers into it. Schema, tier and
 # SLA definitions, and maintenance rules (including when to update
@@ -84,11 +84,11 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      catalog: https://github.com/libredb/libredb-studio/releases
+      catalog: https://github.com/storagebase/storagebase-studio/releases
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://api.github.com/repos/libredb/libredb-studio/releases/latest
+      url: https://api.github.com/repos/storagebase/storagebase-studio/releases/latest
       extract: '"tag_name":\s*"(\d+\.\d+\.\d+)"'
       note: Probes the latest-release API; confirms the draft-first publish actually landed.
 
@@ -105,13 +105,13 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      catalog: https://github.com/libredb/libredb-studio/pkgs/container/libredb-studio
+      catalog: https://github.com/storagebase/storagebase-studio/pkgs/container/storagebase-studio
     pin:
       strategy: probe
       probe: ghcr-tag-digest
       urls:
-        token: https://ghcr.io/token?service=ghcr.io&scope=repository:libredb/libredb-studio:pull
-        manifest: https://ghcr.io/v2/libredb/libredb-studio/manifests/{ref}
+        token: https://ghcr.io/token?service=ghcr.io&scope=repository:storagebase/storagebase-studio:pull
+        manifest: https://ghcr.io/v2/storagebase/storagebase-studio/manifests/{ref}
       note: Compares the image :latest resolves to against the released version tag. Anonymous pull token,
         no secret, so the probe also works from a fork.
 
@@ -129,18 +129,18 @@ channels:
       sla: every_release
       ci_enabled: true
     links:
-      catalog: https://hub.docker.com/r/libredb/libredb-studio
+      catalog: https://hub.docker.com/r/storagebase/storagebase-studio
     pin:
       strategy: probe
       probe: dockerhub-tag-digest
       urls:
-        tag: https://hub.docker.com/v2/repositories/libredb/libredb-studio/tags/{ref}
+        tag: https://hub.docker.com/v2/repositories/storagebase/storagebase-studio/tags/{ref}
       note: Mirror of GHCR; immutable-tag rules must stay semver-only. The push is secret-gated and skips
         silently, so an absent version tag here is how an expired DOCKER_HUB_TOKEN becomes visible.
 
   - id: npm
-    name: npm package @libredb/studio (library + npx launcher)
-    short_name: npm @libredb/studio
+    name: npm package @storagebase/studio (library + npx launcher)
+    short_name: npm @storagebase/studio
     status: live
     category: registries-releases
     platforms: [linux, macos, windows]
@@ -151,19 +151,19 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/110
-      first_pr: https://github.com/libredb/libredb-studio/pull/122
-      catalog: https://www.npmjs.com/package/@libredb/studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/110
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/122
+      catalog: https://www.npmjs.com/package/@storagebase/studio
     pin:
       strategy: remote_file
-      url: https://registry.npmjs.org/-/package/@libredb/studio/dist-tags
+      url: https://registry.npmjs.org/-/package/@storagebase/studio/dist-tags
       extract: '"latest":\s*"(\d+\.\d+\.\d+)"'
       note: Probes the npm dist-tags endpoint; confirms npm-publish.yml actually landed.
 
   # ---- Tier 1: packaged formats owned by this repo, CI-published ----------
 
   - id: helm
-    name: Helm chart (libredb.org repo + GHCR OCI + ArtifactHub)
+    name: Helm chart (storagebase.org repo + GHCR OCI + ArtifactHub)
     short_name: Helm chart
     status: live
     category: kubernetes-operators
@@ -175,19 +175,19 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/138
-      first_pr: https://github.com/libredb/libredb-studio/pull/44
-      catalog: https://artifacthub.io/packages/helm/libredb-studio/libredb-studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/138
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/44
+      catalog: https://artifacthub.io/packages/helm/storagebase-studio/storagebase-studio
       docs: docs/HELM_CHART.md
     pin:
       strategy: local_file
       files:
-        - charts/libredb-studio/Chart.yaml
+        - charts/storagebase-studio/Chart.yaml
       extract: 'appVersion: "(\d+\.\d+\.\d+)"'
       note: Enforcement lives in the required chart:check CI gate (#138); this row is visibility.
 
   - id: homebrew
-    name: Homebrew tap (libredb/tap/libredb-studio)
+    name: Homebrew tap (storagebase/tap/storagebase-studio)
     short_name: Homebrew tap
     status: live
     category: package-managers
@@ -200,12 +200,12 @@ channels:
       sla: every_release
       ci_enabled: true
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/111
-      first_pr: https://github.com/libredb/libredb-studio/pull/122
-      upstream_repo: https://github.com/libredb/homebrew-tap
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/111
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/122
+      upstream_repo: https://github.com/storagebase/homebrew-tap
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/libredb/homebrew-tap/main/Formula/libredb-studio.rb
+      url: https://raw.githubusercontent.com/storagebase/homebrew-tap/main/Formula/storagebase-studio.rb
       extract: 'version "(\d+\.\d+\.\d+)"'
       note: Confirms the release-CI tap push actually landed.
 
@@ -223,9 +223,9 @@ channels:
       sla: every_release
       ci_enabled: true
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/113
-      first_pr: https://github.com/libredb/libredb-studio/pull/177
-      catalog: https://snapcraft.io/libredb-studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/113
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/177
+      catalog: https://snapcraft.io/storagebase-studio
     pin:
       strategy: probe
       probe: snap-store-channel
@@ -233,7 +233,7 @@ channels:
         - amd64
         - arm64
       urls:
-        info: https://api.snapcraft.io/v2/snaps/info/libredb-studio
+        info: https://api.snapcraft.io/v2/snaps/info/storagebase-studio
       note: Reads the stable channel of each architecture separately, so one lagging build is drift rather
         than a pass. Edge may legitimately differ from stable and is ignored.
 
@@ -250,9 +250,9 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/112
-      first_pr: https://github.com/libredb/libredb-studio/pull/122
-      get: https://github.com/libredb/libredb-studio/releases/latest
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/112
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/122
+      get: https://github.com/storagebase/storagebase-studio/releases/latest
     pin:
       strategy: none
       note: Built by nfpm from the tag in release-artifacts.yml; nothing to drift.
@@ -271,9 +271,9 @@ channels:
       method: ci_publish
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/232
-      first_pr: https://github.com/libredb/libredb-studio/pull/235
-      get: https://github.com/libredb/libredb-studio/releases/latest
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/232
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/235
+      get: https://github.com/storagebase/storagebase-studio/releases/latest
       docs: desktop/README.md
     pin:
       strategy: none
@@ -281,10 +281,10 @@ channels:
         publish-release, so they cannot drift from the tag - hence no pin. The AppImage has shipped
         since 0.9.60 and the GUI .deb since 0.9.62. The AppImage is also what the in-repo Flatpak
         manifest repacks in flatpak-smoke.yml (packaging/flatpak, dormant - see the flathub
-        channel); the GUI .deb (libredb-studio-desktop_<version>_<arch>.deb, distinct from the
+        channel); the GUI .deb (storagebase-studio-desktop_<version>_<arch>.deb, distinct from the
         headless server package) is what FlatPark pins as extra-data.
 
-  # ---- Tier 2: LibreDB-owned copies and listings, bumped by hand ----------
+  # ---- Tier 2: StorageBase-owned copies and listings, bumped by hand ----------
 
   - id: railway-template
     name: Railway one-click template
@@ -298,9 +298,9 @@ channels:
       method: manual_ui
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/174
-      first_pr: https://github.com/libredb/libredb-studio/pull/67
-      catalog: https://railway.com/deploy/libredb-studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/174
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/67
+      catalog: https://railway.com/deploy/storagebase-studio
       docs: deploy/railway/PUBLISH.md
     pin:
       strategy: local_file
@@ -308,7 +308,7 @@ channels:
         - deploy/railway/template.json
         - deploy/railway/README.md
         - deploy/railway/PUBLISH.md
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
       note: The published template is edited in the Railway dashboard; these three files must move together.
 
   - id: koyeb-deploy-button
@@ -324,7 +324,7 @@ channels:
       method: commit
       sla: on_demand
     links:
-      get: https://github.com/libredb/libredb-studio/tree/main/deploy/koyeb
+      get: https://github.com/storagebase/storagebase-studio/tree/main/deploy/koyeb
       docs: deploy/koyeb/README.md
     pin:
       strategy: none
@@ -343,15 +343,15 @@ channels:
       method: commit
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/218
-      first_pr: https://github.com/libredb/libredb-studio/pull/219
-      get: https://github.com/libredb/libredb-studio/blob/main/fly.toml
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/218
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/219
+      get: https://github.com/storagebase/storagebase-studio/blob/main/fly.toml
       docs: docs/FLY.md
     pin:
       strategy: local_file
       files:
         - fly.toml
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
       note: Users deploy straight from the repo file; bump the tag here on release when convenient.
 
   - id: render
@@ -367,14 +367,14 @@ channels:
       method: commit
       sla: on_demand
     links:
-      get: https://github.com/libredb/libredb-studio/blob/main/render.yaml
+      get: https://github.com/storagebase/storagebase-studio/blob/main/render.yaml
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: none
       note: Render builds from the repo Dockerfile (render.yaml dockerfilePath) on push, so there is no image tag to pin - the deployed version tracks whatever main builds. Like fly.toml, render.yaml is auto-detected at the repo root, so users deploy straight from the repo Blueprint.
 
   - id: unraid-ca
-    name: Unraid Community Applications (libredb/unraid-templates)
+    name: Unraid Community Applications (storagebase/unraid-templates)
     short_name: Unraid Community Apps
     status: live
     category: paas-catalogs
@@ -386,15 +386,15 @@ channels:
       method: commit
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/283
-      catalog: https://ca.unraid.net/apps/libredb-studio-0a5x41a1cy1kay
-      upstream_repo: https://github.com/libredb/unraid-templates
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/283
+      catalog: https://ca.unraid.net/apps/storagebase-studio-0a5x41a1cy1kay
+      upstream_repo: https://github.com/storagebase/unraid-templates
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/libredb/unraid-templates/main/templates/libredb-studio.xml
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
-      note: The container template is LibreDB-owned (libredb/unraid-templates), so a version bump is a commit
+      url: https://raw.githubusercontent.com/storagebase/unraid-templates/main/templates/storagebase-studio.xml
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
+      note: The container template is StorageBase-owned (storagebase/unraid-templates), so a version bump is a commit
         in THAT repo - not a PR here and not an upstream PR - which is why this is tier 2 with a remote_file
         pin rather than local_file. Community Applications only serves what its own periodic catalog build
         picked up, so a bump reaches users one CA build after the commit. Submitted via ca.unraid.net/submit
@@ -417,17 +417,17 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/56
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/56
       first_pr: https://github.com/caprover/one-click-apps/pull/1303
       last_bump_pr: https://github.com/caprover/one-click-apps/pull/1315
       upstream_repo: https://github.com/caprover/one-click-apps
       docs: deploy/caprover/README.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/caprover/one-click-apps/master/public/v4/apps/libredb-studio.yml
+      url: https://raw.githubusercontent.com/caprover/one-click-apps/master/public/v4/apps/storagebase-studio.yml
       extract: "defaultValue: '(\\d+\\.\\d+\\.\\d+)'"
-      note: The single CapRover row. A LibreDB-owned 3rd-party repo
-        (libredb/caprover-one-click-apps) served the app while this submission was in review and was
+      note: The single CapRover row. A StorageBase-owned 3rd-party repo
+        (storagebase/caprover-one-click-apps) served the app while this submission was in review and was
         retired once it merged; it had its own inventory entry until that duplicated CapRover in the
         coverage matrix as one live and one dead route to the same platform, with the dead one's URL
         no longer published. Its record lives in deploy/caprover/README.md, which is where a
@@ -446,7 +446,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/171
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/171
       first_pr: https://github.com/Dokploy/templates/pull/931
       last_bump_pr: https://github.com/Dokploy/templates/pull/1039
       catalog: https://templates.dokploy.com
@@ -454,8 +454,8 @@ channels:
       docs: deploy/dokploy/README.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/Dokploy/templates/canary/blueprints/libredb-studio/docker-compose.yml
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/Dokploy/templates/canary/blueprints/storagebase-studio/docker-compose.yml
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
       note: The blueprint serves 0.9.59, bumped there by Dokploy/templates#1039 (merged 2026-08-03).
         Every bump is an upstream pull request a maintainer has to merge, so this pin drifts behind
         the release by design and the drift row is the reminder to open the next one. That repo's
@@ -475,14 +475,14 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/172
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/172
       first_pr: https://github.com/azukaar/cosmos-servapps-official/pull/218
       upstream_repo: https://github.com/azukaar/cosmos-servapps-official
       docs: deploy/cosmos/README.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/azukaar/cosmos-servapps-official/master/servapps/LibreDB-Studio/cosmos-compose.json
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/azukaar/cosmos-servapps-official/master/servapps/StorageBase-Studio/cosmos-compose.json
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
 
   - id: kubero
     name: Kubero template catalog
@@ -496,15 +496,15 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/173
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/173
       first_pr: https://github.com/kubero-dev/kubero/pull/754
       catalog: https://www.kubero.dev/templates
       upstream_repo: https://github.com/kubero-dev/kubero
       docs: deploy/kubero/README.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/kubero-dev/kubero/main/services/libredb-studio/app.yaml
-      extract: 'ghcr\.io/libredb/libredb-studio\s+tag:\s*(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/kubero-dev/kubero/main/services/storagebase-studio/app.yaml
+      extract: 'ghcr\.io/storagebase/storagebase-studio\s+tag:\s*(\d+\.\d+\.\d+)'
 
   - id: sealos
     name: Sealos App Store template
@@ -518,15 +518,15 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/276
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/276
       first_pr: https://github.com/labring-actions/templates/pull/739
-      catalog: https://sealos.io/products/app-store/libredb-studio
+      catalog: https://sealos.io/products/app-store/storagebase-studio
       upstream_repo: https://github.com/labring-actions/templates
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/labring-actions/templates/kb-0.9/template/libredb-studio/index.yaml
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/labring-actions/templates/kb-0.9/template/storagebase-studio/index.yaml
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
       note: Sealos app-store templates live in labring-actions/templates (labring is the company behind
         Sealos) and go in as a direct template PR - no upstream issue first. That repo's default branch is
         `kb-0.9`, NOT main or master, so both the pin URL above and any bump PR must target it; a
@@ -549,19 +549,19 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/278
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/278
       first_pr: https://github.com/truenas/apps/pull/5501
-      catalog: https://apps.truenas.com/catalog/libredb-studio_community/
+      catalog: https://apps.truenas.com/catalog/storagebase-studio_community/
       upstream_repo: https://github.com/truenas/apps
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/truenas/apps/master/ix-dev/community/libredb-studio/ix_values.yaml
-      extract: 'ghcr\.io/libredb/libredb-studio\s+tag:\s*(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/truenas/apps/master/ix-dev/community/storagebase-studio/ix_values.yaml
+      extract: 'ghcr\.io/storagebase/storagebase-studio\s+tag:\s*(\d+\.\d+\.\d+)'
       note: Merged in truenas/apps#5501 (14 Aug 2026); live in the TrueNAS SCALE community catalog. The pin
-        reads the ghcr repo and tag in ix-dev/community/libredb-studio/ix_values.yaml (the maintainer-edited
+        reads the ghcr repo and tag in ix-dev/community/storagebase-studio/ix_values.yaml (the maintainer-edited
         source a bump PR touches) - the container_utils_image tag is a different repository and must not be
-        matched. The built catalog also renders under trains/community/libredb-studio/<version>/. The user
+        matched. The built catalog also renders under trains/community/storagebase-studio/<version>/. The user
         installs on their own TrueNAS box, so the platform is container, not cloud.
 
   - id: casaos
@@ -576,16 +576,16 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/277
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/277
       first_pr: https://github.com/IceWhaleTech/CasaOS-AppStore/pull/992
       upstream_repo: https://github.com/IceWhaleTech/CasaOS-AppStore
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/main/Apps/LibreDBStudio/docker-compose.yml
-      extract: 'libredb-studio:(\d+\.\d+\.\d+)'
+      url: https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/main/Apps/StorageBaseStudio/docker-compose.yml
+      extract: 'storagebase-studio:(\d+\.\d+\.\d+)'
       note: Merged in IceWhaleTech/CasaOS-AppStore#992 (7 Sep 2026); live in the CasaOS App Store. The pin
-        reads the image tag in Apps/LibreDBStudio/docker-compose.yml, the file a bump PR touches. Installs a
+        reads the image tag in Apps/StorageBaseStudio/docker-compose.yml, the file a bump PR touches. Installs a
         Docker container on the user's own device, so the platform is container.
 
   - id: umbrel
@@ -600,7 +600,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/214
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/214
       first_pr: https://github.com/getumbrel/umbrel-apps/pull/5847
       upstream_repo: https://github.com/getumbrel/umbrel-apps
       docs: docs/DISTRIBUTION.md
@@ -608,8 +608,8 @@ channels:
       strategy: none
       note: PR getumbrel/umbrel-apps#5847 is open, so nothing is listed yet. On merge, flip to live and add
         a remote_file pin on
-        https://raw.githubusercontent.com/getumbrel/umbrel-apps/master/libredb-studio/docker-compose.yml
-        with extract 'libredb-studio:(\d+\.\d+\.\d+)' - the image is digest-pinned (tag@sha256) and the
+        https://raw.githubusercontent.com/getumbrel/umbrel-apps/master/storagebase-studio/docker-compose.yml
+        with extract 'storagebase-studio:(\d+\.\d+\.\d+)' - the image is digest-pinned (tag@sha256) and the
         regex captures the semver and stops before the @. umbrelOS installs on the user's own device, so
         the platform is container.
 
@@ -625,7 +625,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/212
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/212
       first_pr: https://github.com/easypanel-io/templates/pull/1446
       catalog: https://easypanel.io/templates
       upstream_repo: https://github.com/easypanel-io/templates
@@ -634,8 +634,8 @@ channels:
       strategy: none
       note: PR easypanel-io/templates#1446 is open, so nothing is listed yet. On merge, flip to live and add
         a remote_file pin on
-        https://raw.githubusercontent.com/easypanel-io/templates/main/templates/libredb-studio/meta.yaml
-        with extract 'libredb-studio:(\d+\.\d+\.\d+)' - the version lives in meta.yaml's
+        https://raw.githubusercontent.com/easypanel-io/templates/main/templates/storagebase-studio/meta.yaml
+        with extract 'storagebase-studio:(\d+\.\d+\.\d+)' - the version lives in meta.yaml's
         appServiceImage.default, not index.ts (which parameterises the image). Same PaaS-template shape as
         dokploy, so the platform is cloud.
 
@@ -651,7 +651,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/213
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/213
       first_pr: https://github.com/portainer/templates/pull/262
       upstream_repo: https://github.com/portainer/templates
       docs: docs/DISTRIBUTION.md
@@ -660,7 +660,7 @@ channels:
       note: PR portainer/templates#262 is open against the v3 branch (Portainer's current template format,
         NOT master), so nothing is listed yet. On merge, flip to live and add a remote_file pin on
         https://raw.githubusercontent.com/portainer/templates/v3/templates.json with extract
-        'libredb-studio:(\d+\.\d+\.\d+)'; both the pin URL and any bump PR must target v3. Deploys a
+        'storagebase-studio:(\d+\.\d+\.\d+)'; both the pin URL and any bump PR must target v3. Deploys a
         container to the user's Docker host, so the platform is container.
 
   - id: operatorhub-community
@@ -682,17 +682,17 @@ channels:
       # broken release.
       ci_enabled: true
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/152
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/152
       first_pr: https://github.com/redhat-openshift-ecosystem/community-operators-prod/pull/10497
-      catalog: https://operatorhub.io/operator/libredb-studio-operator
+      catalog: https://operatorhub.io/operator/storagebase-studio-operator
       upstream_repo: https://github.com/redhat-openshift-ecosystem/community-operators-prod
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: probe
       probe: github-dir-max-version
       urls:
-        operatorhub-io: https://api.github.com/repos/k8s-operatorhub/community-operators/contents/operators/libredb-studio-operator
-        openshift-console: https://api.github.com/repos/redhat-openshift-ecosystem/community-operators-prod/contents/operators/libredb-studio-operator
+        operatorhub-io: https://api.github.com/repos/k8s-operatorhub/community-operators/contents/operators/storagebase-studio-operator
+        openshift-console: https://api.github.com/repos/redhat-openshift-ecosystem/community-operators-prod/contents/operators/storagebase-studio-operator
       note: Submitted automatically by the submit-catalogs job in operator-release.yml (#656); ci_enabled above is its switch. Both catalogs are listed - OpenShift console since 0.9.59 (bundle community-operators-prod#10497
         merged 2026-07-27, FBC catalogs community-operators-prod#10581), operatorhub.io since
         k8s-operatorhub/community-operators#8794 merged 2026-09-08. These are the COMMUNITY catalogs, not the
@@ -720,7 +720,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/166
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/166
       first_pr: https://github.com/rancher/partner-charts/pull/1158
       catalog: https://www.suse.com/pcsc/viewVersionPage?versionID=26969
       upstream_repo: https://github.com/rancher/partner-charts
@@ -728,7 +728,7 @@ channels:
       strategy: none
       note: Merged in rancher/partner-charts#1158 (17 Aug 2026); live in Rancher Partner Charts and listed
         in the SUSE Solutions Catalog. Chart versions need no submission of ours - partner-charts runs
-        partner-charts-ci update nightly against https://libredb.org/libredb-studio/ and has carried our
+        partner-charts-ci update nightly against https://storagebase.org/storagebase-studio/ and has carried our
         releases since the listing without a pull request, taking the newest chart version at each run.
         So upstream_pr here is a copy change to the app-readme overlay (rancher/partner-charts#1168), not
         a version bump. Strategy stays none because the catalog names one directory per CHART version and
@@ -765,13 +765,13 @@ channels:
       method: manual_ui
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/72
-      first_pr: https://github.com/libredb/libredb-studio/pull/210
-      catalog: https://marketplace.digitalocean.com/apps/libredb-studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/72
+      first_pr: https://github.com/storagebase/storagebase-studio/pull/210
+      catalog: https://marketplace.digitalocean.com/apps/storagebase-studio
       docs: deploy/digitalocean/README.md
     pin:
       strategy: remote_file
-      url: https://marketplace.digitalocean.com/apps/libredb-studio
+      url: https://marketplace.digitalocean.com/apps/storagebase-studio
       # The listing's custom_data.version is serialized with escaped quotes in
       # Next.js flight data; also accept unescaped JSON, never generic page versions.
       extract: 'custom_data(?:\\)?"\s*:\s*\{\s*(?:\\)?"version(?:\\)?"\s*:\s*(?:\\)?"(\d+\.\d+\.\d+)(?:\\)?"'
@@ -794,7 +794,7 @@ channels:
       method: manual_ui
       sla: on_demand
     links:
-      catalog: https://console.cloud.google.com/marketplace/product/libredb-public/libredb-studio
+      catalog: https://console.cloud.google.com/marketplace/product/storagebase-public/storagebase-studio
       docs: docs/DISTRIBUTION.md
     pin:
       # The listed version is held in Google's Producer Portal and the artifacts
@@ -815,7 +815,7 @@ channels:
       method: manual_ui
       sla: on_demand
     links:
-      catalog: https://marketplace.microsoft.com/en-us/product/libredb.libredb-studio
+      catalog: https://marketplace.microsoft.com/en-us/product/storagebase.storagebase-studio
       docs: deploy/azure/README.md
     pin:
       strategy: none
@@ -852,7 +852,7 @@ channels:
         Portal the way Azure's lives in Partner Center; it is checked by hand against the portal.
 
   - id: winget
-    name: winget community repository (LibreDB.Studio)
+    name: winget community repository (StorageBase.Studio)
     short_name: winget
     status: live
     category: package-managers
@@ -867,24 +867,24 @@ channels:
       # manifest to carry forward and every release submits an update PR.
       ci_enabled: true
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/114
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/114
       first_pr: https://github.com/microsoft/winget-pkgs/pull/402985
-      catalog: https://github.com/microsoft/winget-pkgs/tree/master/manifests/l/LibreDB/Studio
+      catalog: https://github.com/microsoft/winget-pkgs/tree/master/manifests/l/StorageBase/Studio
       upstream_repo: https://github.com/microsoft/winget-pkgs
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: probe
       probe: github-dir-max-version
       urls:
-        catalog: https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests/l/LibreDB/Studio
-      note: Listed since 0.9.59 (winget install LibreDB.Studio). winget publishes no floating "latest"
+        catalog: https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests/l/StorageBase/Studio
+      note: Listed since 0.9.59 (winget install StorageBase.Studio). winget publishes no floating "latest"
         document - the contents listing enumerates every published version - so the highest version it
         enumerates is the served state. A regex pin cannot express that (all matches in a source must
         agree), which is why this is a probe. The release job's own pre-check (package listed / version
         already merged / update PR already open) remains the publish-time guard.
 
   - id: chocolatey
-    name: Chocolatey community repository (libredb-studio)
+    name: Chocolatey community repository (storagebase-studio)
     short_name: Chocolatey
     status: live
     category: package-managers
@@ -904,14 +904,14 @@ channels:
       # carry that job alone.
       ci_enabled: true
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/114
-      catalog: https://community.chocolatey.org/packages/libredb-studio
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/114
+      catalog: https://community.chocolatey.org/packages/storagebase-studio
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: remote_file
-      url: https://community.chocolatey.org/api/v2/Packages()?%24filter=Id%20eq%20%27libredb-studio%27%20and%20IsLatestVersion
+      url: https://community.chocolatey.org/api/v2/Packages()?%24filter=Id%20eq%20%27storagebase-studio%27%20and%20IsLatestVersion
       extract: '<d:Version>(\d+\.\d+\.\d+)</d:Version>'
-      note: Listed since 0.9.59 (choco install libredb-studio), approved 2026-08-24. The community
+      note: Listed since 0.9.59 (choco install storagebase-studio), approved 2026-08-24. The community
         feed publishes no floating "latest" document, so the pin filters the OData package list to
         IsLatestVersion - one document, one match, whatever the published version count. It sat at
         0.9.59 while the job was disabled and has moved with every release since; it reads 0.13.6
@@ -922,7 +922,7 @@ channels:
         what removes the wait - docs/BACKLOG.md REL3.
 
   - id: flathub
-    name: Flathub community catalog (org.libredb.Studio)
+    name: Flathub community catalog (org.storagebase.Studio)
     short_name: Flathub
     status: deprecated
     category: package-managers
@@ -934,7 +934,7 @@ channels:
       method: upstream_pr
       sla: on_demand
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/232
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/232
       upstream_repo: https://github.com/flathub/flathub
       first_pr: https://github.com/flathub/flathub/pull/9538
       docs: packaging/flatpak/README.md
@@ -953,7 +953,7 @@ channels:
         dormant rather than as work in progress.
 
   - id: flatpark
-    name: FlatPark signed Flatpak remote (org.libredb.Studio)
+    name: FlatPark signed Flatpak remote (org.storagebase.Studio)
     short_name: FlatPark (Flatpak)
     status: live
     category: package-managers
@@ -965,7 +965,7 @@ channels:
       method: upstream_pr
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/241
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/241
       upstream_repo: https://github.com/flatpark/flatpark
       first_pr: https://github.com/flatpark/flatpark/pull/158
       catalog: https://flatpark.org/
@@ -975,8 +975,8 @@ channels:
       note: Repackages the GUI .deb as Flatpak extra-data - the artifact is fetched on the user's
         machine at install time, not built by FlatPark, and AppImages are not accepted there. The
         descriptor set is staged in packaging/flatpark and copied into a flatpark/flatpark fork as
-        registry/org.libredb.Studio. Live since 0.9.62 (flatpark/flatpark#158 merged 2026-07-30),
-        carrying the developer-approved flag - LibreDB packages its own app. FlatPark's bot now
+        registry/org.storagebase.Studio. Live since 0.9.62 (flatpark/flatpark#158 merged 2026-07-30),
+        carrying the developer-approved flag - StorageBase packages its own app. FlatPark's bot now
         re-pins every release from resolve-update.sh, so the staged copy drifts by design and must
         stay out of release gates; a released version reaching the catalog is their CI's job, not
         ours, which is why there is no pin here. Sequencing question settled 2026-07-30 - FlatPark
@@ -997,14 +997,14 @@ channels:
       sla: on_demand
     links:
       first_pr: https://github.com/AppImage/appimage.github.io/pull/3861
-      catalog: https://appimage.github.io/LibreDB_Studio/
-      get: https://github.com/libredb/libredb-studio/releases/latest
+      catalog: https://appimage.github.io/StorageBase_Studio/
+      get: https://github.com/storagebase/storagebase-studio/releases/latest
       docs: desktop/README.md
     pin:
       strategy: none
       note: Live since 2026-08-30 - AppImage/appimage.github.io#3861 merged and the listing serves at
-        https://appimage.github.io/LibreDB_Studio/, linking the releases page rather than a frozen
-        asset URL. One line in the catalog's data/LibreDB_Studio names this repository - their
+        https://appimage.github.io/StorageBase_Studio/, linking the releases page rather than a frozen
+        asset URL. One line in the catalog's data/StorageBase_Studio names this repository - their
         worker reads the releases API, takes the first AppImage asset matching x64 and re-reads it on every
         catalog rebuild, so no release bumps anything here and there is no served version to pin.
         What the listing depends on instead is the x64 AppImage staying startable for someone other

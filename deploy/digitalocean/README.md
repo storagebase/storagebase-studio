@@ -1,4 +1,4 @@
-# DigitalOcean Marketplace — LibreDB Studio
+# DigitalOcean Marketplace — StorageBase Studio
 
 Build and submission files for the 1-Click Droplet App (Path B of #72).
 Base image: **Ubuntu 24.04 LTS** (`ubuntu-24-04-x64`).
@@ -17,9 +17,9 @@ deploy/digitalocean/
     │   ├── 01-install.sh              # Docker CE + compose plugin, droplet-agent purge, image pre-pull
     │   └── 02-configure.sh            # UFW, exec bits (MOTD + first-boot!), /app/data, version pinning, application.info
     └── files/
-        ├── etc/systemd/system/libredb-studio.service
-        ├── etc/update-motd.d/99-libredb-studio
-        └── var/lib/cloud/scripts/per-instance/99-libredb-first-boot.sh
+        ├── etc/systemd/system/storagebase-studio.service
+        ├── etc/update-motd.d/99-storagebase-studio
+        └── var/lib/cloud/scripts/per-instance/99-storagebase-first-boot.sh
 ```
 
 DO's official `90-cleanup.sh` / `99-img-check.sh` are fetched at build time
@@ -33,7 +33,7 @@ the pin deliberately, in both places, after reviewing upstream changes.
 **GitHub Actions (recommended):** wait for the Docker publish workflow to finish
 for the release, then Actions → "DO Packer Build" → Run workflow → select that
 release tag and enter the same bare semver as `version`. The image tag must exist
-on `ghcr.io/libredb/libredb-studio`; the input has no default. The snapshot ID
+on `ghcr.io/storagebase/storagebase-studio`; the input has no default. The snapshot ID
 appears in the job summary.
 Requires the `DIGITALOCEAN_TOKEN` repo secret (read+write PAT).
 
@@ -96,8 +96,8 @@ update and verify the published version matches the submitted snapshot.
 - [ ] `packer validate` → clean
 - [ ] Fresh test Droplet from the snapshot ($6) → MOTD shows up
 - [ ] `http://<IP>:3000` loads; `/api/db/health` → `{"status":"healthy",…}`
-- [ ] Login works with the credentials from `/etc/libredb-studio.env`
-- [ ] `sudo grep AUTH_COOKIE_SECURE /etc/libredb-studio.env` → `false`. The
+- [ ] Login works with the credentials from `/etc/storagebase-studio.env`
+- [ ] `sudo grep AUTH_COOKIE_SECURE /etc/storagebase-studio.env` → `false`. The
       Droplet is plain HTTP on a public address, so without it the browser
       discards the auth cookie and login loops while health probes still pass
 - [ ] SQLite data survives a Droplet restart (`/app/data`)

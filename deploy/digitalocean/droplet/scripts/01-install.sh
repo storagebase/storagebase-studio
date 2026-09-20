@@ -21,4 +21,4 @@ rm -rf /opt/digitalocean
 mkdir -p /var/lib/cloud/scripts/per-instance
 
 # Bake the image into the snapshot — no registry access needed on customer boot
-docker pull "ghcr.io/libredb/libredb-studio:${VERSION}"
+docker pull "ghcr.io/storagebase/storagebase-studio:${VERSION}"

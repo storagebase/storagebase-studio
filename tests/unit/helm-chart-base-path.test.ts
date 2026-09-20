@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const chart = join(import.meta.dir, "../../charts/libredb-studio");
+const chart = join(import.meta.dir, "../../charts/storagebase-studio");
 function render(args: string[] = []) {
   const result = Bun.spawnSync(["helm", "template", "base-path-test", chart, ...args], {
     stdout: "pipe",
@@ -24,7 +24,7 @@ describe("chart probes for a build-time basePath", () => {
       expect(container(result.output)[name].httpGet.path).toBe("/api/db/health");
     }
   });
-  for (const prefix of ["/libredb", "/tools/libredb", "/~/libredb"]) {
+  for (const prefix of ["/storagebase", "/tools/storagebase", "/~/storagebase"]) {
     test(`${prefix} prefixes each default probe without changing custom probes`, () => {
       const result = render(["--set-string", `config.basePath=${prefix}`]);
       expect(result.code).toBe(0);
@@ -51,7 +51,7 @@ describe("chart probes for a build-time basePath", () => {
   test("custom exec probes stay exact", () => {
     const result = render([
       "--set-string",
-      "config.basePath=/tools/libredb",
+      "config.basePath=/tools/storagebase",
       "--set",
       "readinessProbe.httpGet=null",
       "--set",

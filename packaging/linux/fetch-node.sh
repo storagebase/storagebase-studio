@@ -5,7 +5,7 @@
 # Downloads the official nodejs.org dist tarball for NODE_VERSION and the
 # target arch, verifies it against the sha256 digests pinned in this script,
 # and installs ONLY bin/node into <payload-dir>/node/bin/node - the private
-# runtime the packaged wrapper (/usr/bin/libredb-studio) execs. Nothing else
+# runtime the packaged wrapper (/usr/bin/storagebase-studio) execs. Nothing else
 # from the Node distribution (npm, corepack, headers, docs) is shipped.
 #
 # Usage: packaging/linux/fetch-node.sh <payload-dir> [x64|arm64]

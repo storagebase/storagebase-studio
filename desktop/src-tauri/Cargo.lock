@@ -1639,7 +1639,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "libredb-studio-desktop"
+name = "storagebase-studio-desktop"
 version = "0.1.0"
 dependencies = [
  "libc",

@@ -98,12 +98,12 @@ const explainCapable: DatabaseType[] = providerFiles(PROVIDER_ROOT)
   .sort();
 
 /**
- * The engines a listing may NOT name in an explain sentence. `libredb` is excluded from
+ * The engines a listing may NOT name in an explain sentence. `storagebase` is excluded from
  * both sides: it is the embedded engine, not one of the fourteen a listing counts, and
  * its label is a substring of the product name in every one of these files.
  */
 const explainIncapable = (Object.keys(DB_UI_CONFIG) as DatabaseType[])
-  .filter((type) => type !== "libredb" && !explainCapable.includes(type))
+  .filter((type) => type !== "storagebase" && !explainCapable.includes(type))
   .sort();
 
 /**
@@ -267,12 +267,12 @@ describe("no listing claims data management on an engine that cannot edit", () =
 const STORAGE_MODES = ["local", "sqlite", "postgres"];
 
 const CHART_STORAGE_DEFAULT = ((): string => {
-  const values = readFileSync(join(REPO_ROOT, "charts/libredb-studio/values.yaml"), "utf8");
+  const values = readFileSync(join(REPO_ROOT, "charts/storagebase-studio/values.yaml"), "utf8");
   const declared = /^\s*storageProvider:\s*"([a-z]+)"/m.exec(values)?.[1];
   // Thrown rather than defaulted. A chart whose default cannot be read is a chart this
   // gate cannot check, and a fallback would turn that into a passing test.
   if (!declared) {
-    throw new Error("charts/libredb-studio/values.yaml: config.storageProvider is unreadable");
+    throw new Error("charts/storagebase-studio/values.yaml: config.storageProvider is unreadable");
   }
   return declared;
 })();
@@ -360,11 +360,11 @@ describe("the Rancher file's own accuracy gate audits against the corrected clai
  */
 const PLAIN_HTTP_CHANNELS = {
   digitalocean: {
-    provisioner: "deploy/digitalocean/droplet/files/var/lib/cloud/scripts/per-instance/99-libredb-first-boot.sh",
+    provisioner: "deploy/digitalocean/droplet/files/var/lib/cloud/scripts/per-instance/99-storagebase-first-boot.sh",
     copy: LISTINGS.digitalocean,
   },
   aws: {
-    provisioner: "deploy/aws/ami/files/usr/local/sbin/libredb-firstboot",
+    provisioner: "deploy/aws/ami/files/usr/local/sbin/storagebase-firstboot",
     copy: "deploy/aws/listing/usage-instructions.md",
   },
 } as const;

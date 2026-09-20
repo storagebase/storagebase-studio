@@ -42,9 +42,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 ## जल्दी शुरू करें
@@ -53,10 +50,10 @@
 
 ```bash
 # Docker (सुझाया गया तरीका)
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # या Node.js 24+ के साथ (Docker के बिना)
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 फिर **http://localhost:3000** खोलें। पहली बार चालू होने पर Studio admin password को log में print करता है। किसी config file की ज़रूरत नहीं है।
@@ -167,7 +164,7 @@ PostgreSQL · MySQL · Oracle · SQL Server · SQLite · libSQL · DuckDB · Mon
   ध्यान दें कि switch key नहीं है: Ollama और custom endpoints बिना key के भी configured model गिने जाते हैं, और तब AI चालू होता है।
   बाहर क्या-क्या जाता है, यह [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) में है।
 
-सिर्फ़ standalone deployment में: embedded `@libredb/studio` package में कोई Agent interface नहीं है।
+सिर्फ़ standalone deployment में: embedded `@storagebase/studio` package में कोई Agent interface नहीं है।
 Guide: [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) ·
 डेटा बाहर जाने की जानकारी: [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) ·
 व्यवहार और सीमाएँ: [`docs/AGENT.md`](docs/AGENT.md)
@@ -212,17 +209,17 @@ Guide: [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) ·
 
 | तरीका | Command |
 | :--- | :--- |
-| **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` |
-| **npx** | `npx @libredb/studio` |
-| **Helm** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` |
-| **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` |
-| **Snap** | `sudo snap install libredb-studio` |
-| **winget** | `winget install LibreDB.Studio` |
-| **deb / rpm** (server, systemd service के साथ) | [Releases page](https://github.com/libredb/libredb-studio/releases/latest) |
-| **Desktop app** (AppImage / deb) | [Releases page](https://github.com/libredb/libredb-studio/releases/latest)। Native window, server local sidecar के रूप में चलता है, कोई login page नहीं। **यह ऊपर वाला server package नहीं है।** |
-| **Desktop app** (Flatpak, sandboxed) | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` |
+| **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` |
+| **npx** | `npx @storagebase/studio` |
+| **Helm** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` |
+| **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` |
+| **Snap** | `sudo snap install storagebase-studio` |
+| **winget** | `winget install StorageBase.Studio` |
+| **deb / rpm** (server, systemd service के साथ) | [Releases page](https://github.com/storagebase/storagebase-studio/releases/latest) |
+| **Desktop app** (AppImage / deb) | [Releases page](https://github.com/storagebase/storagebase-studio/releases/latest)। Native window, server local sidecar के रूप में चलता है, कोई login page नहीं। **यह ऊपर वाला server package नहीं है।** |
+| **Desktop app** (Flatpak, sandboxed) | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` |
 
-`brew trust` सिर्फ़ एक बार चलाना है (Homebrew 6+ चाहिए। अगर unknown command की error आए, तो पहले `brew update` चलाएँ)। Docker, Helm और Snap बिना किसी configuration के चलते हैं: पहली बार बना admin password क्रमशः container log, Pod log और `sudo snap logs libredb-studio` में print होता है। हर channel की पूरी जानकारी (commands, configuration, systemd इस्तेमाल, Docker image tag model) [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) में है।
+`brew trust` सिर्फ़ एक बार चलाना है (Homebrew 6+ चाहिए। अगर unknown command की error आए, तो पहले `brew update` चलाएँ)। Docker, Helm और Snap बिना किसी configuration के चलते हैं: पहली बार बना admin password क्रमशः container log, Pod log और `sudo snap logs storagebase-studio` में print होता है। हर channel की पूरी जानकारी (commands, configuration, systemd इस्तेमाल, Docker image tag model) [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) में है।
 
 One-click deploy templates: Railway, Dokploy, CapRover, Sealos, Kubero, Cosmos, DigitalOcean Marketplace, Unraid Community Apps, Render Blueprint, Fly.io, Koyeb। पूरी सूची [`docs/CHANNELS.md`](docs/CHANNELS.md) में है।
 
@@ -231,16 +228,16 @@ Kubernetes users के लिए एक OpenShift / OLM Operator bundle भी 
 ### अपने product में embed करें
 
 ```bash
-npm i @libredb/studio
+npm i @storagebase/studio
 ```
 
 Studio एक npm package के रूप में भी publish होता है, जिसे आप सीधे अपने app में embed कर सकते हैं। अगर आपका product users के लिए डेटाबेस बनाता है, तो एडिटर की सबसे सही जगह यही है।
 
-**Studio के security headers अपनी Next.js config में दोबारा इस्तेमाल करें।** `@libredb/studio/security` subpath पूरी policy को plain data के रूप में publish करता है: `securityHeaders()` एक सामान्य `Record<string, string>` लौटाता है, और उसका module कुछ भी import नहीं करता। इसलिए इसे सीधे `next.config.ts` में load किया जा सकता है, जहाँ अभी न path aliases हैं, न Studio runtime।
+**Studio के security headers अपनी Next.js config में दोबारा इस्तेमाल करें।** `@storagebase/studio/security` subpath पूरी policy को plain data के रूप में publish करता है: `securityHeaders()` एक सामान्य `Record<string, string>` लौटाता है, और उसका module कुछ भी import नहीं करता। इसलिए इसे सीधे `next.config.ts` में load किया जा सकता है, जहाँ अभी न path aliases हैं, न Studio runtime।
 
 ```ts
 // next.config.ts
-import { securityHeaders } from "@libredb/studio/security";
+import { securityHeaders } from "@storagebase/studio/security";
 
 export default {
   async headers() {

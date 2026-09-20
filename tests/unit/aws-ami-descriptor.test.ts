@@ -32,13 +32,13 @@ const template = read("template.pkr.hcl");
 const install = read("scripts/01-install.sh");
 const configure = read("scripts/02-configure.sh");
 const cleanup = read("scripts/90-cleanup.sh");
-const firstbootUnit = read("files/etc/systemd/system/libredb-firstboot.service");
-const studioUnit = read("files/etc/systemd/system/libredb-studio.service");
-const bannerUnit = read("files/etc/systemd/system/libredb-banner.service");
-const firstboot = read("files/usr/local/sbin/libredb-firstboot");
-const banner = read("files/usr/local/sbin/libredb-banner");
-const motd = read("files/etc/update-motd.d/99-libredb-studio");
-const sshd = read("files/etc/ssh/sshd_config.d/00-libredb-marketplace.conf");
+const firstbootUnit = read("files/etc/systemd/system/storagebase-firstboot.service");
+const studioUnit = read("files/etc/systemd/system/storagebase-studio.service");
+const bannerUnit = read("files/etc/systemd/system/storagebase-banner.service");
+const firstboot = read("files/usr/local/sbin/storagebase-firstboot");
+const banner = read("files/usr/local/sbin/storagebase-banner");
+const motd = read("files/etc/update-motd.d/99-storagebase-studio");
+const sshd = read("files/etc/ssh/sshd_config.d/00-storagebase-marketplace.conf");
 
 /** Every file shipped into the image, for the sweeps that must cover all of them. */
 const filesDir = path.join(AMI, "files");
@@ -124,7 +124,7 @@ describe("AWS AMI Packer template", () => {
       .trim()
       .split(". ")[0];
     const amiDescription = /ami_description\s*=\s*"([^"]+)"/.exec(template)?.[1] ?? "";
-    expect(amiDescription).toContain("LibreDB Studio");
+    expect(amiDescription).toContain("StorageBase Studio");
     expect(amiDescription).toContain(firstSentence);
     expect(amiDescription.replace("${var.version}", "0.14.0").length).toBeLessThanOrEqual(255);
   });
@@ -179,33 +179,33 @@ describe("AWS AMI first boot", () => {
       expect({ file, start: /systemctl\s+(start|enable)/.exec(body)?.[0] ?? null }).toEqual({ file, start: null });
     }
     const enable = /systemctl enable ([^\n]+)/.exec(configure)?.[1] ?? "";
-    for (const unit of ["libredb-firstboot.service", "libredb-studio.service", "libredb-banner.service"]) {
+    for (const unit of ["storagebase-firstboot.service", "storagebase-studio.service", "storagebase-banner.service"]) {
       expect(enable).toContain(unit);
     }
   });
 
   test("the firstboot to studio ordering edge survives", () => {
-    // Losing it makes libredb-studio's ConditionPathExists a race whose loss is
+    // Losing it makes storagebase-studio's ConditionPathExists a race whose loss is
     // silent and permanent until the buyer reboots. The plan writes the edge
     // from both ends; one is enough for the guarantee.
     const declared =
-      /Before=libredb-studio\.service/.test(firstbootUnit) || /After=[^\n]*libredb-firstboot\.service/.test(studioUnit);
+      /Before=storagebase-studio\.service/.test(firstbootUnit) || /After=[^\n]*storagebase-firstboot\.service/.test(studioUnit);
     expect(declared).toBe(true);
   });
 
   test("each unit runs only when its own input says so", () => {
-    expect(firstbootUnit).toMatch(/ConditionPathExists=!\/etc\/libredb-studio\.env/);
-    expect(firstbootUnit).toMatch(/Before=libredb-studio\.service/);
-    expect(bannerUnit).toMatch(/ConditionPathExists=!\/etc\/libredb-studio\.info/);
-    expect(bannerUnit).toMatch(/ConditionPathExists=\/etc\/libredb-studio\.env/);
-    expect(bannerUnit).toMatch(/After=libredb-studio\.service/);
+    expect(firstbootUnit).toMatch(/ConditionPathExists=!\/etc\/storagebase-studio\.env/);
+    expect(firstbootUnit).toMatch(/Before=storagebase-studio\.service/);
+    expect(bannerUnit).toMatch(/ConditionPathExists=!\/etc\/storagebase-studio\.info/);
+    expect(bannerUnit).toMatch(/ConditionPathExists=\/etc\/storagebase-studio\.env/);
+    expect(bannerUnit).toMatch(/After=storagebase-studio\.service/);
   });
 
   test("the app unit is the DigitalOcean shape with the AWS paths", () => {
     expect(studioUnit).toContain("PINNED_IMAGE");
-    expect(studioUnit).toContain("-v /opt/libredb/data:/app/data");
-    expect(studioUnit).toContain("--env-file /etc/libredb-studio.env");
-    expect(studioUnit).toMatch(/ConditionPathExists=\/etc\/libredb-studio\.env/);
+    expect(studioUnit).toContain("-v /opt/storagebase/data:/app/data");
+    expect(studioUnit).toContain("--env-file /etc/storagebase-studio.env");
+    expect(studioUnit).toMatch(/ConditionPathExists=\/etc\/storagebase-studio\.env/);
     expect(studioUnit).toMatch(/Wants=[^\n]*docker\.service/);
     expect(studioUnit).not.toMatch(/(Requires|BindsTo)=[^\n]*docker\.service/);
   });
@@ -220,8 +220,8 @@ describe("AWS AMI first boot", () => {
     // AI assistance ships unconfigured - that is what keeps the listing clear
     // of the "ongoing external connection" policy.
     expect(firstboot).not.toMatch(/^\s*printf 'LLM_/m);
-    expect(firstboot).toMatch(/chmod 600 \/etc\/libredb-studio\.env\.tmp/);
-    expect(firstboot).toMatch(/mv \/etc\/libredb-studio\.env\.tmp \/etc\/libredb-studio\.env/);
+    expect(firstboot).toMatch(/chmod 600 \/etc\/storagebase-studio\.env\.tmp/);
+    expect(firstboot).toMatch(/mv \/etc\/storagebase-studio\.env\.tmp \/etc\/storagebase-studio\.env/);
   });
 });
 
@@ -242,7 +242,7 @@ describe("AWS AMI banner and MOTD", () => {
     // kill in between leaves it that way forever, because the unit's own
     // condition stops it from running again.
     const umaskAt = banner.indexOf("umask 077");
-    const heredocAt = banner.indexOf("cat > /etc/libredb-studio.info");
+    const heredocAt = banner.indexOf("cat > /etc/storagebase-studio.info");
     expect(umaskAt).toBeGreaterThan(0);
     expect(umaskAt).toBeLessThan(heredocAt);
     // Ordering alone is not the property: `( umask 077 )` closed before the
@@ -253,7 +253,7 @@ describe("AWS AMI banner and MOTD", () => {
   test("the banner holds the password on exactly one line and is root-only", () => {
     const passwordLines = banner.split("\n").filter((line) => /^ {2}Password:/.test(line));
     expect(passwordLines).toHaveLength(1);
-    expect(banner).toMatch(/chmod 600 \/etc\/libredb-studio\.info/);
+    expect(banner).toMatch(/chmod 600 \/etc\/storagebase-studio\.info/);
   });
 
   test("the login greeting points at the file instead of reprinting the password", () => {
@@ -261,7 +261,7 @@ describe("AWS AMI banner and MOTD", () => {
     // 0644 - so printing the value here republishes it world-readable at every
     // interactive login, and keeps showing the ORIGINAL password after rotation.
     expect(motd).toMatch(/sed 's\|\^ {0,2} {2}Password:|sed 's\|\^ {2}Password:/);
-    expect(motd).toContain("sudo cat /etc/libredb-studio.info");
+    expect(motd).toContain("sudo cat /etc/storagebase-studio.info");
     expect(motd).not.toMatch(/ADMIN_PASSWORD/);
     // The address is the one volatile line: a stop/start assigns a new public IP.
     expect(motd).toContain("169.254.169.254/latest/meta-data/public-ipv4");
@@ -273,24 +273,24 @@ describe("AWS AMI banner and MOTD", () => {
     // The assertions above are shape checks, and shape checks passed while the
     // hook could still be made to print the value (a capture group in the sed, or
     // a second grep after it). This runs the real hook.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "libredb-motd-"));
-    const infoPath = path.join(dir, "libredb-studio.info");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "storagebase-motd-"));
+    const infoPath = path.join(dir, "storagebase-studio.info");
     const secret = "fixture-password-3f9a2c";
     fs.writeFileSync(
       infoPath,
       [
-        "LibreDB Studio is running.",
+        "StorageBase Studio is running.",
         "",
         "  URL:       http://203.0.113.10:3000",
-        "  Sign in:   admin@libredb.org",
+        "  Sign in:   admin@storagebase.org",
         `  Password:  ${secret}`,
         "",
-        "  Docs:    https://github.com/libredb/libredb-studio#readme",
+        "  Docs:    https://github.com/storagebase/storagebase-studio#readme",
         "",
       ].join("\n"),
     );
-    const hookPath = path.join(dir, "99-libredb-studio");
-    fs.writeFileSync(hookPath, motd.split("/etc/libredb-studio.info").join(infoPath));
+    const hookPath = path.join(dir, "99-storagebase-studio");
+    fs.writeFileSync(hookPath, motd.split("/etc/storagebase-studio.info").join(infoPath));
     // A curl stub keeps the test hermetic: no metadata service, no timeouts.
     fs.writeFileSync(path.join(dir, "curl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
 
@@ -302,7 +302,7 @@ describe("AWS AMI banner and MOTD", () => {
       expect(run.exitCode).toBe(0);
       expect(stdout).not.toContain(secret);
       expect(stdout).toContain("sudo cat");
-      expect(stdout).toContain("admin@libredb.org");
+      expect(stdout).toContain("admin@storagebase.org");
     } finally {
       // A failing assertion must not leave the fixture behind.
       fs.rmSync(dir, { recursive: true, force: true });
@@ -310,15 +310,15 @@ describe("AWS AMI banner and MOTD", () => {
   });
 
   test("the banner is written once, never rewritten on a later boot", () => {
-    const writers = shippedFiles.filter((file) => /> ?\/etc\/libredb-studio\.info/.test(fs.readFileSync(file, "utf8")));
-    expect(writers.map((file) => path.basename(file))).toEqual(["libredb-banner"]);
+    const writers = shippedFiles.filter((file) => /> ?\/etc\/storagebase-studio\.info/.test(fs.readFileSync(file, "utf8")));
+    expect(writers.map((file) => path.basename(file))).toEqual(["storagebase-banner"]);
   });
 
   test("the MOTD hook is named the way run-parts requires", () => {
     // run-parts --lsbsysinit skips anything with a dot in the name, so the check
     // has to read the directory rather than a path written here.
     const hooks = fs.readdirSync(path.join(AMI, "files/etc/update-motd.d"));
-    expect(hooks).toContain("99-libredb-studio");
+    expect(hooks).toContain("99-storagebase-studio");
     for (const name of hooks) expect(name).not.toContain(".");
   });
 
@@ -327,7 +327,7 @@ describe("AWS AMI banner and MOTD", () => {
     // docker group (membership of it is equivalent to root, and passwordless
     // sudo already grants what the buyer needs). The script's own calls run as
     // root and must stay unprefixed, so scope this to the banner heredoc.
-    const heredoc = banner.slice(banner.indexOf("cat > /etc/libredb-studio.info"), banner.indexOf("\nEOF"));
+    const heredoc = banner.slice(banner.indexOf("cat > /etc/storagebase-studio.info"), banner.indexOf("\nEOF"));
     for (const line of heredoc.split("\n")) {
       if (/(^|\s)docker /.test(line)) expect({ line, sudo: /sudo docker /.test(line) }).toEqual({ line, sudo: true });
     }
@@ -340,7 +340,7 @@ describe("AWS AMI SSH policy", () => {
     // Canonical's sshd_config already sets PermitRootLogin prohibit-password, so
     // 02-configure.sh's effective-config assertions pass even if this file is
     // empty. Only a content assertion catches a drop-in that became a no-op.
-    expect(fs.existsSync(path.join(AMI, "files/etc/ssh/sshd_config.d/00-libredb-marketplace.conf"))).toBe(true);
+    expect(fs.existsSync(path.join(AMI, "files/etc/ssh/sshd_config.d/00-storagebase-marketplace.conf"))).toBe(true);
     expect(sshd).toMatch(/^PasswordAuthentication no$/m);
     expect(sshd).toMatch(/^PermitRootLogin prohibit-password$/m);
   });
@@ -349,12 +349,12 @@ describe("AWS AMI SSH policy", () => {
     // Without this, deleting the install line leaves a green build AND a green
     // suite: the effective-config checks below are answered by Ubuntu's own
     // defaults, and the previous test only reads the file in the repo.
-    expect(configure).toMatch(/install -m 0644 [^\n]*00-libredb-marketplace\.conf/);
+    expect(configure).toMatch(/install -m 0644 [^\n]*00-storagebase-marketplace\.conf/);
     expect(configure).toMatch(
-      /grep -qx 'PasswordAuthentication no' \/etc\/ssh\/sshd_config\.d\/00-libredb-marketplace\.conf/,
+      /grep -qx 'PasswordAuthentication no' \/etc\/ssh\/sshd_config\.d\/00-storagebase-marketplace\.conf/,
     );
     expect(configure).toMatch(
-      /grep -qx 'PermitRootLogin prohibit-password' \/etc\/ssh\/sshd_config\.d\/00-libredb-marketplace\.conf/,
+      /grep -qx 'PermitRootLogin prohibit-password' \/etc\/ssh\/sshd_config\.d\/00-storagebase-marketplace\.conf/,
     );
   });
 
@@ -470,8 +470,8 @@ describe("AWS AMI build workflow", () => {
   });
 
   test("chart releases never build a product AMI", () => {
-    // libredb-studio-<chart version> tags emit release:published too.
-    expect(decide).toMatch(/libredb-studio-\*\) stand_down/);
+    // storagebase-studio-<chart version> tags emit release:published too.
+    expect(decide).toMatch(/storagebase-studio-\*\) stand_down/);
   });
 
   test("a prerelease is recognised by its tag shape, not by the release flag", () => {
@@ -510,7 +510,7 @@ describe("AWS AMI build workflow", () => {
     expect(go).toBeGreaterThan(0);
     for (const check of [
       "aws-marketplace is",
-      "libredb-studio-*",
+      "storagebase-studio-*",
       "is not a product release",
       "does not match package.json",
       "is not set",

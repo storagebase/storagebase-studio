@@ -2,7 +2,7 @@
 /**
  * Regression test for issue #137: a default Helm install
  * (persistence.enabled=false) must render a writable mount at /app/data so
- * the embedded "Sample (LibreDB)" connection can seed under
+ * the embedded "Sample (StorageBase)" connection can seed under
  * readOnlyRootFilesystem, instead of the pod silently keeping /app/data
  * unwritable. Exercises the real `helm template` output against the actual
  * chart - no reimplementation of the templating logic.
@@ -11,7 +11,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
 
 interface VolumeMount {
   name: string;
@@ -50,7 +50,7 @@ function renderDeployment(extraArgs: string[] = []): RenderedDeployment {
   return deployment;
 }
 
-describe("charts/libredb-studio Deployment /app/data mount (#137)", () => {
+describe("charts/storagebase-studio Deployment /app/data mount (#137)", () => {
   test("default install (persistence.enabled=false) mounts a writable emptyDir at /app/data", () => {
     const podSpec = renderDeployment().spec.template.spec;
 

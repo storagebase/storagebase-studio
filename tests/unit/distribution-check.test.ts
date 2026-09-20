@@ -51,11 +51,11 @@ const HELM_ROW = `  - id: helm
       method: ci_publish
       sla: every_release
     links:
-      tracking_issue: https://github.com/libredb/libredb-studio/issues/138
+      tracking_issue: https://github.com/storagebase/storagebase-studio/issues/138
     pin:
       strategy: local_file
       files:
-        - charts/libredb-studio/Chart.yaml
+        - charts/storagebase-studio/Chart.yaml
       extract: 'appVersion: "(\\d+\\.\\d+\\.\\d+)"'
 `;
 
@@ -90,8 +90,8 @@ const PROBE_ROW = `  - id: docker-ghcr
       strategy: probe
       probe: ghcr-tag-digest
       urls:
-        token: https://ghcr.io/token?service=ghcr.io&scope=repository:libredb/libredb-studio:pull
-        manifest: https://ghcr.io/v2/libredb/libredb-studio/manifests/{ref}
+        token: https://ghcr.io/token?service=ghcr.io&scope=repository:storagebase/storagebase-studio:pull
+        manifest: https://ghcr.io/v2/storagebase/storagebase-studio/manifests/{ref}
 `;
 
 describe("parseChannels", () => {
@@ -99,7 +99,7 @@ describe("parseChannels", () => {
     const channels = parseChannels(channelsYaml(HELM_ROW + NONE_ROW));
     expect(channels.length).toBe(2);
     expect(channels[0].id).toBe("helm");
-    expect(channels[0].pin.files).toEqual(["charts/libredb-studio/Chart.yaml"]);
+    expect(channels[0].pin.files).toEqual(["charts/storagebase-studio/Chart.yaml"]);
     expect(channels[1].pin.strategy).toBe("none");
   });
 
@@ -263,7 +263,7 @@ describe("githubAuthHeaders", () => {
 
   test("never leaks the token to another host", () => {
     process.env.GITHUB_TOKEN = "ghp_example";
-    expect(githubAuthHeaders("https://hub.docker.com/v2/repositories/libredb/libredb-studio/tags/latest")).toEqual({});
+    expect(githubAuthHeaders("https://hub.docker.com/v2/repositories/storagebase/storagebase-studio/tags/latest")).toEqual({});
   });
 
   test("sends no authorization at all when no token is configured", () => {
@@ -401,27 +401,27 @@ describe("maxPublishedVersion (winget enumerates every version, with no floating
 describe("extractPin", () => {
   test("extracts a single pinned version", () => {
     expect(
-      extractPin("image: ghcr.io/libredb/libredb-studio:0.9.27\n", "libredb-studio:(\\d+\\.\\d+\\.\\d+)", "x"),
+      extractPin("image: ghcr.io/storagebase/storagebase-studio:0.9.27\n", "storagebase-studio:(\\d+\\.\\d+\\.\\d+)", "x"),
     ).toBe("0.9.27");
   });
 
   test("agreeing duplicate matches collapse to one version", () => {
-    const content = "a: libredb-studio:0.9.22\nb: libredb-studio:0.9.22\n";
-    expect(extractPin(content, "libredb-studio:(\\d+\\.\\d+\\.\\d+)", "x")).toBe("0.9.22");
+    const content = "a: storagebase-studio:0.9.22\nb: storagebase-studio:0.9.22\n";
+    expect(extractPin(content, "storagebase-studio:(\\d+\\.\\d+\\.\\d+)", "x")).toBe("0.9.22");
   });
 
   test("throws when nothing matches", () => {
-    expect(() => extractPin("no pins here", "libredb-studio:(\\d+\\.\\d+\\.\\d+)", "railway")).toThrow(/railway/);
+    expect(() => extractPin("no pins here", "storagebase-studio:(\\d+\\.\\d+\\.\\d+)", "railway")).toThrow(/railway/);
   });
 
   test("throws when matches disagree instead of silently using the first", () => {
-    const content = "a: libredb-studio:0.9.22\nb: libredb-studio:0.9.27\n";
-    expect(() => extractPin(content, "libredb-studio:(\\d+\\.\\d+\\.\\d+)", "x")).toThrow(/disagree/);
+    const content = "a: storagebase-studio:0.9.22\nb: storagebase-studio:0.9.27\n";
+    expect(() => extractPin(content, "storagebase-studio:(\\d+\\.\\d+\\.\\d+)", "x")).toThrow(/disagree/);
   });
 
   test("extracts across lines (kubero repository/tag style)", () => {
-    const content = "    repository: ghcr.io/libredb/libredb-studio\n    tag: 0.9.27\n";
-    expect(extractPin(content, "ghcr\\.io/libredb/libredb-studio\\s+tag:\\s*(\\d+\\.\\d+\\.\\d+)", "kubero")).toBe(
+    const content = "    repository: ghcr.io/storagebase/storagebase-studio\n    tag: 0.9.27\n";
+    expect(extractPin(content, "ghcr\\.io/storagebase/storagebase-studio\\s+tag:\\s*(\\d+\\.\\d+\\.\\d+)", "kubero")).toBe(
       "0.9.27",
     );
   });
@@ -437,7 +437,7 @@ describe("evaluateChannel", () => {
 
   test("a matching local pin is ok", () => {
     const row = evaluateChannel(helmChannel(), "0.9.53", {
-      "charts/libredb-studio/Chart.yaml": chartInSync,
+      "charts/storagebase-studio/Chart.yaml": chartInSync,
     });
     expect(row.status).toBe("ok");
     expect(row.observed).toBe("0.9.53");
@@ -446,7 +446,7 @@ describe("evaluateChannel", () => {
 
   test("a drifted local pin is drift", () => {
     const row = evaluateChannel(helmChannel(), "0.9.53", {
-      "charts/libredb-studio/Chart.yaml": chartBehind,
+      "charts/storagebase-studio/Chart.yaml": chartBehind,
     });
     expect(row.status).toBe("drift");
     expect(row.observed).toBe("0.9.44");
@@ -519,7 +519,7 @@ describe("evaluateChannel", () => {
 
   test("an unreadable source is unknown, not a crash", () => {
     const row = evaluateChannel(helmChannel(), "0.9.53", {
-      "charts/libredb-studio/Chart.yaml": null,
+      "charts/storagebase-studio/Chart.yaml": null,
     });
     expect(row.status).toBe("unknown");
     expect(row.detail).toContain("Chart.yaml");
@@ -527,7 +527,7 @@ describe("evaluateChannel", () => {
 
   test("a source where the extract regex finds nothing is unknown with a detail", () => {
     const row = evaluateChannel(helmChannel(), "0.9.53", {
-      "charts/libredb-studio/Chart.yaml": "totally unrelated content",
+      "charts/storagebase-studio/Chart.yaml": "totally unrelated content",
     });
     expect(row.status).toBe("unknown");
     expect(row.detail).toContain("no version");
@@ -581,7 +581,7 @@ describe("strictFailures", () => {
 
 describe("linkLabel", () => {
   test("shortens an issue in this repo to #N", () => {
-    expect(linkLabel("https://github.com/libredb/libredb-studio/issues/56")).toBe("#56");
+    expect(linkLabel("https://github.com/storagebase/storagebase-studio/issues/56")).toBe("#56");
   });
 
   test("keeps owner/repo for an upstream PR", () => {
@@ -598,7 +598,7 @@ describe("renderTable", () => {
     const channels = parseChannels(channelsYaml(HELM_ROW + NONE_ROW));
     const rows = [
       evaluateChannel(channels[0], "0.9.53", {
-        "charts/libredb-studio/Chart.yaml": 'appVersion: "0.9.44"\n',
+        "charts/storagebase-studio/Chart.yaml": 'appVersion: "0.9.44"\n',
       }),
       evaluateChannel(channels[1], "0.9.53", {}),
     ];
@@ -607,7 +607,7 @@ describe("renderTable", () => {
     expect(table).toContain("| SKIP |");
     expect(table).toContain("helm");
     expect(table).toContain("0.9.44");
-    expect(table).toContain("[#138](https://github.com/libredb/libredb-studio/issues/138)");
+    expect(table).toContain("[#138](https://github.com/storagebase/storagebase-studio/issues/138)");
     // No emoji, ever (house rule): the status column is plain text.
     expect(table).not.toMatch(/[\u{1F300}-\u{1FAFF}✅❌⚠]/u);
   });
@@ -734,14 +734,14 @@ describe("CLI (subprocess against temp fixtures)", () => {
       strategy: local_file
       files:
         - deploy/railway/template.json
-      extract: 'libredb-studio:(\\d+\\.\\d+\\.\\d+)'
+      extract: 'storagebase-studio:(\\d+\\.\\d+\\.\\d+)'
 `;
   }
 
   function fixtureWithLocalPin(sla: string, pinned: string): string {
     const root = makeFixture("0.9.53", channelsYaml(localRow(sla)));
     mkdirSync(join(root, "deploy/railway"), { recursive: true });
-    writeFileSync(join(root, "deploy/railway/template.json"), `{"image": "ghcr.io/libredb/libredb-studio:${pinned}"}`);
+    writeFileSync(join(root, "deploy/railway/template.json"), `{"image": "ghcr.io/storagebase/storagebase-studio:${pinned}"}`);
     return root;
   }
 
@@ -882,7 +882,7 @@ describe("CLI (remote pins against a local server)", () => {
     pin:
       strategy: remote_file
       url: ${url}
-      extract: 'libredb-studio:(\\d+\\.\\d+\\.\\d+)'
+      extract: 'storagebase-studio:(\\d+\\.\\d+\\.\\d+)'
 `;
     writeFixture(root, "0.9.53", channelsYaml(row));
     return root;
@@ -911,7 +911,7 @@ describe("CLI (remote pins against a local server)", () => {
   }
 
   spawnTest("a reachable remote pin is compared like a local one", async () => {
-    const url = serve(() => new Response("image: ghcr.io/libredb/libredb-studio:0.9.27\n"));
+    const url = serve(() => new Response("image: ghcr.io/storagebase/storagebase-studio:0.9.27\n"));
     const result = await runCheckAsync(remoteFixture(url));
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("DRIFT");
@@ -989,7 +989,7 @@ describe("CLI (probes against a local registry/store/catalog)", () => {
       probe: ghcr-tag-digest
       urls:
         token: ${base}/token
-        manifest: ${base}/v2/libredb/libredb-studio/manifests/{ref}
+        manifest: ${base}/v2/storagebase/storagebase-studio/manifests/{ref}
 `;
   }
 
@@ -1059,7 +1059,7 @@ describe("CLI (probes against a local registry/store/catalog)", () => {
       strategy: probe
       probe: dockerhub-tag-digest
       urls:
-        tag: ${base}/v2/repositories/libredb/libredb-studio/tags/{ref}
+        tag: ${base}/v2/repositories/storagebase/storagebase-studio/tags/{ref}
 `;
     const result = await runCheckAsync(probeFixture(row));
     expect(result.stdout).toContain("| DRIFT | docker-hub-mirror |");
@@ -1086,7 +1086,7 @@ describe("CLI (probes against a local registry/store/catalog)", () => {
         - amd64
         - arm64
       urls:
-        info: ${base}/v2/snaps/info/libredb-studio
+        info: ${base}/v2/snaps/info/storagebase-studio
 `;
   }
 
@@ -1148,7 +1148,7 @@ describe("CLI (probes against a local registry/store/catalog)", () => {
       strategy: probe
       probe: github-dir-max-version
       urls:
-        catalog: ${base}/repos/microsoft/winget-pkgs/contents/manifests/l/LibreDB/Studio
+        catalog: ${base}/repos/microsoft/winget-pkgs/contents/manifests/l/StorageBase/Studio
 `;
   }
 
@@ -1258,7 +1258,7 @@ const MATRIX_FIXTURE = `channels:
       method: ci_publish
       sla: every_release
     links:
-      catalog: https://www.npmjs.com/package/@libredb/studio
+      catalog: https://www.npmjs.com/package/@storagebase/studio
       docs: docs/DISTRIBUTION.md
     pin:
       strategy: none
@@ -1404,7 +1404,7 @@ describe("renderScorecard / renderChannelMatrix", () => {
     const table = renderChannelMatrix(channels);
     expect(table).toContain("| Channel | Category | Platform | Status | Updates | Guide |");
     expect(table).toContain(
-      "| [npm package](https://www.npmjs.com/package/@libredb/studio) | Registries & releases | " +
+      "| [npm package](https://www.npmjs.com/package/@storagebase/studio) | Registries & releases | " +
         "Linux, macOS, Windows | live | Automated, every release | [DISTRIBUTION.md](DISTRIBUTION.md) |",
     );
     expect(table).toContain(
@@ -1428,7 +1428,7 @@ describe("renderScorecard / renderChannelMatrix", () => {
     const withShort = parseChannels(
       MATRIX_FIXTURE.replace("    name: npm package\n", "    name: npm package\n    short_name: npm\n"),
     );
-    expect(renderChannelMatrix(withShort)).toContain("| [npm](https://www.npmjs.com/package/@libredb/studio) |");
+    expect(renderChannelMatrix(withShort)).toContain("| [npm](https://www.npmjs.com/package/@storagebase/studio) |");
   });
 });
 
@@ -1605,7 +1605,7 @@ describe("CLI --matrix", () => {
     const doc = readFileSync(join(root, "docs/CHANNELS.md"), "utf8");
     expect(doc).toContain("**3 channels · 1 live · 1 pending · 1 deprecated**");
     expect(doc).toContain(
-      "| [npm package](https://www.npmjs.com/package/@libredb/studio) | Registries & releases | " +
+      "| [npm package](https://www.npmjs.com/package/@storagebase/studio) | Registries & releases | " +
         "Linux, macOS, Windows | live | Automated, every release | [DISTRIBUTION.md](DISTRIBUTION.md) |",
     );
   });

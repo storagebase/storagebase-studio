@@ -27,7 +27,7 @@ import { parseDocument } from "yaml";
 import { parseSha256Sums, sha256File } from "../bin/lib/launcher-utils.mjs";
 
 /** Flathub application id; must equal the metainfo <id> and the manifest file name. */
-export const APP_ID = "org.libredb.Studio";
+export const APP_ID = "org.storagebase.Studio";
 
 /**
  * Architectures the Flathub build covers. `flatpak` is the only-arches label,
@@ -50,7 +50,7 @@ const VERSION_PATTERN = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-.][0-9A-Za-z][0-9A-Za-z.-]*
  * @returns {string}
  */
 export function appImageName(version, assetArch) {
-  return `libredb-studio-desktop-${version}-linux-${assetArch}.AppImage`;
+  return `storagebase-studio-desktop-${version}-linux-${assetArch}.AppImage`;
 }
 
 /**

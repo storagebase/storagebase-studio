@@ -1,0 +1,18 @@
+[Unit]
+Description=StorageBase Studio first-boot banner
+# Written once; a failed attempt retries on the next boot because the file is
+# still absent.
+ConditionPathExists=!/etc/storagebase-studio.info
+ConditionPathExists=/etc/storagebase-studio.env
+After=storagebase-studio.service
+Wants=storagebase-studio.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/storagebase-banner
+RemainAfterExit=no
+# Worst case is the readiness wait (60 x 5s = 300s) plus a little.
+TimeoutStartSec=420
+
+[Install]
+WantedBy=multi-user.target

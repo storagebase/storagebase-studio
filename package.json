@@ -1,5 +1,5 @@
 {
-  "name": "@libredb/studio",
+  "name": "@storagebase/studio",
   "version": "0.16.0",
   "description": "The database editor that deploys next to your data, not onto your laptop.",
   "keywords": [
@@ -8,7 +8,7 @@
     "database-gui",
     "database-editor",
     "self-hosted",
-    "libredb",
+    "storagebase",
     "postgresql",
     "mysql",
     "oracle",
@@ -26,9 +26,9 @@
     "trino",
     "cassandra"
   ],
-  "homepage": "https://github.com/libredb/libredb-studio",
+  "homepage": "https://github.com/storagebase/storagebase-studio",
   "bugs": {
-    "url": "https://github.com/libredb/libredb-studio/issues"
+    "url": "https://github.com/storagebase/storagebase-studio/issues"
   },
   "license": "MIT",
   "private": false,
@@ -37,7 +37,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/libredb/libredb-studio"
+    "url": "https://github.com/storagebase/storagebase-studio"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -106,7 +106,7 @@
     "./styles.css": "./dist/styles.css"
   },
   "bin": {
-    "libredb-studio": "bin/studio.js"
+    "storagebase-studio": "bin/studio.js"
   },
   "files": [
     "dist",

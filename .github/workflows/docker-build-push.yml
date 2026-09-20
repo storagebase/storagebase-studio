@@ -36,9 +36,9 @@ env:
 
 jobs:
   build-and-push:
-    # Product releases only: chart releases (libredb-studio-<chart-version>)
+    # Product releases only: chart releases (storagebase-studio-<chart-version>)
     # are published by helm-release.yml and must not feed this pipeline.
-    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'libredb-studio-')
+    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'storagebase-studio-')
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -175,7 +175,7 @@ jobs:
       # Build the list of target images. GHCR is always included; Docker Hub
       # (docker.io/<DOCKER_HUB_ORGANIZATION>/<repo>) is added only when enabled.
       #
-      # The namespace is NOT the login user. `libredb` was a Docker Hub user
+      # The namespace is NOT the login user. `storagebase` was a Docker Hub user
       # account until 2026-09-01 and one variable answered both questions; the
       # conversion to an organization split them, because an organization cannot
       # sign in. DOCKER_HUB_USERNAME is now the owner who logs in, and the image

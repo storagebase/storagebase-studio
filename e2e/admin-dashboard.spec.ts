@@ -4,7 +4,7 @@ test.describe("Admin Dashboard", () => {
   test.beforeEach(async ({ page }) => {
     // Login as admin
     await page.goto("/login");
-    await page.locator('input[type="email"]').fill("admin@libredb.org");
+    await page.locator('input[type="email"]').fill("admin@storagebase.org");
     await page.locator('input[type="password"]').fill("test-admin");
     await page.getByRole("button", { name: /sign in/i }).click();
     // /admin redirects to /admin/overview

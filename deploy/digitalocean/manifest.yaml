@@ -1,6 +1,6 @@
 # Vendor Portal reference metadata — DO does not read this programmatically;
 # it mirrors what goes into the listing form.
-name: LibreDB Studio
+name: StorageBase Studio
 vendor: Sekoya Tech
 version: "1.0"
 os_distros:

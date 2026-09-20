@@ -35,8 +35,8 @@ function writeStubNode(binDir: string): string {
   return nodePath;
 }
 
-describeIf(NO_SH, "packaging/linux/libredb-studio bind address (#134)", () => {
-  const WRAPPER = join(import.meta.dir, "../../packaging/linux/libredb-studio");
+describeIf(NO_SH, "packaging/linux/storagebase-studio bind address (#134)", () => {
+  const WRAPPER = join(import.meta.dir, "../../packaging/linux/storagebase-studio");
   const fixtureRoots: string[] = [];
 
   afterEach(() => {
@@ -44,7 +44,7 @@ describeIf(NO_SH, "packaging/linux/libredb-studio bind address (#134)", () => {
   });
 
   function runWrapper(env: Record<string, string> = {}) {
-    const home = mkdtempSync(join(tmpdir(), "libredb-deb-wrapper-"));
+    const home = mkdtempSync(join(tmpdir(), "storagebase-deb-wrapper-"));
     fixtureRoots.push(home);
     writeStubNode(join(home, "node/bin"));
     writeFileSync(join(home, "server.js"), "");
@@ -87,10 +87,10 @@ describeIf(NO_SH, "packaging/linux/libredb-studio bind address (#134)", () => {
   });
 });
 
-describeIf(NO_BASH, "packaging/homebrew/libredb-studio.rb.tmpl bind address (#134)", () => {
-  const template = readFileSync(join(import.meta.dir, "../../packaging/homebrew/libredb-studio.rb.tmpl"), "utf8");
-  const heredocMatch = /\(bin\/"libredb-studio"\)\.write <<~SCRIPT\n([\s\S]*?)\n\s*SCRIPT\b/.exec(template);
-  if (!heredocMatch) throw new Error('could not locate the bin/"libredb-studio" heredoc in the Homebrew template');
+describeIf(NO_BASH, "packaging/homebrew/storagebase-studio.rb.tmpl bind address (#134)", () => {
+  const template = readFileSync(join(import.meta.dir, "../../packaging/homebrew/storagebase-studio.rb.tmpl"), "utf8");
+  const heredocMatch = /\(bin\/"storagebase-studio"\)\.write <<~SCRIPT\n([\s\S]*?)\n\s*SCRIPT\b/.exec(template);
+  if (!heredocMatch) throw new Error('could not locate the bin/"storagebase-studio" heredoc in the Homebrew template');
   const rawScript = heredocMatch[1];
 
   const fixtureRoots: string[] = [];
@@ -100,7 +100,7 @@ describeIf(NO_BASH, "packaging/homebrew/libredb-studio.rb.tmpl bind address (#13
   });
 
   function runWrapper(env: Record<string, string> = {}) {
-    const dir = mkdtempSync(join(tmpdir(), "libredb-brew-wrapper-"));
+    const dir = mkdtempSync(join(tmpdir(), "storagebase-brew-wrapper-"));
     fixtureRoots.push(dir);
     const nodePath = writeStubNode(dir);
     const serverPath = join(dir, "server.js");

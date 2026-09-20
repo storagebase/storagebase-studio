@@ -69,8 +69,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
-const OPERATOR_CHART_DIR = join(import.meta.dir, "../../operator/helm-charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
+const OPERATOR_CHART_DIR = join(import.meta.dir, "../../operator/helm-charts/storagebase-studio");
 
 const DUAL_STACK = [
   "--set",
@@ -130,7 +130,7 @@ function serviceSource(args: string[], chartDir = CHART_DIR): string {
   return run.stdout;
 }
 
-describe("charts/libredb-studio Service address families: the default render (#432)", () => {
+describe("charts/storagebase-studio Service address families: the default render (#432)", () => {
   // Absent, not falsy: an emitted `ipFamilyPolicy: SingleStack` is a live
   // instruction to the API server, not a no-op, and an emitted `ipFamilies: []`
   // is a spec diff on every existing install.
@@ -158,7 +158,7 @@ describe("charts/libredb-studio Service address families: the default render (#4
   });
 });
 
-describe("charts/libredb-studio Service address families: opting in (#432)", () => {
+describe("charts/storagebase-studio Service address families: opting in (#432)", () => {
   test("service.ipFamilyPolicy renders on its own", () => {
     const svc = service(["--set", "service.ipFamilyPolicy=PreferDualStack"]);
     expect(svc.spec?.ipFamilyPolicy).toBe("PreferDualStack");
@@ -202,7 +202,7 @@ describe("charts/libredb-studio Service address families: opting in (#432)", () 
   });
 });
 
-describe("charts/libredb-studio Service address families: the policy guard (#432)", () => {
+describe("charts/storagebase-studio Service address families: the policy guard (#432)", () => {
   // The API server rejects this outright; catching it at render time turns a
   // failed `helm upgrade` against a live cluster into a message with both keys
   // in it.
@@ -245,7 +245,7 @@ describe("charts/libredb-studio Service address families: the policy guard (#432
   });
 });
 
-describe("charts/libredb-studio Service address families: schema validation (#432)", () => {
+describe("charts/storagebase-studio Service address families: schema validation (#432)", () => {
   test("an unknown ipFamilyPolicy fails schema validation", () => {
     const run = helmTemplate(["--set", "service.ipFamilyPolicy=DualStack"]);
     expect(run.exitCode).not.toBe(0);
@@ -302,7 +302,7 @@ describe("charts/libredb-studio Service address families: schema validation (#43
   });
 });
 
-describe("charts/libredb-studio config.bindAddress reaches the container (#432)", () => {
+describe("charts/storagebase-studio config.bindAddress reaches the container (#432)", () => {
   function appEnv(args: string[]): Array<{ name: string; value?: string }> {
     const deployment = renderDocs(args).find((doc) => doc.kind === "Deployment");
     return deployment?.spec?.template?.spec?.containers?.[0]?.env ?? [];
@@ -366,7 +366,7 @@ describe("charts/libredb-studio config.bindAddress reaches the container (#432)"
   });
 });
 
-describe("charts/libredb-studio install notes warn about an IPv4-pinned pod (#432)", () => {
+describe("charts/storagebase-studio install notes warn about an IPv4-pinned pod (#432)", () => {
   // `helm template` never emits NOTES.txt, and `helm install --dry-run=client`
   // renders it only on Helm 4: Helm 3.16 calls IsReachable() before it renders
   // anything, so the dry run dies on "Kubernetes cluster unreachable" even for
@@ -386,7 +386,7 @@ describe("charts/libredb-studio install notes warn about an IPv4-pinned pod (#43
   let notesChart: string;
 
   beforeAll(() => {
-    notesChart = mkdtempSync(join(tmpdir(), "libredb-notes-probe-"));
+    notesChart = mkdtempSync(join(tmpdir(), "storagebase-notes-probe-"));
     cpSync(CHART_DIR, notesChart, { recursive: true });
     writeFileSync(
       join(notesChart, PROBE_TEMPLATE),
@@ -531,7 +531,7 @@ describe("charts/libredb-studio install notes warn about an IPv4-pinned pod (#43
       "--set",
       "extraEnv[0].name=ALLOWED_ORIGINS",
       "--set",
-      "extraEnv[0].value=https://libredb.example.com",
+      "extraEnv[0].value=https://storagebase.example.com",
       "--set",
       "extraEnv[1].name=HOSTNAME",
       "--set-string",
@@ -546,13 +546,13 @@ describe("charts/libredb-studio install notes warn about an IPv4-pinned pod (#43
       "--set",
       "extraEnv[0].name=ALLOWED_ORIGINS",
       "--set",
-      "extraEnv[0].value=https://libredb.example.com",
+      "extraEnv[0].value=https://storagebase.example.com",
     ]);
     expect(output).not.toContain("WARNING");
   });
 });
 
-describe("operator/helm-charts/libredb-studio mirrors the dual-stack surface (#432)", () => {
+describe("operator/helm-charts/storagebase-studio mirrors the dual-stack surface (#432)", () => {
   for (const file of [
     "templates/service.yaml",
     // configmap.yaml carries `HOSTNAME: {{ .Values.config.bindAddress | quote }}`,

@@ -103,7 +103,7 @@ export function engineNames(table) {
  *
  * Restricted to one column deliberately. README.md's install table carries a
  * Notes column whose code spans (`brew update`, `sudo snap logs
- * libredb-studio`, `libredb-studio.exe`) are not install commands; admitting
+ * storagebase-studio`, `storagebase-studio.exe`) are not install commands; admitting
  * them to the canonical set would let a localized file put a note in its
  * Command cell and still pass. Both table shapes - Channel/Command/Notes in
  * README.md, and the two-column translations - put the command in column 1.

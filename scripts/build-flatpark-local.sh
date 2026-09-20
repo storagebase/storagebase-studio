@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Build and install the LibreDB Studio FlatPark package from a LOCAL .deb
+# Build and install the StorageBase Studio FlatPark package from a LOCAL .deb
 # (issue #241).
 #
 # The descriptor set in packaging/flatpark pins a published release asset as
@@ -9,8 +9,8 @@
 # anything is released:
 #
 #   scripts/build-desktop-appimage.sh dist-desktop --payload <tarball>
-#   scripts/build-flatpark-local.sh dist-desktop/libredb-studio-desktop-<version>_amd64.deb --install
-#   flatpak run org.libredb.Studio
+#   scripts/build-flatpark-local.sh dist-desktop/storagebase-studio-desktop-<version>_amd64.deb --install
+#   flatpak run org.storagebase.Studio
 #
 # Usage: scripts/build-flatpark-local.sh <deb> [--install] [--installation <name>]
 #
@@ -82,7 +82,7 @@ if ! flatpak info org.flatpak.Builder > /dev/null 2>&1; then
   exit 1
 fi
 
-APP_ID=org.libredb.Studio
+APP_ID=org.storagebase.Studio
 # Matches build.branch in packaging/flatpark/flatpark.yml.
 BRANCH=stable
 SRC_DIR="$ROOT_DIR/packaging/flatpark"
@@ -98,7 +98,7 @@ mkdir -p "$BUILD_DIR"
 echo "==> Staging the descriptor set"
 cp "$SRC_DIR"/* "$BUILD_DIR/"
 rm -f "$BUILD_DIR/README.md"
-chmod +x "$BUILD_DIR/apply_extra.sh" "$BUILD_DIR/resolve-update.sh" "$BUILD_DIR/libredb-studio-wrapper"
+chmod +x "$BUILD_DIR/apply_extra.sh" "$BUILD_DIR/resolve-update.sh" "$BUILD_DIR/storagebase-studio-wrapper"
 
 # ------------------------------------------------------------------------------
 # 2. Serve the .deb over loopback and re-pin the managed extra-data block at it.
@@ -194,18 +194,18 @@ fi
 
 echo "==> Installing into ${INSTALLATION:-the per-user installation}"
 flatpak "${FLATPAK_TARGET[@]}" remote-add --if-not-exists --no-gpg-verify \
-  libredb-flatpark-local "$BUILD_DIR/repo"
+  storagebase-flatpark-local "$BUILD_DIR/repo"
 # --if-not-exists keeps whatever URL the remote already had, which is wrong the
 # moment this repo is built from a different checkout: the remote then points at
 # a path that may no longer exist and the install dies with "server has no
 # summary file", which reads like a corrupt build rather than a stale pointer.
 # Re-point it every run.
 flatpak "${FLATPAK_TARGET[@]}" remote-modify --no-gpg-verify \
-  --url="file://${BUILD_DIR}/repo" libredb-flatpark-local
+  --url="file://${BUILD_DIR}/repo" storagebase-flatpark-local
 # extra-data is downloaded HERE, from the loopback origin above, and apply_extra
 # runs immediately afterwards inside the sandbox. An install that succeeds is
 # the real proof that the bsdtar unpack works.
-flatpak "${FLATPAK_TARGET[@]}" install -y --reinstall libredb-flatpark-local "${APP_ID}//${BRANCH}"
+flatpak "${FLATPAK_TARGET[@]}" install -y --reinstall storagebase-flatpark-local "${APP_ID}//${BRANCH}"
 
 echo "==> Done. Launch with:"
 if [ -n "$INSTALLATION" ]; then

@@ -46,7 +46,7 @@ describe("an attacker rotating X-Forwarded-For", () => {
 
   test("is still capped per account, because that bucket does not read any header", () => {
     process.env.RATE_LIMIT_LOGIN_ACCOUNT_MAX = "3";
-    const account = "hash-of-admin@libredb.org";
+    const account = "hash-of-admin@storagebase.org";
 
     let allowed = 0;
     for (let attempt = 0; attempt < 10; attempt += 1) {

@@ -1,5 +1,5 @@
 # ==============================================================================
-# nfpm configuration for the libredb-studio .deb and .rpm packages (issue #112).
+# nfpm configuration for the storagebase-studio .deb and .rpm packages (issue #112).
 # One config produces both formats; built by the linux-packages job in
 # .github/workflows/release-artifacts.yml.
 #
@@ -15,7 +15,7 @@
 #   VERSION=0.9.41 ARCH=amd64 PAYLOAD_DIR=/tmp/payload \
 #     nfpm package -f packaging/linux/nfpm.yaml -p deb -t dist/
 # ==============================================================================
-name: libredb-studio
+name: storagebase-studio
 arch: ${ARCH}
 platform: linux
 version: ${VERSION}
@@ -27,11 +27,11 @@ description: |
   Oracle, SQL Server, MongoDB, Redis, Couchbase, ClickHouse, Apache Druid,
   Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra - with AI query assistance.
   Ships the standalone Next.js server with a bundled private Node.js
-  runtime (no external dependencies) and a systemd unit (libredb-studio)
+  runtime (no external dependencies) and a systemd unit (storagebase-studio)
   serving the app on port 3000; enable it with
-  "systemctl enable --now libredb-studio".
-vendor: LibreDB
-homepage: https://github.com/libredb/libredb-studio
+  "systemctl enable --now storagebase-studio".
+vendor: StorageBase
+homepage: https://github.com/storagebase/storagebase-studio
 license: MIT
 # Standard systemd lifecycle snippets, shared by deb and rpm (each script
 # handles both packagers' argument conventions): reload units and restart a
@@ -44,17 +44,17 @@ contents:
   # Standalone server payload + private Node runtime (node/bin/node).
   # expand: nfpm only expands env vars in contents entries that opt in.
   - src: ${PAYLOAD_DIR}
-    dst: /usr/lib/libredb-studio
+    dst: /usr/lib/storagebase-studio
     type: tree
     expand: true
   # CLI entry point / systemd ExecStart: execs the bundled node against
   # the payload server.js.
-  - src: packaging/linux/libredb-studio
-    dst: /usr/bin/libredb-studio
+  - src: packaging/linux/storagebase-studio
+    dst: /usr/bin/storagebase-studio
     file_info:
       mode: 0755
-  - src: packaging/linux/libredb-studio.service
-    dst: /usr/lib/systemd/system/libredb-studio.service
+  - src: packaging/linux/storagebase-studio.service
+    dst: /usr/lib/systemd/system/storagebase-studio.service
     file_info:
       mode: 0644
   # Operator configuration, loaded by the unit (EnvironmentFile). Read by
@@ -63,7 +63,7 @@ contents:
   # and every other local user. config|noreplace: upgrades never
   # overwrite operator edits.
   - src: packaging/linux/env
-    dst: /etc/libredb-studio/env
+    dst: /etc/storagebase-studio/env
     type: config|noreplace
     file_info:
       mode: 0600

@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==============================================================================
-# postremove for the libredb-studio .deb/.rpm packages (nfpm scripts:).
+# postremove for the storagebase-studio .deb/.rpm packages (nfpm scripts:).
 #
 # Drops the removed unit file from systemd's view. Runs after removal,
 # purge, and (on deb) upgrade; a plain daemon-reload is correct and

@@ -110,7 +110,7 @@ done
 
 # Pattern entries: deploy manifests (docker-compose.yml,
 # docker-compose.example.yml, ...), locally built snap binaries
-# (libredb-studio_<version>_<arch>.snap), packed tarballs, logs, and
+# (storagebase-studio_<version>_<arch>.snap), packed tarballs, logs, and
 # key/cert files. An unmatched glob stays literal and rm -f ignores it.
 # Leading-dot entries (.gitignore, .github, .npmrc, ...) never get traced
 # into the standalone output in the first place - only non-dot repo-root

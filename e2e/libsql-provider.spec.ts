@@ -21,7 +21,7 @@ test.describe("libSQL in the connection dialog", () => {
     // inputs exists for a moment after hydration, and a strict locator fails on it
     // locally while passing in CI. Pinning the first match makes the spec verifiable in
     // both places rather than in CI alone.
-    await page.locator('input[type="email"]').first().fill("user@libredb.org");
+    await page.locator('input[type="email"]').first().fill("user@storagebase.org");
     await page.locator('input[type="password"]').first().fill("test-user");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.waitForURL("/");

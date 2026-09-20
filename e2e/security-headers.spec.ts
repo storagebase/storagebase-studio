@@ -48,7 +48,7 @@ test.describe("Content-Security-Policy against the real asset surface", () => {
     expect(loginPolicy).toContain("frame-ancestors 'none'");
     expect(loginPolicy).toContain("worker-src 'self'");
 
-    await page.locator('input[type="email"]').fill("user@libredb.org");
+    await page.locator('input[type="email"]').fill("user@storagebase.org");
     await page.locator('input[type="password"]').fill("test-user");
     // The login document has its own violation array; assert it before navigating away.
     expect(await readViolations(page)).toEqual([]);

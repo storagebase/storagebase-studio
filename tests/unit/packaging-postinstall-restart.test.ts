@@ -47,7 +47,7 @@ describeIf(CANNOT_RUN, "packaging/linux/scripts/postinstall.sh service restart",
     systemctlExitCode?: number;
     arg?: string;
   }) {
-    const root = mkdtempSync(join(tmpdir(), "libredb-postinstall-"));
+    const root = mkdtempSync(join(tmpdir(), "storagebase-postinstall-"));
     fixtureRoots.push(root);
 
     const binDir = join(root, "bin");
@@ -81,14 +81,14 @@ describeIf(CANNOT_RUN, "packaging/linux/scripts/postinstall.sh service restart",
   test("reloads units and then try-restarts the service, in that order", () => {
     const { exitCode, calls } = runPostinstall({ systemd: true });
     expect(exitCode).toBe(0);
-    expect(calls).toEqual(["daemon-reload", "try-restart libredb-studio.service"]);
+    expect(calls).toEqual(["daemon-reload", "try-restart storagebase-studio.service"]);
   });
 
   test("never probes is-active and never issues a bare restart", () => {
     const { calls } = runPostinstall({ systemd: true });
     // Positive control first: the log is non-empty and carries the new
     // command, so the two negatives below cannot pass vacuously.
-    expect(calls).toContain("try-restart libredb-studio.service");
+    expect(calls).toContain("try-restart storagebase-studio.service");
     expect(calls.some((call) => call.includes("is-active"))).toBe(false);
     expect(calls.some((call) => /^restart\b/.test(call))).toBe(false);
   });
@@ -107,12 +107,12 @@ describeIf(CANNOT_RUN, "packaging/linux/scripts/postinstall.sh service restart",
     const { exitCode, calls } = runPostinstall({ systemd: true, systemctlExitCode: 1 });
     expect(exitCode).toBe(0);
     // Control: both commands were still attempted despite the failures.
-    expect(calls).toEqual(["daemon-reload", "try-restart libredb-studio.service"]);
+    expect(calls).toEqual(["daemon-reload", "try-restart storagebase-studio.service"]);
   });
 
   test("behaves the same for the rpm %post upgrade argument", () => {
     const { exitCode, calls } = runPostinstall({ systemd: true, arg: "2" });
     expect(exitCode).toBe(0);
-    expect(calls).toEqual(["daemon-reload", "try-restart libredb-studio.service"]);
+    expect(calls).toEqual(["daemon-reload", "try-restart storagebase-studio.service"]);
   });
 });

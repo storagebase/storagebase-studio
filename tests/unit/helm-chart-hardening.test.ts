@@ -24,7 +24,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { parseAllDocuments } from "yaml";
 
-const CHART_DIR = join(import.meta.dir, "../../charts/libredb-studio");
+const CHART_DIR = join(import.meta.dir, "../../charts/storagebase-studio");
 
 const MINIMAL_ARGS = [
   "--set",
@@ -66,7 +66,7 @@ function findKind(docs: RenderedManifest[], kind: string): RenderedManifest | un
   return docs.find((doc) => doc.kind === kind);
 }
 
-describe("charts/libredb-studio hardening (#45)", () => {
+describe("charts/storagebase-studio hardening (#45)", () => {
   describe("values.schema.json coverage", () => {
     // One wrong-typed probe per key the schema previously did not cover.
     const wrongTypedProbes: Array<[string, string]> = [

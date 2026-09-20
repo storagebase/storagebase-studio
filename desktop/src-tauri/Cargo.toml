@@ -1,13 +1,13 @@
 [package]
-name = "libredb-studio-desktop"
+name = "storagebase-studio-desktop"
 # Bundle metadata (AppImage file name, .desktop version) comes from
 # tauri.conf.json "version", which points at the repo-root package.json - this
 # crate version is never user-visible and stays fixed.
 version = "0.1.0"
-description = "LibreDB Studio desktop shell"
-authors = ["LibreDB"]
+description = "StorageBase Studio desktop shell"
+authors = ["StorageBase"]
 license = "MIT"
-repository = "https://github.com/libredb/libredb-studio"
+repository = "https://github.com/storagebase/storagebase-studio"
 edition = "2021"
 # Floor imposed by the tauri 2.11 dependency tree (darling/serde_with/time).
 rust-version = "1.88"
@@ -16,7 +16,7 @@ publish = false
 [lib]
 # The shell logic lives in the library so `cargo test` can exercise it without
 # starting a webview; src/main.rs is a thin entry point.
-name = "libredb_studio_desktop"
+name = "storagebase_studio_desktop"
 crate-type = ["lib"]
 
 [build-dependencies]

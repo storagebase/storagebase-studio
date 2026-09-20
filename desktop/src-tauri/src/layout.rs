@@ -54,7 +54,7 @@ impl fmt::Display for MissingPiece {
 /// `dpkg` refuses to unpack a second package claiming the same path, which
 /// would make the desktop package uninstallable on most developer machines
 /// (issue #241).
-pub const NODE_BIN: &str = "libredb-studio-node";
+pub const NODE_BIN: &str = "storagebase-studio-node";
 
 /// Candidate paths for the bundled Node runtime.
 ///
@@ -135,14 +135,14 @@ mod tests {
     #[test]
     fn resolves_the_bundled_appimage_layout() {
         let exe_dir = Path::new("/tmp/.mount_x/usr/bin");
-        let resource_dir = Path::new("/tmp/.mount_x/usr/lib/libredb-studio-desktop");
+        let resource_dir = Path::new("/tmp/.mount_x/usr/lib/storagebase-studio-desktop");
         let layout = resolve_with(
             exe_dir,
             resource_dir,
             TRIPLE,
             &fake_exists(&[
                 "/tmp/.mount_x/usr/bin/node",
-                "/tmp/.mount_x/usr/lib/libredb-studio-desktop/payload/server.js",
+                "/tmp/.mount_x/usr/lib/storagebase-studio-desktop/payload/server.js",
             ]),
         )
         .expect("layout");
@@ -202,28 +202,28 @@ mod tests {
         assert_eq!(err.tried.len(), 10);
         let rendered = err.to_string();
         assert!(rendered.contains("could not locate the bundled Node.js runtime"));
-        assert!(rendered.contains("/app/bin/libredb-studio-node-x86_64-unknown-linux-gnu"));
+        assert!(rendered.contains("/app/bin/storagebase-studio-node-x86_64-unknown-linux-gnu"));
     }
 
     #[test]
     fn resolves_the_installed_deb_layout_with_the_namespaced_sidecar() {
         // The .deb installs into the real /usr, where a sidecar called plain
         // `node` would collide with the distro nodejs package - so it ships as
-        // libredb-studio-node and this is the layout FlatPark's apply_extra
+        // storagebase-studio-node and this is the layout FlatPark's apply_extra
         // stages under /app/extra (issue #241).
         let exe_dir = Path::new("/app/extra/usr/bin");
-        let resource_dir = Path::new("/app/extra/usr/lib/libredb-studio-desktop");
+        let resource_dir = Path::new("/app/extra/usr/lib/storagebase-studio-desktop");
         let layout = resolve_with(
             exe_dir,
             resource_dir,
             TRIPLE,
             &fake_exists(&[
-                "/app/extra/usr/bin/libredb-studio-node",
-                "/app/extra/usr/lib/libredb-studio-desktop/payload/server.js",
+                "/app/extra/usr/bin/storagebase-studio-node",
+                "/app/extra/usr/lib/storagebase-studio-desktop/payload/server.js",
             ]),
         )
         .expect("layout");
-        assert_eq!(layout.node, exe_dir.join("libredb-studio-node"));
+        assert_eq!(layout.node, exe_dir.join("storagebase-studio-node"));
         assert_eq!(layout.payload_dir, resource_dir.join("payload"));
     }
 
@@ -236,16 +236,16 @@ mod tests {
             exe_dir,
             Path::new("/app/lib"),
             TRIPLE,
-            &fake_exists(&["/app/bin/node", "/app/bin/libredb-studio-node", "/app/lib/payload/server.js"]),
+            &fake_exists(&["/app/bin/node", "/app/bin/storagebase-studio-node", "/app/lib/payload/server.js"]),
         )
         .expect("layout");
-        assert_eq!(layout.node, exe_dir.join("libredb-studio-node"));
+        assert_eq!(layout.node, exe_dir.join("storagebase-studio-node"));
     }
 
     #[test]
     fn resolve_probes_the_real_filesystem() {
         // A path that cannot exist proves resolve() wires exists() through.
-        let err = resolve(Path::new("/nonexistent-libredb-exe"), Path::new("/nonexistent-libredb-res"), TRIPLE)
+        let err = resolve(Path::new("/nonexistent-storagebase-exe"), Path::new("/nonexistent-storagebase-res"), TRIPLE)
             .expect_err("must fail");
         assert_eq!(err.what, "Node.js runtime");
     }

@@ -9,7 +9,7 @@
  * 24-character passwords; the template passed one straight to `JWT_SECRET`).
  *
  * Why a hard exit rather than a health-check signal: `/api/db/health` is wired
- * as the Kubernetes **livenessProbe** (charts/libredb-studio/values.yaml) and as
+ * as the Kubernetes **livenessProbe** (charts/storagebase-studio/values.yaml) and as
  * the Docker/PaaS health check. Reporting a config error there would restart the
  * pod forever without ever fixing it, and would hide the login screen's
  * actionable 503 behind CrashLoopBackOff. Refusing to boot costs nothing either:

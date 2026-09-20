@@ -121,9 +121,9 @@ describe("parseArgs", () => {
 
 describe("parseImageRef", () => {
   test("parses a ghcr.io ref", () => {
-    expect(parseImageRef("ghcr.io/libredb/libredb-studio:0.9.66")).toEqual({
+    expect(parseImageRef("ghcr.io/storagebase/storagebase-studio:0.9.66")).toEqual({
       registry: "ghcr.io",
-      repository: "libredb/libredb-studio",
+      repository: "storagebase/storagebase-studio",
       tag: "0.9.66",
     });
   });
@@ -138,7 +138,7 @@ describe("parseImageRef", () => {
 
   test("rejects a ref without an explicit registry or tag", () => {
     expect(() => parseImageRef("caddy:2-alpine")).toThrow(/registry/);
-    expect(() => parseImageRef("ghcr.io/libredb/libredb-studio")).toThrow(/tag/);
+    expect(() => parseImageRef("ghcr.io/storagebase/storagebase-studio")).toThrow(/tag/);
   });
 
   test("rejects a tag outside the OCI tag grammar", () => {
@@ -146,9 +146,9 @@ describe("parseImageRef", () => {
     // constant - it is package.json's version or --version - so it is the only
     // place a stray path segment could reshape the registry URL the builder
     // then fetches. An invalid tag must fail the build, not travel into a URL.
-    expect(() => parseImageRef("ghcr.io/libredb/libredb-studio:0.9.66/../../evil")).toThrow(/tag/);
-    expect(() => parseImageRef("ghcr.io/libredb/libredb-studio:-leading-dash")).toThrow(/tag/);
-    expect(() => parseImageRef("ghcr.io/libredb/libredb-studio:has space")).toThrow(/tag/);
+    expect(() => parseImageRef("ghcr.io/storagebase/storagebase-studio:0.9.66/../../evil")).toThrow(/tag/);
+    expect(() => parseImageRef("ghcr.io/storagebase/storagebase-studio:-leading-dash")).toThrow(/tag/);
+    expect(() => parseImageRef("ghcr.io/storagebase/storagebase-studio:has space")).toThrow(/tag/);
   });
 });
 
@@ -176,8 +176,8 @@ describe("resolveImageDigest", () => {
 
 describe("pinnedRef", () => {
   test("pins by digest, dropping the tag", () => {
-    expect(pinnedRef("ghcr.io/libredb/libredb-studio:0.9.66", APP_DIGEST)).toBe(
-      `ghcr.io/libredb/libredb-studio@${APP_DIGEST}`,
+    expect(pinnedRef("ghcr.io/storagebase/storagebase-studio:0.9.66", APP_DIGEST)).toBe(
+      `ghcr.io/storagebase/storagebase-studio@${APP_DIGEST}`,
     );
   });
 });
@@ -271,7 +271,7 @@ describeIf(NO_ZIP_TOOLS, "buildPackage (end to end against a fixture repo)", () 
     const result = await buildPackage({ root, fetchImpl: registryFetch(), now: NOW, log: () => {} });
 
     expect(result.packageVersion).toBe("1.2.3");
-    expect(result.zipPath).toBe(join(root, "dist/azure/libredb-studio-azure-1.2.3.zip"));
+    expect(result.zipPath).toBe(join(root, "dist/azure/storagebase-studio-azure-1.2.3.zip"));
     expect(existsSync(result.zipPath)).toBe(true);
 
     const listing = execFileSync(UNZIP!, ["-l", result.zipPath], { encoding: "utf8" });
@@ -290,7 +290,7 @@ describeIf(NO_ZIP_TOOLS, "buildPackage (end to end against a fixture repo)", () 
     const b64 = template.variables.installScriptB64;
     expect(b64).not.toBe("__INSTALL_SCRIPT_B64__");
     const script = Buffer.from(b64, "base64").toString("utf8");
-    expect(script).toContain(`ghcr.io/libredb/libredb-studio@${APP_DIGEST}`);
+    expect(script).toContain(`ghcr.io/storagebase/storagebase-studio@${APP_DIGEST}`);
     expect(script).toContain(`docker.io/library/caddy@${CADDY_DIGEST}`);
     expect(script).not.toContain("__APP_IMAGE__");
   });
@@ -303,9 +303,9 @@ describeIf(NO_ZIP_TOOLS, "buildPackage (end to end against a fixture repo)", () 
     expect(metadata).toEqual({
       packageVersion: "1.2.3",
       appVersion: "0.9.66",
-      appImage: `ghcr.io/libredb/libredb-studio@${APP_DIGEST}`,
+      appImage: `ghcr.io/storagebase/storagebase-studio@${APP_DIGEST}`,
       caddyImage: `docker.io/library/caddy@${CADDY_DIGEST}`,
-      zip: "libredb-studio-azure-1.2.3.zip",
+      zip: "storagebase-studio-azure-1.2.3.zip",
       zipSha256: result.zipSha256,
     });
     // The hash has to describe the file a human actually uploads to Partner
@@ -397,10 +397,10 @@ describe("CLI", () => {
       ]);
       expect(stderr).toBe("");
       expect(exitCode).toBe(0);
-      expect(stdout).toContain(`ghcr.io/libredb/libredb-studio@${APP_DIGEST}`);
+      expect(stdout).toContain(`ghcr.io/storagebase/storagebase-studio@${APP_DIGEST}`);
       expect(stdout).toContain(`docker.io/library/caddy@${CADDY_DIGEST}`);
       expect(stdout).toContain("packageVersion: 2.0.0");
-      expect(existsSync(join(root, "dist/azure/libredb-studio-azure-2.0.0.zip"))).toBe(true);
+      expect(existsSync(join(root, "dist/azure/storagebase-studio-azure-2.0.0.zip"))).toBe(true);
     } finally {
       server.stop(true);
     }
@@ -519,9 +519,9 @@ describe("the shipped template sources agree with each other", () => {
   });
 
   test("the directories that hold secrets are created private", () => {
-    // /opt/libredb/data carries the SQLite store, whose connection records hold
+    // /opt/storagebase/data carries the SQLite store, whose connection records hold
     // plaintext passwords and connection strings (DatabaseConnection in
-    // src/lib/types.ts), and /opt/libredb/caddy/data carries the TLS private keys
+    // src/lib/types.ts), and /opt/storagebase/caddy/data carries the TLS private keys
     // and the ACME account key. A world-traversable parent is what exposes those
     // to every local account, and the mode of the files inside follows the
     // containers' umask rather than anything this installer controls - so the
@@ -529,7 +529,7 @@ describe("the shipped template sources agree with each other", () => {
     const install = readSrc("install.sh");
     const shared = install.match(/install -d -m 0755 (.+)/)?.[1] ?? "";
     const private_ = install.match(/install -d -m 0700 (.+)/)?.[1] ?? "";
-    for (const secretDir of ["/opt/libredb/data", "/opt/libredb/caddy/data"]) {
+    for (const secretDir of ["/opt/storagebase/data", "/opt/storagebase/caddy/data"]) {
       expect(private_).toContain(secretDir);
       expect(shared).not.toContain(secretDir);
     }

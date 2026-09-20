@@ -5,7 +5,7 @@ downloads** as Flatpak `extra-data`. It does not build from source: the manifest
 asset by URL and digest, the user's machine downloads it at install time, and `apply_extra`
 unpacks it inside the sandbox.
 
-This directory is the staged copy of what becomes `registry/org.libredb.Studio/` in
+This directory is the staged copy of what becomes `registry/org.storagebase.Studio/` in
 [flatpark/flatpark](https://github.com/flatpark/flatpark). It lives here so the descriptor set is
 reviewed, versioned and locally verifiable in the same repo as the artifact it pins.
 
@@ -13,30 +13,30 @@ reviewed, versioned and locally verifiable in the same repo as the artifact it p
 
 FlatPark rejects AppImages outright: unpacking one needs libfuse, which is not in the Flatpak
 runtime. It accepts `.deb`, `.rpm`, `.tar.gz`, zip or an official installer. The
-`libredb-studio_<version>_<arch>.deb` we already shipped is the **headless systemd server**, so
+`storagebase-studio_<version>_<arch>.deb` we already shipped is the **headless systemd server**, so
 issue #241 added a second, separate package built by the Tauri bundler:
 
-    libredb-studio-desktop_<version>_<arch>.deb
+    storagebase-studio-desktop_<version>_<arch>.deb
 
-Different file name *and* different dpkg package name (`libredb-studio-desktop` vs
-`libredb-studio`), so the two coexist in one release and on one machine.
+Different file name *and* different dpkg package name (`storagebase-studio-desktop` vs
+`storagebase-studio`), so the two coexist in one release and on one machine.
 
 ## Files
 
 | File | Role |
 |---|---|
 | `flatpark.yml` | Catalog descriptor: identity, tags, `update.command`, policy flags |
-| `org.libredb.Studio.yml` | Flatpak manifest: runtime, `finish-args`, the managed extra-data block |
+| `org.storagebase.Studio.yml` | Flatpak manifest: runtime, `finish-args`, the managed extra-data block |
 | `apply_extra.sh` | Runs offline at install time; unpacks the `.deb` with `bsdtar` |
-| `libredb-studio-wrapper` | `/app/bin/libredb-studio`; sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` |
-| `org.libredb.Studio.desktop` | Desktop entry, installed at build time |
-| `org.libredb.Studio.metainfo.xml` | AppStream metainfo, installed at build time |
-| `org.libredb.Studio.png` | 256x256 icon, installed at build time |
+| `storagebase-studio-wrapper` | `/app/bin/storagebase-studio`; sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` |
+| `org.storagebase.Studio.desktop` | Desktop entry, installed at build time |
+| `org.storagebase.Studio.metainfo.xml` | AppStream metainfo, installed at build time |
+| `org.storagebase.Studio.png` | 256x256 icon, installed at build time |
 | `resolve-update.sh` | Prints `{version, releaseDate, sources}` so FlatPark's bot can re-pin |
 
 `apply_extra.sh` keeps the whole `usr` tree rather than cherry-picking the binary: the shell
 resolves its resources as `<exe dir>/../lib/<product name>`, so `usr/bin` has to stay next to
-`usr/lib/libredb-studio-desktop`.
+`usr/lib/storagebase-studio-desktop`.
 
 ## x86_64 only, deliberately
 
@@ -57,15 +57,15 @@ Then two steps - build the artifact, then the Flatpak that pins it:
 
     # 1. The GUI .deb. --deb-only skips the AppImage, so the linuxdeploy GTK
     #    toolchain (librsvg2-dev and friends) is not required.
-    gh release download <version> --repo libredb/libredb-studio \
-      --pattern "libredb-studio-standalone-<version>-linux-x64.tar.gz"
+    gh release download <version> --repo storagebase/storagebase-studio \
+      --pattern "storagebase-studio-standalone-<version>-linux-x64.tar.gz"
     bash scripts/build-desktop-appimage.sh dist-desktop \
-      --payload libredb-studio-standalone-<version>-linux-x64.tar.gz --deb-only --smoke
+      --payload storagebase-studio-standalone-<version>-linux-x64.tar.gz --deb-only --smoke
 
     # 2. The Flatpak, then run it.
     bash scripts/build-flatpark-local.sh \
-      dist-desktop/libredb-studio-desktop_<version>_amd64.deb --install
-    flatpak run org.libredb.Studio//stable
+      dist-desktop/storagebase-studio-desktop_<version>_amd64.deb --install
+    flatpak run org.storagebase.Studio//stable
 
 Drop `--payload` to build the payload from the working tree instead of a released tarball - slower,
 but it tests the code you actually have. Building the `.deb` still needs bun, node, Rust >= 1.88 and
@@ -84,21 +84,21 @@ then aborts at startup in a way that looks exactly like a packaging bug.
 
 To remove a local build:
 
-    flatpak --user uninstall -y org.libredb.Studio//stable
-    flatpak --user remote-delete libredb-flatpark-local
+    flatpak --user uninstall -y org.storagebase.Studio//stable
+    flatpak --user remote-delete storagebase-flatpark-local
 
-`~/.var/app/org.libredb.Studio/` is keyed on the app id, so it is **shared with any other local
+`~/.var/app/org.storagebase.Studio/` is keyed on the app id, so it is **shared with any other local
 build of this app** (for example the Flathub AppImage repack on a different branch). Deleting it
 resets connections and query history for all of them.
 
 FlatPark's own validators must also pass, run from a checkout of `flatpark/flatpark` with this
-directory copied to `registry/org.libredb.Studio/` (their playbook calls these mandatory on every
+directory copied to `registry/org.storagebase.Studio/` (their playbook calls these mandatory on every
 run):
 
-    node scripts/read-descriptor.mjs registry/org.libredb.Studio/flatpark.yml
-    node scripts/audit-descriptor.mjs registry/org.libredb.Studio/flatpark.yml
-    scripts/build-app.sh org.libredb.Studio          # appstreamcli compose must print Success
-    scripts/check-apply-extra.sh org.libredb.Studio  # unpack as root with capabilities dropped
+    node scripts/read-descriptor.mjs registry/org.storagebase.Studio/flatpark.yml
+    node scripts/audit-descriptor.mjs registry/org.storagebase.Studio/flatpark.yml
+    scripts/build-app.sh org.storagebase.Studio          # appstreamcli compose must print Success
+    scripts/check-apply-extra.sh org.storagebase.Studio  # unpack as root with capabilities dropped
 
 `read-descriptor.mjs` passes today. `audit-descriptor.mjs` reports exactly one failure - the
 placeholder pin below - and passes cleanly once a real published digest and size are substituted.
@@ -111,7 +111,7 @@ here and names an `<app-id>.png`. The playbook wins: 43 of the 47 catalog entrie
 only 4 ship an SVG. Do not "fix" the icon to SVG.
 
 **The metainfo does not call this a community package.** The playbook asks for that wording, but it
-would be false: LibreDB packages its own application. The required "repackages the official upstream
+would be false: StorageBase packages its own application. The required "repackages the official upstream
 build unmodified" claim is kept verbatim, and the first paragraph says who maintains it instead.
 This is the same situation as `io.github.todevelopers.GseProfiler` and `dev.adonm.zuko`, both
 recorded upstream as "approved by construction - submitted and maintained by its own developer".
@@ -140,10 +140,10 @@ this one.
    published values, and refresh the newest `<release>` in the metainfo (version **and** date) to
    match. FlatPark's `audit-descriptor.mjs` fails on a zero digest.
 2. Re-run the local verification above against the real release URL.
-3. Copy this directory into a fork of `flatpark/flatpark` as `registry/org.libredb.Studio/`,
-   dropping this README, on branch `add/org.libredb.Studio`. A maintainer merges it; never
+3. Copy this directory into a fork of `flatpark/flatpark` as `registry/org.storagebase.Studio/`,
+   dropping this README, on branch `add/org.storagebase.Studio`. A maintainer merges it; never
    self-merge.
-4. **Claim the developer-approved badge.** LibreDB packages its own app, which is FlatPark's
+4. **Claim the developer-approved badge.** StorageBase packages its own app, which is FlatPark's
    "approved by construction" case. Set `catalog.upstream_approved: true` in `flatpark.yml` **and**
    add a row to their `docs/upstream-approvals.md` citing this submission PR, in the same PR - their
    `scripts/check-approvals.sh` fails a `true` flag with no matching row. The PR link is the
@@ -152,7 +152,7 @@ this one.
    walkthrough in issue #241 covers GUI rendering on a real session, the embedded SQLite sample and
    a PostgreSQL TCP connection returning rows.
 6. Disclose the pending Flathub submission (flathub/flathub#9538) in the PR body. Their gate is
-   "not *already* on Flathub", which we satisfy (`flathub.org/api/v2/appstream/org.libredb.Studio`
+   "not *already* on Flathub", which we satisfy (`flathub.org/api/v2/appstream/org.storagebase.Studio`
    404s), and `docs/discovery-pipeline.md` treats a stalled Flathub PR as FlatPark's opening - but
    say so plainly and let the maintainer judge. Moot since 2026-07-30: #9538 was declined, so there
    is no Flathub listing to disclose against.
@@ -162,11 +162,11 @@ this one.
 **`server has no summary file` on install.** The local remote is pointing at a repo directory that
 no longer exists - typically because the last build ran from a different checkout. The script
 re-points it every run, so this only bites a hand-rolled `flatpak remote-add`. Fix:
-`flatpak --user remote-modify --url="file:///path/to/build/flatpark/repo" libredb-flatpark-local`.
+`flatpak --user remote-modify --url="file:///path/to/build/flatpark/repo" storagebase-flatpark-local`.
 
 **Blank window.** WebKitGTK's DMABUF renderer. The wrapper sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`;
 if a window still paints blank, check the wrapper actually made it into the build
-(`flatpak run --command=cat org.libredb.Studio//stable /app/bin/libredb-studio`).
+(`flatpak run --command=cat org.storagebase.Studio//stable /app/bin/storagebase-studio`).
 
 **`gtkiconhelper` assertion or `flatpak-spawn` failures at startup.** The installation is not
 registered in `/etc/flatpak/installations.d` - almost always the result of improvising isolation
@@ -174,7 +174,7 @@ with `FLATPAK_USER_DIR`. Use `--installation <name>` against a registered instal
 
 **Verifying an install actually works**, beyond the window opening: the connection list should show
 the embedded SQLite sample, and a query against it should return rows. App data must appear under
-`~/.var/app/org.libredb.Studio/` and nowhere else.
+`~/.var/app/org.storagebase.Studio/` and nowhere else.
 
 ## After it merges, this copy drifts
 
@@ -190,6 +190,6 @@ as documentation of the packaging decisions, not as the live descriptor.
 Flathub's infrastructure. The two were always deliberately independent: different artifact,
 different fetch model, different review policy. The sequencing question is settled -
 flathub/flathub#9538 was declined on 2026-07-30 under Flathub's generative AI policy, so **FlatPark
-is the only Flatpak channel for LibreDB Studio** and there is no dual listing to revisit. The
+is the only Flatpak channel for StorageBase Studio** and there is no dual listing to revisit. The
 Flathub manifest stays in the tree as smoke coverage for the AppImage; the status note is in
 [`../flatpak/README.md`](../flatpak/README.md).

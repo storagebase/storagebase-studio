@@ -77,8 +77,8 @@ describe("local-auth getAuthUsers()", () => {
 
     const users = getAuthUsers();
 
-    expect(users.find((u) => u.role === "admin")?.email).toBe("admin@libredb.org");
-    expect(users.find((u) => u.role === "user")?.email).toBe("user@libredb.org");
+    expect(users.find((u) => u.role === "admin")?.email).toBe("admin@storagebase.org");
+    expect(users.find((u) => u.role === "user")?.email).toBe("user@storagebase.org");
   });
 
   describe("TOTP secrets", () => {

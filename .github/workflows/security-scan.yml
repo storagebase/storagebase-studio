@@ -462,9 +462,9 @@ jobs:
           # exact failure mode a digest-pinned reference exists to rule out
           # everywhere else in this workflow. Resolved once, here, and every
           # step below scans image_ref, never the bare tag.
-          digest=$(docker buildx imagetools inspect ghcr.io/libredb/libredb-studio:latest --format '{{json .Manifest.Digest}}' | tr -d '"')
+          digest=$(docker buildx imagetools inspect ghcr.io/storagebase/storagebase-studio:latest --format '{{json .Manifest.Digest}}' | tr -d '"')
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "image_ref=ghcr.io/libredb/libredb-studio@$digest" >> "$GITHUB_OUTPUT"
+          echo "image_ref=ghcr.io/storagebase/storagebase-studio@$digest" >> "$GITHUB_OUTPUT"
 
       - name: Scan the published image
         env:
@@ -537,7 +537,7 @@ jobs:
           {
             echo "## Published image: $IMAGE_REF"
             echo
-            echo "Resolved from \`ghcr.io/libredb/libredb-studio:latest\` once, at the start of"
+            echo "Resolved from \`ghcr.io/storagebase/storagebase-studio:latest\` once, at the start of"
             echo "this run, so the vulnerability report and the SBOM above describe the same"
             echo "bytes even if a release retags \`:latest\` while this job is running."
             echo

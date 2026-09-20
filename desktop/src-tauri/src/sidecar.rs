@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn env_pins_loopback_sqlite_storage_and_the_chosen_port() {
-        let env = sidecar_env(41234, Path::new("/data/libredb-storage.db"));
+        let env = sidecar_env(41234, Path::new("/data/storagebase-storage.db"));
         let lookup = |key: &str| {
             env.iter()
                 .find(|(name, _)| name == key)
@@ -245,13 +245,13 @@ mod tests {
         assert_eq!(lookup("PORT"), Some("41234"));
         assert_eq!(lookup("HOSTNAME"), Some("127.0.0.1"));
         assert_eq!(lookup("STORAGE_PROVIDER"), Some("sqlite"));
-        assert_eq!(lookup("STORAGE_SQLITE_PATH"), Some("/data/libredb-storage.db"));
+        assert_eq!(lookup("STORAGE_SQLITE_PATH"), Some("/data/storagebase-storage.db"));
         assert_eq!(lookup("NODE_ENV"), Some("production"));
     }
 
     #[test]
     fn env_leaves_credentials_to_the_servers_zero_config_bootstrap() {
-        let env = sidecar_env(3000, Path::new("/data/libredb-storage.db"));
+        let env = sidecar_env(3000, Path::new("/data/storagebase-storage.db"));
         for key in ["JWT_SECRET", "ADMIN_PASSWORD", "AUTH_BOOTSTRAP"] {
             assert!(!env.iter().any(|(name, _)| name == key), "{key} must not be set");
         }
@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn command_runs_server_js_from_the_payload_directory() {
         let layout = layout();
-        let command = build_command(&layout, 3210, Path::new("/data/libredb-storage.db"));
+        let command = build_command(&layout, 3210, Path::new("/data/storagebase-storage.db"));
         assert_eq!(command.get_program(), OsStr::new("/app/bin/node"));
         let args: Vec<_> = command.get_args().collect();
         assert_eq!(args, vec![OsStr::new("/app/lib/payload/server.js")]);
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn command_clears_inherited_auth_and_storage_overrides() {
-        let command = build_command(&layout(), 3210, Path::new("/data/libredb-storage.db"));
+        let command = build_command(&layout(), 3210, Path::new("/data/storagebase-storage.db"));
         let cleared: Vec<_> = command
             .get_envs()
             .filter(|(_, value)| value.is_none())
@@ -326,7 +326,7 @@ mod tests {
             node: PathBuf::from("/bin/sh"),
             payload_dir: PathBuf::from("/"),
         };
-        let mut command = build_command(&layout, 3000, Path::new("/tmp/libredb-test.db"));
+        let mut command = build_command(&layout, 3000, Path::new("/tmp/storagebase-test.db"));
         command.arg("--version");
         let mut sidecar = Sidecar::start(command).expect("spawn");
         let deadline = Instant::now() + Duration::from_secs(5);

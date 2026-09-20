@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Questions and support
-    url: https://github.com/libredb/libredb-studio/discussions
+    url: https://github.com/storagebase/storagebase-studio/discussions
     about: Ask configuration and usage questions in GitHub Discussions.
   - name: Report a security vulnerability privately
-    url: https://github.com/libredb/libredb-studio/blob/main/SECURITY.md#reporting-a-vulnerability
+    url: https://github.com/storagebase/storagebase-studio/blob/main/SECURITY.md#reporting-a-vulnerability
     about: Follow the security policy for private reporting. Do not open a public issue.

@@ -35,7 +35,7 @@ function chartYaml({
   imageTag?: string;
 } = {}): string {
   return `apiVersion: v2
-name: libredb-studio
+name: storagebase-studio
 description: Web-based SQL IDE for cloud-native teams
 type: application
 version: ${version}
@@ -43,8 +43,8 @@ appVersion: "${appVersion}"
 kubeVersion: ">=1.26.0-0"
 annotations:
   artifacthub.io/images: |
-    - name: libredb-studio
-      image: ghcr.io/libredb/libredb-studio:${imageTag}
+    - name: storagebase-studio
+      image: ghcr.io/storagebase/storagebase-studio:${imageTag}
       platforms:
         - linux/amd64
   artifacthub.io/changes: |
@@ -56,10 +56,10 @@ dependencies:
 }
 
 function readme(version = "0.1.3"): string {
-  return `# libredb-studio chart
+  return `# storagebase-studio chart
 
 \`\`\`bash
-helm install libredb oci://ghcr.io/libredb/charts/libredb-studio \\
+helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio \\
   --version ${version} \\
   --set secrets.jwtSecret=$(openssl rand -base64 32)
 \`\`\`
@@ -88,24 +88,24 @@ describe("bumpPatch", () => {
 
 describe("parseImageTag", () => {
   test("returns the tag when duplicated image lines agree", () => {
-    const dup = `${chartYaml()}      image: ghcr.io/libredb/libredb-studio:0.9.44\n`;
+    const dup = `${chartYaml()}      image: ghcr.io/storagebase/storagebase-studio:0.9.44\n`;
     expect(parseImageTag(dup)).toBe("0.9.44");
   });
 
   test("throws when duplicated image lines disagree instead of silently using the first (#151)", () => {
-    const dup = `${chartYaml()}      image: ghcr.io/libredb/libredb-studio:0.9.43\n`;
+    const dup = `${chartYaml()}      image: ghcr.io/storagebase/storagebase-studio:0.9.43\n`;
     expect(() => parseImageTag(dup)).toThrow(/disagree/);
   });
 });
 
 describe("parseReadmeVersion", () => {
   test("returns the version when duplicated --version examples agree", () => {
-    const dup = `${readme()}helm upgrade libredb libredb/libredb-studio --version 0.1.3\n`;
+    const dup = `${readme()}helm upgrade storagebase storagebase/storagebase-studio --version 0.1.3\n`;
     expect(parseReadmeVersion(dup)).toBe("0.1.3");
   });
 
   test("throws when duplicated --version examples disagree instead of silently using the first (#151)", () => {
-    const dup = `${readme()}helm upgrade libredb libredb/libredb-studio --version 0.1.2\n`;
+    const dup = `${readme()}helm upgrade storagebase storagebase/storagebase-studio --version 0.1.2\n`;
     expect(() => parseReadmeVersion(dup)).toThrow(/disagree/);
   });
 });
@@ -152,7 +152,7 @@ describe("checkChangesAnnotation", () => {
   test("a reindented changes block is still checked", () => {
     const reindented = [
       "apiVersion: v2",
-      "name: libredb-studio",
+      "name: storagebase-studio",
       "version: 0.1.3",
       'appVersion: "0.9.44"',
       "annotations:",
@@ -255,7 +255,7 @@ describe("checkSync", () => {
       chartYaml: chartYaml(),
       readme: readme(),
       baseChart: { version: "0.1.3", appVersion: "0.9.44" },
-      chartChanges: ["charts/libredb-studio/templates/deployment.yaml"],
+      chartChanges: ["charts/storagebase-studio/templates/deployment.yaml"],
       chartTagExists: true,
     });
     expect(violations).toHaveLength(1);
@@ -284,7 +284,7 @@ describe("checkSync", () => {
       chartYaml: chartYaml(),
       readme: readme(),
       baseChart: { version: "0.1.3", appVersion: "0.9.44" },
-      chartChanges: ["charts/libredb-studio/values.yaml"],
+      chartChanges: ["charts/storagebase-studio/values.yaml"],
       chartTagExists: false,
     });
     expect(violations).toEqual([]);
@@ -337,7 +337,7 @@ describe("tagQueryNeeded", () => {
   test("true when the packaged chart changed under an unchanged chart version (#167)", () => {
     const baseChart = { version: "0.1.3", appVersion: "0.9.44" };
     const input = { baseChart, version: "0.1.3", appVersion: "0.9.44" };
-    expect(tagQueryNeeded({ ...input, chartChanges: ["charts/libredb-studio/values.yaml"] })).toBe(true);
+    expect(tagQueryNeeded({ ...input, chartChanges: ["charts/storagebase-studio/values.yaml"] })).toBe(true);
     expect(tagQueryNeeded(input)).toBe(false);
   });
 
@@ -345,7 +345,7 @@ describe("tagQueryNeeded", () => {
     // The bumped version is unreleased by construction: it is the chart-only
     // release path, already covered by the appVersion/chart-releaser rules.
     const baseChart = { version: "0.1.3", appVersion: "0.9.44" };
-    const chartChanges = ["charts/libredb-studio/values.yaml"];
+    const chartChanges = ["charts/storagebase-studio/values.yaml"];
     expect(tagQueryNeeded({ baseChart, version: "0.1.4", appVersion: "0.9.44", chartChanges })).toBe(false);
   });
 });
@@ -353,17 +353,17 @@ describe("tagQueryNeeded", () => {
 describe("packagedChartChanges", () => {
   test("keeps files that end up in the packaged tgz", () => {
     const paths = [
-      "charts/libredb-studio/Chart.yaml",
-      "charts/libredb-studio/templates/deployment.yaml",
-      "charts/libredb-studio/values.schema.json",
+      "charts/storagebase-studio/Chart.yaml",
+      "charts/storagebase-studio/templates/deployment.yaml",
+      "charts/storagebase-studio/values.schema.json",
     ];
     expect(packagedChartChanges(paths)).toEqual(paths);
   });
 
   test("drops .helmignore'd ci values and empty lines", () => {
     expect(
-      packagedChartChanges(["charts/libredb-studio/ci/default-values.yaml", "", "charts/libredb-studio/values.yaml"]),
-    ).toEqual(["charts/libredb-studio/values.yaml"]);
+      packagedChartChanges(["charts/storagebase-studio/ci/default-values.yaml", "", "charts/storagebase-studio/values.yaml"]),
+    ).toEqual(["charts/storagebase-studio/values.yaml"]);
   });
 });
 
@@ -374,7 +374,7 @@ describe("applyBump", () => {
     expect(result.version).toBe("0.1.4");
     expect(result.appVersion).toBe("0.9.45");
     expect(result.chartYaml).toContain('appVersion: "0.9.45"');
-    expect(result.chartYaml).toContain("image: ghcr.io/libredb/libredb-studio:0.9.45");
+    expect(result.chartYaml).toContain("image: ghcr.io/storagebase/storagebase-studio:0.9.45");
     expect(result.chartYaml).toContain('- "Track app release 0.9.45 (appVersion bump; default image tag follows)"');
     expect(result.readme).toContain("--version 0.1.4");
     expect(checkSync({ pkgVersion: "0.9.45", chartYaml: result.chartYaml, readme: result.readme })).toEqual([]);
@@ -394,7 +394,7 @@ describe("applyBump", () => {
     );
     const result = applyBump({ pkgVersion: "0.9.44", chartYaml: custom, readme: readme() });
     expect(result.changed).toBe(true);
-    expect(result.chartYaml).toContain("image: ghcr.io/libredb/libredb-studio:0.9.44");
+    expect(result.chartYaml).toContain("image: ghcr.io/storagebase/storagebase-studio:0.9.44");
     expect(result.chartYaml).toContain('- "Hand-written chart-only changelog entry"');
   });
 
@@ -409,12 +409,12 @@ describe("applyBump", () => {
   });
 
   test("rewrites every duplicated image line and --version example, not just the first (#151)", () => {
-    const dupChart = `${chartYaml()}      image: ghcr.io/libredb/libredb-studio:0.9.44\n`;
-    const dupReadme = `${readme()}helm upgrade libredb libredb/libredb-studio --version 0.1.3\n`;
+    const dupChart = `${chartYaml()}      image: ghcr.io/storagebase/storagebase-studio:0.9.44\n`;
+    const dupReadme = `${readme()}helm upgrade storagebase storagebase/storagebase-studio --version 0.1.3\n`;
     const result = applyBump({ pkgVersion: "0.9.45", chartYaml: dupChart, readme: dupReadme });
     expect(result.changed).toBe(true);
-    expect([...result.chartYaml.matchAll(/libredb-studio:0\.9\.45/g)].length).toBe(2);
-    expect(result.chartYaml).not.toContain("libredb-studio:0.9.44");
+    expect([...result.chartYaml.matchAll(/storagebase-studio:0\.9\.45/g)].length).toBe(2);
+    expect(result.chartYaml).not.toContain("storagebase-studio:0.9.44");
     expect([...result.readme.matchAll(/--version 0\.1\.4/g)].length).toBe(2);
     expect(result.readme).not.toContain("--version 0.1.3");
   });
@@ -423,10 +423,10 @@ describe("applyBump", () => {
 const SCRIPT = join(import.meta.dir, "../../scripts/sync-chart-version.mjs");
 
 function writeTree(root: string, pkgVersion: string, chart: string, readmeText: string): void {
-  mkdirSync(join(root, "charts/libredb-studio"), { recursive: true });
+  mkdirSync(join(root, "charts/storagebase-studio"), { recursive: true });
   writeFileSync(join(root, "package.json"), JSON.stringify({ version: pkgVersion }));
-  writeFileSync(join(root, "charts/libredb-studio/Chart.yaml"), chart);
-  writeFileSync(join(root, "charts/libredb-studio/README.md"), readmeText);
+  writeFileSync(join(root, "charts/storagebase-studio/Chart.yaml"), chart);
+  writeFileSync(join(root, "charts/storagebase-studio/README.md"), readmeText);
 }
 
 function runCheck(root: string, env: Record<string, string> = {}) {
@@ -560,7 +560,7 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
   }
 
   test("stale branch passes --check after a released chart bump merged to origin/main (merge-base comparison)", () => {
-    // Upstream: base commit (chart 0.1.3, released as tag libredb-studio-0.1.3), then a
+    // Upstream: base commit (chart 0.1.3, released as tag storagebase-studio-0.1.3), then a
     // release bump to 0.1.4/0.9.45 merged to main.
     const upstream = makeDir("chart-sync-upstream-");
     runGit(upstream, "init", "-q", "-b", "main");
@@ -568,7 +568,7 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
     runGit(upstream, "add", "-A");
     runGit(upstream, "commit", "-q", "-m", "base");
     const baseSha = runGit(upstream, "rev-parse", "HEAD");
-    runGit(upstream, "tag", "libredb-studio-0.1.3", baseSha);
+    runGit(upstream, "tag", "storagebase-studio-0.1.3", baseSha);
     writeTree(upstream, "0.9.45", chartYaml({ version: "0.1.4", appVersion: "0.9.45" }), readme("0.1.4"));
     runGit(upstream, "add", "-A");
     runGit(upstream, "commit", "-q", "-m", "release 0.9.45");
@@ -588,13 +588,13 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
 
   test("strict mode reports an unparseable base Chart.yaml distinctly from a missing origin/main", () => {
     const root = makeDir("chart-sync-");
-    writeTree(root, "0.9.44", "apiVersion: v2\nname: libredb-studio\n", readme());
+    writeTree(root, "0.9.44", "apiVersion: v2\nname: storagebase-studio\n", readme());
     runGit(root, "init", "-q", "-b", "main");
     runGit(root, "add", "-A");
     runGit(root, "commit", "-q", "-m", "unparseable chart");
     runGit(root, "update-ref", "refs/remotes/origin/main", runGit(root, "rev-parse", "HEAD"));
     // Working tree is valid; only the committed base (the merge-base) is unparseable.
-    writeFileSync(join(root, "charts/libredb-studio/Chart.yaml"), chartYaml());
+    writeFileSync(join(root, "charts/storagebase-studio/Chart.yaml"), chartYaml());
 
     const result = runCheck(root, { CHART_SYNC_STRICT: "1" });
     expect(result.exitCode).toBe(1);
@@ -620,7 +620,7 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
     runGit(root, "checkout", "-q", "main");
     // Fixture self-check: the merge-base genuinely does not exist, the tip ref does.
     expect(() => runGit(root, "merge-base", "HEAD", "origin/main")).toThrow();
-    expect(runGit(root, "show", "origin/main:charts/libredb-studio/Chart.yaml")).toContain("appVersion");
+    expect(runGit(root, "show", "origin/main:charts/storagebase-studio/Chart.yaml")).toContain("appVersion");
 
     const result = runCheck(root, { CHART_SYNC_STRICT: "1" });
     expect(result.stderr.toString()).toBe("");
@@ -628,7 +628,7 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
   });
 
   /**
-   * Upstream with a released chart 0.1.3 (tag libredb-studio-0.1.3) plus a template file,
+   * Upstream with a released chart 0.1.3 (tag storagebase-studio-0.1.3) plus a template file,
    * cloned so `origin` is a real remote whose tags `git ls-remote` can see. Returns the
    * clone root; callers then mutate its working tree.
    */
@@ -636,11 +636,11 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
     const upstream = makeDir("chart-sync-upstream-");
     runGit(upstream, "init", "-q", "-b", "main");
     writeTree(upstream, "0.9.44", chartYaml(), readme());
-    mkdirSync(join(upstream, "charts/libredb-studio/templates"), { recursive: true });
-    writeFileSync(join(upstream, "charts/libredb-studio/templates/deployment.yaml"), "kind: Deployment\n");
+    mkdirSync(join(upstream, "charts/storagebase-studio/templates"), { recursive: true });
+    writeFileSync(join(upstream, "charts/storagebase-studio/templates/deployment.yaml"), "kind: Deployment\n");
     runGit(upstream, "add", "-A");
     runGit(upstream, "commit", "-q", "-m", "chart 0.1.3");
-    runGit(upstream, "tag", "libredb-studio-0.1.3", runGit(upstream, "rev-parse", "HEAD"));
+    runGit(upstream, "tag", "storagebase-studio-0.1.3", runGit(upstream, "rev-parse", "HEAD"));
 
     const root = makeDir("chart-sync-");
     runGit(root, "clone", "-q", upstream, ".");
@@ -650,14 +650,14 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
   test("changing a chart template without a version bump fails once the version is released (#167)", () => {
     const root = makeReleasedChartClone();
     writeFileSync(
-      join(root, "charts/libredb-studio/templates/deployment.yaml"),
+      join(root, "charts/storagebase-studio/templates/deployment.yaml"),
       "kind: Deployment\n# zero-config default\n",
     );
 
     const result = runCheck(root);
     expect(result.exitCode).toBe(1);
     const stderr = result.stderr.toString();
-    expect(stderr).toContain("charts/libredb-studio/templates/deployment.yaml");
+    expect(stderr).toContain("charts/storagebase-studio/templates/deployment.yaml");
     expect(stderr).toContain("already-released");
     expect(stderr).toContain("#167");
   });
@@ -665,11 +665,11 @@ describe("CLI (--check against git fixtures, #151/#167)", () => {
   test("the same template change passes once the chart version is bumped (#167)", () => {
     const root = makeReleasedChartClone();
     writeFileSync(
-      join(root, "charts/libredb-studio/templates/deployment.yaml"),
+      join(root, "charts/storagebase-studio/templates/deployment.yaml"),
       "kind: Deployment\n# zero-config default\n",
     );
-    writeFileSync(join(root, "charts/libredb-studio/Chart.yaml"), chartYaml({ version: "0.1.4" }));
-    writeFileSync(join(root, "charts/libredb-studio/README.md"), readme("0.1.4"));
+    writeFileSync(join(root, "charts/storagebase-studio/Chart.yaml"), chartYaml({ version: "0.1.4" }));
+    writeFileSync(join(root, "charts/storagebase-studio/README.md"), readme("0.1.4"));
 
     const result = runCheck(root);
     expect(result.stderr.toString()).toBe("");
@@ -714,14 +714,14 @@ describe("operator embedded chart copy (PR #156)", () => {
   function makeRoot({ withOperator = true, drift = false }: { withOperator?: boolean; drift?: boolean } = {}): string {
     const root = mkdtempSync(join(tmpdir(), "opchart-"));
     roots.push(root);
-    const src = join(root, "charts/libredb-studio");
+    const src = join(root, "charts/storagebase-studio");
     mkdirSync(join(src, "templates"), { recursive: true });
     mkdirSync(join(src, "charts"), { recursive: true });
     writeFileSync(join(src, "Chart.yaml"), "version: 0.1.19\n");
     writeFileSync(join(src, "templates/deployment.yaml"), "kind: Deployment\n");
     writeFileSync(join(src, "charts/postgresql-16.7.27.tgz"), "vendored");
     if (withOperator) {
-      const dst = join(root, "operator/helm-charts/libredb-studio");
+      const dst = join(root, "operator/helm-charts/storagebase-studio");
       mkdirSync(join(dst, "templates"), { recursive: true });
       writeFileSync(join(dst, "Chart.yaml"), drift ? "version: 0.1.3\n" : "version: 0.1.19\n");
       writeFileSync(join(dst, "templates/deployment.yaml"), "kind: Deployment\n");
@@ -731,7 +731,7 @@ describe("operator embedded chart copy (PR #156)", () => {
 
   test("listChartFiles skips the vendored charts dir", () => {
     const root = makeRoot();
-    expect(listChartFiles(join(root, "charts/libredb-studio"))).toEqual(["Chart.yaml", "templates/deployment.yaml"]);
+    expect(listChartFiles(join(root, "charts/storagebase-studio"))).toEqual(["Chart.yaml", "templates/deployment.yaml"]);
   });
 
   test("identical copies produce no violations", () => {
@@ -745,24 +745,24 @@ describe("operator embedded chart copy (PR #156)", () => {
   test("content drift is reported per file", () => {
     const violations = operatorCopyViolations(makeRoot({ drift: true }));
     expect(violations).toHaveLength(1);
-    expect(violations[0]).toContain("Chart.yaml: differs from charts/libredb-studio/Chart.yaml");
+    expect(violations[0]).toContain("Chart.yaml: differs from charts/storagebase-studio/Chart.yaml");
   });
 
   test("missing and extra files are both reported", () => {
     const root = makeRoot();
-    rmSync(join(root, "operator/helm-charts/libredb-studio/templates/deployment.yaml"));
-    writeFileSync(join(root, "operator/helm-charts/libredb-studio/extra.yaml"), "x\n");
+    rmSync(join(root, "operator/helm-charts/storagebase-studio/templates/deployment.yaml"));
+    writeFileSync(join(root, "operator/helm-charts/storagebase-studio/extra.yaml"), "x\n");
     const violations = operatorCopyViolations(root);
     expect(violations).toHaveLength(2);
     expect(violations[0]).toContain("templates/deployment.yaml: missing from the operator copy");
-    expect(violations[1]).toContain("extra.yaml: not present in charts/libredb-studio");
+    expect(violations[1]).toContain("extra.yaml: not present in charts/storagebase-studio");
   });
 
   test("refreshOperatorCopy rebuilds a drifted copy without the vendored charts dir", () => {
     const root = makeRoot({ drift: true });
     expect(refreshOperatorCopy(root)).toBe(true);
     expect(operatorCopyViolations(root)).toEqual([]);
-    expect(existsSync(join(root, "operator/helm-charts/libredb-studio/charts"))).toBe(false);
+    expect(existsSync(join(root, "operator/helm-charts/storagebase-studio/charts"))).toBe(false);
     expect(refreshOperatorCopy(root)).toBe(false); // second run: nothing to do
   });
 
@@ -772,7 +772,7 @@ describe("operator embedded chart copy (PR #156)", () => {
 
   test("a deleted copy under an existing operator tree is a violation, and bump recreates it", () => {
     const root = makeRoot();
-    rmSync(join(root, "operator/helm-charts/libredb-studio"), { recursive: true });
+    rmSync(join(root, "operator/helm-charts/storagebase-studio"), { recursive: true });
     const violations = operatorCopyViolations(root);
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("missing while");
@@ -783,7 +783,7 @@ describe("operator embedded chart copy (PR #156)", () => {
   test("a deleted operator/helm-charts dir under an existing operator tree is a violation, and bump recreates it", () => {
     const root = makeRoot();
     rmSync(join(root, "operator/helm-charts"), { recursive: true });
-    writeFileSync(join(root, "operator/PROJECT"), "projectName: libredb-studio-operator\n");
+    writeFileSync(join(root, "operator/PROJECT"), "projectName: storagebase-studio-operator\n");
     const violations = operatorCopyViolations(root);
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("missing while");

@@ -368,7 +368,7 @@ async function decide(argv) {
   const operatorDir = flag(argv, "operator-dir");
   const repo = flag(argv, "repo");
   const operatorFlag = argv.indexOf("--operator");
-  const operator = operatorFlag === -1 ? "libredb-studio-operator" : flag(argv, "operator");
+  const operator = operatorFlag === -1 ? "storagebase-studio-operator" : flag(argv, "operator");
   const apiBase = flag(argv, "api-base") ?? "https://api.github.com";
   const fork = flag(argv, "fork");
 

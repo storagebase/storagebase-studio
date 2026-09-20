@@ -42,9 +42,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 ## クイックスタート
@@ -53,10 +50,10 @@
 
 ```bash
 # Docker（推奨）
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # または Node.js 24+ で（Dockerなし）
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 **http://localhost:3000** を開くだけです。初回起動時に管理者パスワードがログに出力されるので、設定ファイルは要りません。
@@ -168,7 +165,7 @@ StudioのAIの中心は、エディタの隣にあるエージェントレール
   エンドポイントはキーなしでモデル設定として成立し、その場合AIは有効になります。何が外部に
   出るかは[`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md)にあります。
 
-スタンドアロン版のみ：埋め込み用の`@libredb/studio`パッケージにエージェントのUIは含まれません。
+スタンドアロン版のみ：埋め込み用の`@storagebase/studio`パッケージにエージェントのUIは含まれません。
 ガイド：[`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) ·
 何が外部に出るか：[`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) ·
 挙動と制限：[`docs/AGENT.md`](docs/AGENT.md)
@@ -214,17 +211,17 @@ StudioのAIの中心は、エディタの隣にあるエージェントレール
 
 | 方法 | コマンド |
 | :--- | :--- |
-| **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` |
-| **npx** | `npx @libredb/studio` |
-| **Helm** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` |
-| **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` |
-| **Snap** | `sudo snap install libredb-studio` |
-| **winget** | `winget install LibreDB.Studio` |
-| **deb / rpm**（サーバ版、systemdユニット同梱） | [リリースページ](https://github.com/libredb/libredb-studio/releases/latest) |
-| **デスクトップアプリ**（AppImage / deb） | [リリースページ](https://github.com/libredb/libredb-studio/releases/latest)。ネイティブウィンドウで、サーバはローカルのサイドカーとして動作し、ログイン画面はありません。**上のサーバ版とは別物です。** |
-| **デスクトップアプリ**（Flatpak、サンドボックス） | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` |
+| **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` |
+| **npx** | `npx @storagebase/studio` |
+| **Helm** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` |
+| **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` |
+| **Snap** | `sudo snap install storagebase-studio` |
+| **winget** | `winget install StorageBase.Studio` |
+| **deb / rpm**（サーバ版、systemdユニット同梱） | [リリースページ](https://github.com/storagebase/storagebase-studio/releases/latest) |
+| **デスクトップアプリ**（AppImage / deb） | [リリースページ](https://github.com/storagebase/storagebase-studio/releases/latest)。ネイティブウィンドウで、サーバはローカルのサイドカーとして動作し、ログイン画面はありません。**上のサーバ版とは別物です。** |
+| **デスクトップアプリ**（Flatpak、サンドボックス） | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` |
 
-`brew trust` は最初の一度だけ必要です（Homebrew 6+。「unknown command」と出る場合は先に `brew update`）。Docker、Helm、Snapはゼロコンフィグで、初回起動時に生成される管理者パスワードはそれぞれコンテナログ、Podログ、`sudo snap logs libredb-studio` に出力されます。チャネルごとの詳細（コマンド、設定、systemdの使い方、Dockerイメージのタグ体系）は [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) にあります。
+`brew trust` は最初の一度だけ必要です（Homebrew 6+。「unknown command」と出る場合は先に `brew update`）。Docker、Helm、Snapはゼロコンフィグで、初回起動時に生成される管理者パスワードはそれぞれコンテナログ、Podログ、`sudo snap logs storagebase-studio` に出力されます。チャネルごとの詳細（コマンド、設定、systemdの使い方、Dockerイメージのタグ体系）は [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) にあります。
 
 ワンクリックテンプレート：Railway、Dokploy、CapRover、Sealos、Kubero、Cosmos、DigitalOcean Marketplace、Unraid Community Apps、Render Blueprint、Fly.io、Koyeb。一覧は [`docs/CHANNELS.md`](docs/CHANNELS.md) にあります。
 
@@ -233,16 +230,16 @@ Kubernetes向けにはOpenShift / OLM Operator bundleも用意しています。
 ### 自分のプロダクトに埋め込む
 
 ```bash
-npm i @libredb/studio
+npm i @storagebase/studio
 ```
 
 Studioはnpmパッケージとしても配布されているので、自分のアプリケーションの中に直接埋め込めます。ユーザーのためにデータベースを作る製品なら、エディタが最も役に立つのはその内側です。
 
-**Studioのセキュリティヘッダを自分のNext.js設定から使う。** `@libredb/studio/security` サブパスは、このポリシーを純粋なデータとして公開しています。`securityHeaders()` が返すのはただの `Record<string, string>` で、その定義元モジュールは何もimportしていません。パスエイリアスもStudioのランタイムもまだ存在しない `next.config.ts` から読み込んでも安全です。
+**Studioのセキュリティヘッダを自分のNext.js設定から使う。** `@storagebase/studio/security` サブパスは、このポリシーを純粋なデータとして公開しています。`securityHeaders()` が返すのはただの `Record<string, string>` で、その定義元モジュールは何もimportしていません。パスエイリアスもStudioのランタイムもまだ存在しない `next.config.ts` から読み込んでも安全です。
 
 ```ts
 // next.config.ts
-import { securityHeaders } from "@libredb/studio/security";
+import { securityHeaders } from "@storagebase/studio/security";
 
 export default {
   async headers() {

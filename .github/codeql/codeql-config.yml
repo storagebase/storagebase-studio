@@ -1,4 +1,4 @@
-name: "LibreDB CodeQL config"
+name: "StorageBase CodeQL config"
 
 # These operator subtrees are operator-sdk generated scaffold plus a vendored
 # copy of the published Helm chart (a codeless helm-operator: no first-party

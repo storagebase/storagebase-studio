@@ -24,7 +24,7 @@ const SAMPLE_APPEAR_TIMEOUT = 45_000;
 
 async function loginAsUser(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.locator('input[type="email"]').fill("user@libredb.org");
+  await page.locator('input[type="email"]').fill("user@storagebase.org");
   await page.locator('input[type="password"]').fill("test-user");
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL("/");

@@ -95,7 +95,7 @@ export const PLATFORMS = ["linux", "macos", "windows", "container", "kubernetes"
  *
  *   user_supplied     the user's own `node` executes the payload, so the floor
  *                     is theirs to meet. Exactly two channels: the npm package
- *                     (`npx @libredb/studio`) and the standalone tarballs.
+ *                     (`npx @storagebase/studio`) and the standalone tarballs.
  *   channel_supplied  the channel provides the runtime - bundled inside the
  *                     artefact (container image, snap, deb/rpm, Windows zip,
  *                     Flatpak, the Tauri sidecar), inherited from an image a
@@ -627,7 +627,7 @@ export function linkLabel(url) {
     return "link";
   }
   const [, owner, repo, number] = match;
-  return owner === "libredb" && repo === "libredb-studio" ? `#${number}` : `${owner}/${repo}#${number}`;
+  return owner === "storagebase" && repo === "storagebase-studio" ? `#${number}` : `${owner}/${repo}#${number}`;
 }
 
 function linkCell(url) {

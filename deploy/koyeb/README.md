@@ -1,9 +1,9 @@
-# LibreDB Studio on Koyeb
+# StorageBase Studio on Koyeb
 
 [Koyeb](https://www.koyeb.com) is a serverless PaaS that can run the prebuilt
-LibreDB Studio Docker image directly from GHCR — no rebuild, no Dockerfile.
+StorageBase Studio Docker image directly from GHCR — no rebuild, no Dockerfile.
 
-There are two ways to get LibreDB Studio onto Koyeb:
+There are two ways to get StorageBase Studio onto Koyeb:
 
 1. **Deploy to Koyeb button** (self-service, already live in the repo
    [README](../../README.md#one-click-deploy)).
@@ -17,7 +17,7 @@ query string:
 
 | Setting | Value |
 |---------|-------|
-| Source | Docker image `ghcr.io/libredb/libredb-studio:latest` |
+| Source | Docker image `ghcr.io/storagebase/storagebase-studio:latest` |
 | Port | `3000` (HTTP, path `/`) |
 | Health check | TCP on `3000`, 5s grace / 30s interval |
 | Instance | `free` (scale-to-zero after idle) |

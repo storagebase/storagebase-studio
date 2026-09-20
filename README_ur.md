@@ -44,9 +44,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://sonarcloud.io/project/overview?id=libredb_libredb-studio"><img src="https://sonarcloud.io/api/project_badges/measure?project=libredb_libredb-studio&metric=alert_status" alt="Quality Gate"></a>
-  <a href="https://codecov.io/github/libredb/libredb-studio"><img src="https://codecov.io/github/libredb/libredb-studio/graph/badge.svg?token=VA6CO9R7IH" alt="Coverage"></a>
-  <a href="https://artifacthub.io/packages/helm/libredb-studio/libredb-studio"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/libredb-studio" alt="Artifact Hub"></a>
 </p>
 
 <div dir="rtl" align="right">
@@ -59,10 +56,10 @@
 
 ```bash
 # Docker (recommended)
-docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest
+docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
 
 # or with Node.js 24+ (without Docker)
-npx @libredb/studio
+npx @storagebase/studio
 ```
 
 <div dir="rtl" align="right">
@@ -208,19 +205,19 @@ PostgreSQL · MySQL · Oracle · SQL Server · SQLite · libSQL · DuckDB · Mon
 
 | طریقہ | کمانڈ |
 | :--- | :--- |
-| **Docker** | `docker run -p 3000:3000 ghcr.io/libredb/libredb-studio:latest` |
-| **npx** | `npx @libredb/studio` |
-| **Helm** | `helm install libredb oci://ghcr.io/libredb/charts/libredb-studio` |
-| **Homebrew** | `brew trust libredb/tap && brew install libredb/tap/libredb-studio` |
-| **Snap** | `sudo snap install libredb-studio` |
-| **winget** | `winget install LibreDB.Studio` |
-| **deb / rpm** <span dir="rtl">(server اور systemd service کے لیے)</span> | <span dir="rtl">[ریلیزز کا صفحہ](https://github.com/libredb/libredb-studio/releases/latest)</span> |
-| **Desktop application** <span dir="rtl">(AppImage / deb)</span> | <span dir="rtl">[ریلیزز کا صفحہ](https://github.com/libredb/libredb-studio/releases/latest)۔ مقامی window؛ server مقامی sidecar کے طور پر چلتا ہے اور login screen نہیں آتی۔ **یہ اوپر والی قطار والا server package نہیں ہے۔**</span> |
-| **Desktop application** <span dir="rtl">(Flatpak، sandbox میں)</span> | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.libredb.Studio` |
+| **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` |
+| **npx** | `npx @storagebase/studio` |
+| **Helm** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` |
+| **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` |
+| **Snap** | `sudo snap install storagebase-studio` |
+| **winget** | `winget install StorageBase.Studio` |
+| **deb / rpm** <span dir="rtl">(server اور systemd service کے لیے)</span> | <span dir="rtl">[ریلیزز کا صفحہ](https://github.com/storagebase/storagebase-studio/releases/latest)</span> |
+| **Desktop application** <span dir="rtl">(AppImage / deb)</span> | <span dir="rtl">[ریلیزز کا صفحہ](https://github.com/storagebase/storagebase-studio/releases/latest)۔ مقامی window؛ server مقامی sidecar کے طور پر چلتا ہے اور login screen نہیں آتی۔ **یہ اوپر والی قطار والا server package نہیں ہے۔**</span> |
+| **Desktop application** <span dir="rtl">(Flatpak، sandbox میں)</span> | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` |
 
 <div dir="rtl" align="right">
 
-<span dir="rtl">`brew trust` صرف ایک بار چلتا ہے (Homebrew 6+ درکار ہے؛ اگر command موجود نہ ہونے کا پیغام آئے تو پہلے `brew update` چلائیں)۔ Docker، Helm اور Snap کو configuration کی ضرورت نہیں: پہلی بار چلنے پر administrator کا password بالترتیب container log، pod log اور `sudo snap logs libredb-studio` میں پرنٹ ہوتا ہے۔ ہر channel کی مکمل ہدایات (commands، configuration، systemd کے ساتھ استعمال، Docker images کا tagging model) [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) میں موجود ہیں۔</span>
+<span dir="rtl">`brew trust` صرف ایک بار چلتا ہے (Homebrew 6+ درکار ہے؛ اگر command موجود نہ ہونے کا پیغام آئے تو پہلے `brew update` چلائیں)۔ Docker، Helm اور Snap کو configuration کی ضرورت نہیں: پہلی بار چلنے پر administrator کا password بالترتیب container log، pod log اور `sudo snap logs storagebase-studio` میں پرنٹ ہوتا ہے۔ ہر channel کی مکمل ہدایات (commands، configuration، systemd کے ساتھ استعمال، Docker images کا tagging model) [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) میں موجود ہیں۔</span>
 
 <span dir="rtl">One-click deployment templates: Railway، Dokploy، CapRover، Sealos، Kubero، Cosmos، DigitalOcean Marketplace، Unraid Community Apps، Render Blueprint، Fly.io اور Koyeb۔ مکمل فہرست [`docs/CHANNELS.md`](docs/CHANNELS.md) میں موجود ہے۔</span>
 
@@ -231,7 +228,7 @@ PostgreSQL · MySQL · Oracle · SQL Server · SQLite · libSQL · DuckDB · Mon
 </div>
 
 ```bash
-npm i @libredb/studio
+npm i @storagebase/studio
 ```
 
 <div dir="rtl" align="right">

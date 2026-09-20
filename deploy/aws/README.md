@@ -1,6 +1,6 @@
 # AWS Marketplace — free AMI product
 
-LibreDB Studio ships to AWS Marketplace as a **free AMI-based product**: the
+StorageBase Studio ships to AWS Marketplace as a **free AMI-based product**: the
 buyer launches one EC2 instance from our image and pays AWS only for the
 instance, the volume and data transfer. There is no metering, no contract and no
 software charge.
@@ -80,13 +80,13 @@ Locally, against the seller account:
 
 ```bash
 cd deploy/aws/ami
-export AWS_PROFILE=libredb-seller
+export AWS_PROFILE=storagebase-seller
 VERSION=0.14.1
-DIGEST=$(docker buildx imagetools inspect ghcr.io/libredb/libredb-studio:$VERSION --format '{{.Manifest.Digest}}')
+DIGEST=$(docker buildx imagetools inspect ghcr.io/storagebase/storagebase-studio:$VERSION --format '{{.Manifest.Digest}}')
 SUPPORT=$(gh variable get AWS_SUPPORT_EMAIL)   # the same mailbox the workflow uses
 packer init .
-packer validate -var "version=$VERSION" -var "image_ref=ghcr.io/libredb/libredb-studio@$DIGEST" -var "support_email=$SUPPORT" .
-packer build    -var "version=$VERSION" -var "image_ref=ghcr.io/libredb/libredb-studio@$DIGEST" -var "support_email=$SUPPORT" .
+packer validate -var "version=$VERSION" -var "image_ref=ghcr.io/storagebase/storagebase-studio@$DIGEST" -var "support_email=$SUPPORT" .
+packer build    -var "version=$VERSION" -var "image_ref=ghcr.io/storagebase/storagebase-studio@$DIGEST" -var "support_email=$SUPPORT" .
 ```
 
 Without Buildx, resolve the digest with `curl` — ghcr hands anonymous pull
@@ -94,11 +94,11 @@ tokens for public repositories, and the two `Accept` headers are what make the
 registry answer with the multi-arch index digest rather than one platform's:
 
 ```bash
-TOKEN=$(curl -sS "https://ghcr.io/token?service=ghcr.io&scope=repository:libredb/libredb-studio:pull" \
+TOKEN=$(curl -sS "https://ghcr.io/token?service=ghcr.io&scope=repository:storagebase/storagebase-studio:pull" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
 DIGEST=$(curl -sSI -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
-  "https://ghcr.io/v2/libredb/libredb-studio/manifests/$VERSION" \
+  "https://ghcr.io/v2/storagebase/storagebase-studio/manifests/$VERSION" \
   | awk 'tolower($1) == "docker-content-digest:" { print $2 }' | tr -d '\r')
 ```
 
@@ -125,8 +125,8 @@ it to Packer.
   snapshot comes out encrypted whatever `encrypted = false` says, and
   "AMIs must not use encrypted EBS snapshots" makes the result unlistable — with
   a perfectly green Packer build to show for it.
-- **No unit starts another unit.** `libredb-firstboot` generates credentials,
-  `libredb-studio` runs the app, `libredb-banner` publishes the banner; the
+- **No unit starts another unit.** `storagebase-firstboot` generates credentials,
+  `storagebase-studio` runs the app, `storagebase-banner` publishes the banner; the
   ordering is declared and never imperative. A `systemctl start` inside a unit
   that is ordered before the target sits in the job queue until the oneshot
   exits — five minutes of boot stall and a false "did not become ready" line in
@@ -160,7 +160,7 @@ request and AMI **45 days before** any announcement that depends on it.
 
 ## Version updates (~30 min plus review)
 
-1. Confirm the new tag exists on `ghcr.io/libredb/libredb-studio`.
+1. Confirm the new tag exists on `ghcr.io/storagebase/storagebase-studio`.
 2. Run the **AWS AMI Build** workflow with the new version — it rebuilds on a
    freshly patched Ubuntu and re-pins the digest.
 3. Launch from the raw AMI and walk the short checklist: health, login, reload

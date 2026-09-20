@@ -36,7 +36,7 @@ jobs:
     # below (may the chart be released yet?) and the publish gate in the last
     # step (is this chart version already published, #167?).
     #
-    # Image gate: the chart deploys ghcr.io/libredb/libredb-studio:<appVersion>
+    # Image gate: the chart deploys ghcr.io/storagebase/storagebase-studio:<appVersion>
     # by default, so nothing here may run (or publish) before that image
     # exists. A version-bump merge fires this workflow ~25-35 minutes before
     # the release chain has built the image; in that case the push-triggered
@@ -74,12 +74,12 @@ jobs:
           # grep/awk on purpose (matching the description: extraction in the
           # release job below): yq is not preinstalled and this job stays
           # lean - do not "improve" this into a yq dependency.
-          app_version=$(grep '^appVersion:' charts/libredb-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
+          app_version=$(grep '^appVersion:' charts/storagebase-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
           if [ -z "$app_version" ]; then
-            echo "::error::could not read appVersion from charts/libredb-studio/Chart.yaml"
+            echo "::error::could not read appVersion from charts/storagebase-studio/Chart.yaml"
             exit 1
           fi
-          image="ghcr.io/libredb/libredb-studio:${app_version}"
+          image="ghcr.io/storagebase/storagebase-studio:${app_version}"
           if inspect_out=$(docker manifest inspect "$image" 2>&1); then
             echo "proceed=true" >> "$GITHUB_OUTPUT"
             echo "OK: ${image} is published - proceeding."
@@ -148,12 +148,12 @@ jobs:
           # grep/awk for the same reason as the appVersion read above: yq is not
           # preinstalled and this job stays lean. '^version:' cannot match the
           # indented dependency versions or appVersion.
-          version=$(grep '^version:' charts/libredb-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
+          version=$(grep '^version:' charts/storagebase-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
           if [ -z "$version" ]; then
-            echo "::error::could not read version from charts/libredb-studio/Chart.yaml"
+            echo "::error::could not read version from charts/storagebase-studio/Chart.yaml"
             exit 1
           fi
-          tag="libredb-studio-${version}"
+          tag="storagebase-studio-${version}"
           asset="${tag}.tgz"
           if [ "${FORCE_REPUBLISH:-}" = "true" ]; then
             echo "chart_published=false" >> "$GITHUB_OUTPUT"
@@ -178,7 +178,7 @@ jobs:
             echo "\`${tag}\` is already released with \`${asset}\`, so this run touches neither the"
             echo "gh-pages index nor the OCI registry: re-packaging would change the published"
             echo "digest of an immutable release (#167). Bump \`version:\` in"
-            echo "\`charts/libredb-studio/Chart.yaml\` to publish chart changes."
+            echo "\`charts/storagebase-studio/Chart.yaml\` to publish chart changes."
           } >> "$GITHUB_STEP_SUMMARY"
 
   lint-test:
@@ -216,7 +216,7 @@ jobs:
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
 
       - name: Run chart-testing lint
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --charts charts/libredb-studio
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --charts charts/storagebase-studio
 
       - name: Create Kind cluster
         uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
@@ -225,7 +225,7 @@ jobs:
         run: |
           ct install \
             --target-branch ${{ github.event.repository.default_branch }} \
-            --charts charts/libredb-studio \
+            --charts charts/storagebase-studio \
             --helm-extra-set-args "\
               --set secrets.jwtSecret=test-jwt-secret-minimum-32-characters-long \
               --set secrets.adminPassword=TestAdmin123 \
@@ -238,7 +238,7 @@ jobs:
         run: |
           ct install \
             --target-branch ${{ github.event.repository.default_branch }} \
-            --charts charts/libredb-studio
+            --charts charts/storagebase-studio
 
   release-github-pages:
     needs: [preflight, lint-test]
@@ -269,12 +269,12 @@ jobs:
 
       # --skip-refresh: the `helm repo add` above already fetched the index; Helm 4's `dependency build` re-fetches it by default and takes no --timeout.
       - name: Build chart dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Package chart
         run: |
           rm -rf .cr-release-packages
-          helm package charts/libredb-studio -d .cr-release-packages
+          helm package charts/storagebase-studio -d .cr-release-packages
 
       - name: Publish chart release (draft-first, immutable-compatible)
         # Immutable releases (issue #154) freeze assets at publish time, so the
@@ -293,8 +293,8 @@ jobs:
           # grep/awk for the same reason as the preflight reads above: yq is
           # not preinstalled. Both fields come from the very Chart.yaml that
           # `helm package` just packaged, so they cannot drift from the tag.
-          version=$(grep '^version:' charts/libredb-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
-          app_version=$(grep '^appVersion:' charts/libredb-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
+          version=$(grep '^version:' charts/storagebase-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
+          app_version=$(grep '^appVersion:' charts/storagebase-studio/Chart.yaml | awk '{print $2}' | tr -d '"')
           if IS_DRAFT=$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null); then
             if [ "$IS_DRAFT" != "true" ]; then
               if gh release view "$tag" --json assets --jq '.assets[].name' | grep -Fqx "$asset"; then
@@ -309,7 +309,7 @@ jobs:
             # Release copy is the only explanation a visitor to the Releases
             # page gets for the two version streams this repo publishes: the
             # application (tag `0.13.4`) and this chart (tag
-            # `libredb-studio-0.1.49`, because `helm package` names its
+            # `storagebase-studio-0.1.49`, because `helm package` names its
             # artifact `<chart-name>-<chart-version>.tgz`). The old body -
             # the chart's `description:` line, identical on every chart
             # release - answered a question nobody asked.
@@ -320,25 +320,25 @@ jobs:
             # interpolated by the shell.
             notes="${RUNNER_TEMP}/chart-release-notes.md"
             cat > "$notes" <<'NOTES'
-          LibreDB Studio Helm chart `__CHART_VERSION__`, deploying application version `__APP_VERSION__` by default.
+          StorageBase Studio Helm chart `__CHART_VERSION__`, deploying application version `__APP_VERSION__` by default.
 
           ## Install
 
           From the Helm repository:
 
           ```bash
-          helm repo add libredb https://libredb.org/libredb-studio/
+          helm repo add storagebase https://storagebase.org/storagebase-studio/
           helm repo update
-          helm install libredb libredb/libredb-studio --version __CHART_VERSION__
+          helm install storagebase storagebase/storagebase-studio --version __CHART_VERSION__
           ```
 
           Or straight from the OCI registry:
 
           ```bash
-          helm install libredb oci://ghcr.io/libredb/charts/libredb-studio --version __CHART_VERSION__
+          helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio --version __CHART_VERSION__
           ```
 
-          Both commands work with default values: the chart bootstraps its own JWT secret and admin credentials on first boot. Every value is documented in [charts/libredb-studio/README.md](https://github.com/libredb/libredb-studio/blob/main/charts/libredb-studio/README.md).
+          Both commands work with default values: the chart bootstraps its own JWT secret and admin credentials on first boot. Every value is documented in [charts/storagebase-studio/README.md](https://github.com/storagebase/storagebase-studio/blob/main/charts/storagebase-studio/README.md).
 
           ## Why two version numbers?
 
@@ -346,10 +346,10 @@ jobs:
 
           | Tag | What it releases |
           | --- | --- |
-          | `__APP_VERSION__` | the LibreDB Studio application - npm, Docker, desktop and OS packages |
-          | `libredb-studio-__CHART_VERSION__` | this Helm chart - `helm package` names its artifact `<chart-name>-<chart-version>.tgz`, and the release tag follows it |
+          | `__APP_VERSION__` | the StorageBase Studio application - npm, Docker, desktop and OS packages |
+          | `storagebase-studio-__CHART_VERSION__` | this Helm chart - `helm package` names its artifact `<chart-name>-<chart-version>.tgz`, and the release tag follows it |
 
-          The chart version moves on its own so a chart-only fix ships without forcing an application release. The application version a given chart deploys is its `appVersion` - shown in the `APP VERSION` column of `helm search repo` and on ArtifactHub. The full rationale is in [docs/HELM_CHART.md](https://github.com/libredb/libredb-studio/blob/main/docs/HELM_CHART.md#versioning-policy-version-and-appversion-stay-independent-researched-2026-07).
+          The chart version moves on its own so a chart-only fix ships without forcing an application release. The application version a given chart deploys is its `appVersion` - shown in the `APP VERSION` column of `helm search repo` and on ArtifactHub. The full rationale is in [docs/HELM_CHART.md](https://github.com/storagebase/storagebase-studio/blob/main/docs/HELM_CHART.md#versioning-policy-version-and-appversion-stay-independent-researched-2026-07).
           NOTES
             sed -i "s|__CHART_VERSION__|${version}|g; s|__APP_VERSION__|${app_version}|g" "$notes"
             gh release create "$tag" --draft \
@@ -362,7 +362,7 @@ jobs:
             git push origin "refs/tags/$tag"
           fi
           gh release upload "$tag" "$asset_path" --clobber
-          # Chart releases (tag libredb-studio-<chart-version>) must never take
+          # Chart releases (tag storagebase-studio-<chart-version>) must never take
           # the repo's Latest marker away from product releases (PR #128).
           gh release edit "$tag" --draft=false --latest=false
           echo "Published chart release '$tag' with '$asset'."
@@ -415,7 +415,7 @@ jobs:
           pkg_dir="${RUNNER_TEMP}/verify-pkg"
           rm -rf "${pkg_dir}"
           mkdir -p "${pkg_dir}"
-          helm package charts/libredb-studio -d "${pkg_dir}" >/dev/null
+          helm package charts/storagebase-studio -d "${pkg_dir}" >/dev/null
           asset=$(basename "${pkg_dir}"/*.tgz)
           tag="${asset%.tgz}"
           echo "Verifying release '${tag}' has asset '${asset}'"
@@ -464,10 +464,10 @@ jobs:
 
       # --skip-refresh: the `helm repo add` above already fetched the index; Helm 4's `dependency build` re-fetches it by default and takes no --timeout.
       - name: Build dependencies
-        run: helm dependency build charts/libredb-studio --skip-refresh
+        run: helm dependency build charts/storagebase-studio --skip-refresh
 
       - name: Package chart
-        run: helm package charts/libredb-studio -d .cr-release-packages
+        run: helm package charts/storagebase-studio -d .cr-release-packages
 
       - name: Push to OCI registry
-        run: helm push .cr-release-packages/libredb-studio-*.tgz oci://ghcr.io/libredb/charts
+        run: helm push .cr-release-packages/storagebase-studio-*.tgz oci://ghcr.io/storagebase/charts

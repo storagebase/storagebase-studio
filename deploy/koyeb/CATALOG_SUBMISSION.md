@@ -1,6 +1,6 @@
 # Koyeb One-Click Apps Catalog — Submission
 
-Getting LibreDB Studio listed in the public catalog at
+Getting StorageBase Studio listed in the public catalog at
 [koyeb.com/deploy](https://www.koyeb.com/deploy).
 
 ## How the catalog works
@@ -31,13 +31,13 @@ a backup.
 
 | Field | Value |
 |-------|-------|
-| App name | LibreDB Studio |
+| App name | StorageBase Studio |
 | Category | Database / Developer Tools |
 | Description | Open-source web-based SQL IDE for cloud-native teams |
 | License | Open source (free) |
-| Repository | https://github.com/libredb/libredb-studio |
-| Website | https://libredb.org |
-| Docker image | `ghcr.io/libredb/libredb-studio` (GHCR, multi-arch) |
+| Repository | https://github.com/storagebase/storagebase-studio |
+| Website | https://storagebase.org |
+| Docker image | `ghcr.io/storagebase/storagebase-studio` (GHCR, multi-arch) |
 | Pinned tag | `0.9.23` (bump on each release) |
 | Port | `3000` (HTTP) |
 | Health check | `GET /api/db/health` |
@@ -46,18 +46,18 @@ a backup.
 
 ## Outreach message (paste into the Partner Hub form / email)
 
-> **Subject:** One-Click App listing request — LibreDB Studio (open-source SQL IDE)
+> **Subject:** One-Click App listing request — StorageBase Studio (open-source SQL IDE)
 >
 > Hi Koyeb team,
 >
-> We maintain **LibreDB Studio**, an open-source, web-based SQL IDE for
+> We maintain **StorageBase Studio**, an open-source, web-based SQL IDE for
 > cloud-native teams (PostgreSQL, MySQL, SQLite, libSQL, DuckDB, Oracle, SQL Server,
 > MongoDB, Redis, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch,
 > Apache Trino, Apache Cassandra, with AI-assisted querying). It's free and Apache/MIT-style open source:
-> https://github.com/libredb/libredb-studio
+> https://github.com/storagebase/storagebase-studio
 >
 > We already ship a working **Deploy to Koyeb** button (prebuilt GHCR image
-> `ghcr.io/libredb/libredb-studio`, port 3000, scale-to-zero on the free
+> `ghcr.io/storagebase/storagebase-studio`, port 3000, scale-to-zero on the free
 > instance, `STORAGE_PROVIDER=local` so it fits Koyeb's ephemeral filesystem).
 > The button URL with all env vars and health-check params is in our README.
 >
@@ -70,11 +70,11 @@ a backup.
 > create the catalog entry?
 >
 > Thanks!
-> — The LibreDB team
+> — The StorageBase team
 
 ## Assets to attach
 
-- Logo (square, transparent PNG) — reuse `deploy/railway/libredb-studio.png` or
+- Logo (square, transparent PNG) — reuse `deploy/railway/storagebase-studio.png` or
   the brand logo from the repo.
 - 1–2 screenshots of the editor + results grid.
 - One-line and short (≈75 char) descriptions (Railway template description can
@@ -84,5 +84,5 @@ a backup.
 
 - Confirm the catalog entry pins a specific tag (not `:latest`) and add the
   manual version-bump step to the release checklist.
-- Add the catalog URL (`https://www.koyeb.com/deploy/libredb-studio`) next to
+- Add the catalog URL (`https://www.koyeb.com/deploy/storagebase-studio`) next to
   the existing button in the repo README once live.

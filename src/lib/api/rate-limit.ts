@@ -3,11 +3,11 @@
  *
  * THIS IS A PER-PROCESS LIMITER BY DESIGN. Do not replace it with a distributed one, and do not
  * present it anywhere as one. The Helm chart defaults to replicaCount: 1 with autoscaling and the
- * PDB off (charts/libredb-studio/values.yaml:19), the Dockerfile runs a single `node server.js`,
+ * PDB off (charts/storagebase-studio/values.yaml:19), the Dockerfile runs a single `node server.js`,
  * and the storage abstraction (src/lib/storage/types.ts) is a per-user blob store whose
  * read-modify-write cycle is unsuitable for counters. Where the counters are per process, the
  * limits are per replica; multi-replica operators are directed to enforce at the ingress, and
- * that is documented in .env.example and charts/libredb-studio/README.md rather than implemented.
+ * that is documented in .env.example and charts/storagebase-studio/README.md rather than implemented.
  * Do not add a dependency (e.g. Redis) to fix this - it is a deliberate scope boundary, not an
  * oversight waiting to be corrected.
  *

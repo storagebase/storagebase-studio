@@ -16,7 +16,7 @@ code by the repo-wide catalog gate, not by a number kept here.
 
 <!-- limit:72 -->
 
-LibreDB Studio
+StorageBase Studio
 
 ## Product description
 
@@ -107,7 +107,7 @@ marker to enforce - check the portal's own counter when pasting.
 |---|---|
 | Support email | The address in the `AWS_SUPPORT_EMAIL` repository variable - the same mailbox the build prints into every buyer's banner, so the two cannot drift |
 | Support phone | The number on the seller-account profile |
-| Support website | https://github.com/libredb/libredb-studio/issues |
+| Support website | https://github.com/storagebase/storagebase-studio/issues |
 
 ## EULA and refunds
 

@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LibreDB Studio</title>
+    <title>StorageBase Studio</title>
     <!--
       Splash screen shown while the bundled server boots. The shell replaces it
       by navigating the webview to the served app once GET /api/db/health
-      answers 200; on failure it calls window.__libredbDesktopFailure with the
+      answers 200; on failure it calls window.__storagebaseDesktopFailure with the
       reason and the tail of the server log. Everything is inline: the webview
       must render this with no network and no bundler.
     -->
@@ -149,26 +149,26 @@
     <main>
       <div id="booting">
         <div class="mark" aria-hidden="true">L</div>
-        <h1>Starting LibreDB Studio</h1>
+        <h1>Starting StorageBase Studio</h1>
         <p>Bringing up the local database workspace&hellip;</p>
-        <div class="bar" role="progressbar" aria-label="Starting LibreDB Studio"></div>
+        <div class="bar" role="progressbar" aria-label="Starting StorageBase Studio"></div>
       </div>
 
       <div id="failure">
         <div class="mark" aria-hidden="true">!</div>
-        <h1>LibreDB Studio could not start</h1>
+        <h1>StorageBase Studio could not start</h1>
         <p id="failure-summary"></p>
         <pre id="failure-detail" tabindex="0"></pre>
         <p class="hint">
           Report this with the log above at
-          <a href="https://github.com/libredb/libredb-studio/issues">github.com/libredb/libredb-studio/issues</a>.
+          <a href="https://github.com/storagebase/storagebase-studio/issues">github.com/storagebase/storagebase-studio/issues</a>.
         </p>
       </div>
     </main>
 
     <script>
       // Called from Rust (see failure_script in src-tauri/src/lib.rs).
-      window.__libredbDesktopFailure = function (summary, detail) {
+      window.__storagebaseDesktopFailure = function (summary, detail) {
         document.getElementById("booting").style.display = "none";
         document.getElementById("failure-summary").textContent = summary || "";
         document.getElementById("failure-detail").textContent = detail || "(no server output was captured)";

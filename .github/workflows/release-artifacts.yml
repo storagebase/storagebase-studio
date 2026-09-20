@@ -1,13 +1,13 @@
 name: Release Artifacts
 
 # Builds per-platform tarballs of the standalone Next.js server
-# (libredb-studio-standalone-<version>-<os>-<arch>.tar.gz) and attaches them,
+# (storagebase-studio-standalone-<version>-<os>-<arch>.tar.gz) and attaches them,
 # plus a SHA256SUMS file, to the GitHub release. These tarballs are the
 # canonical artifact consumed by downstream channels (npx, homebrew, deb).
 # The linux-packages job additionally turns the linux tarballs into .deb and
 # .rpm packages (nfpm + bundled Node runtime, issue #112) and attaches them.
 # The publish job also renders the Homebrew formula from SHA256SUMS and pushes
-# it to libredb/homebrew-tap when TAP_GITHUB_TOKEN is configured (issue #111).
+# it to storagebase/homebrew-tap when TAP_GITHUB_TOKEN is configured (issue #111).
 # The snap job builds the server snap from the linux tarballs and publishes it
 # to the Snap Store when SNAPCRAFT_STORE_CREDENTIALS is configured (issue #113).
 # The windows-package job builds the win32-x64 standalone zip (bundled Node
@@ -25,7 +25,7 @@ name: Release Artifacts
 # The sbom job (security programme control 2.2) generates one CycloneDX
 # document from the repository's three lockfiles (bun.lock,
 # packaging/windows/launcher/go.mod, desktop/src-tauri/Cargo.lock) and
-# attaches it as libredb-studio-<version>.cdx.json. It covers the dependency
+# attaches it as storagebase-studio-<version>.cdx.json. It covers the dependency
 # closure of every artifact this workflow builds; it does NOT cover the
 # container image, which docker-build-push.yml has not built yet at this
 # point in the chain - security-scan.yml generates that SBOM separately.
@@ -44,7 +44,7 @@ on:
   push:
     tags:
       # Product tags are bare semver (no v prefix). Chart tags
-      # (libredb-studio-<chart-version>) never match a leading digit.
+      # (storagebase-studio-<chart-version>) never match a leading digit.
       - '[0-9]+.[0-9]+.[0-9]+'
       - '[0-9]+.[0-9]+.[0-9]+-*'
   workflow_dispatch:
@@ -65,7 +65,7 @@ permissions:
 
 jobs:
   guard:
-    # Product tags only: chart tags (libredb-studio-<chart-version>) are
+    # Product tags only: chart tags (storagebase-studio-<chart-version>) are
     # handled by helm-release.yml and cannot match the digit-anchored tag
     # patterns above; this guard re-checks anyway for workflow_dispatch runs.
     name: Validate release version
@@ -230,7 +230,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: standalone-${{ matrix.platform }}
-          path: dist/libredb-studio-standalone-*.tar.gz
+          path: dist/storagebase-studio-standalone-*.tar.gz
           if-no-files-found: error
           retention-days: 7
 
@@ -242,7 +242,7 @@ jobs:
     # (packaging/windows/launcher) assembled into ONE flat zip - the
     # artifact winget and Chocolatey install and the npx launcher downloads
     # on win32. Smoke: the final zip is extracted fresh and booted through
-    # libredb-studio.exe (the exact end-user path).
+    # storagebase-studio.exe (the exact end-user path).
     #
     # DELIBERATELY a hard release gate: publish needs this job, exactly like
     # the POSIX build matrix - the win32 zip is a core artifact on the
@@ -299,7 +299,7 @@ jobs:
         env:
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
-          ZIP="dist/libredb-studio-standalone-${VERSION}-win32-x64.zip"
+          ZIP="dist/storagebase-studio-standalone-${VERSION}-win32-x64.zip"
           STAGING="$RUNNER_TEMP/win-payload"
           mkdir -p "$STAGING"
           # Env-var casing differs between shells (SystemRoot vs SYSTEMROOT);
@@ -308,17 +308,17 @@ jobs:
           bash packaging/windows/fetch-node.sh "$STAGING"
           (cd packaging/windows/launcher && \
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
-            go build -trimpath -ldflags="-s -w" -o "$STAGING/libredb-studio.exe" .)
+            go build -trimpath -ldflags="-s -w" -o "$STAGING/storagebase-studio.exe" .)
           bash scripts/lib/pack-standalone-zip.sh "$STAGING" "$ZIP"
 
-      - name: Smoke test the final zip via libredb-studio.exe
+      - name: Smoke test the final zip via storagebase-studio.exe
         env:
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
           SMOKE_DIR="$RUNNER_TEMP/win-smoke"
           mkdir -p "$SMOKE_DIR"
-          "${SYSTEMROOT:-${SystemRoot:-C:\\Windows}}/System32/tar.exe" -xf "dist/libredb-studio-standalone-${VERSION}-win32-x64.zip" -C "$SMOKE_DIR"
-          test -f "$SMOKE_DIR/libredb-studio.exe"
+          "${SYSTEMROOT:-${SystemRoot:-C:\\Windows}}/System32/tar.exe" -xf "dist/storagebase-studio-standalone-${VERSION}-win32-x64.zip" -C "$SMOKE_DIR"
+          test -f "$SMOKE_DIR/storagebase-studio.exe"
           test -f "$SMOKE_DIR/node/node.exe"
           # Issue #114 constraint: the drivers must load on Windows with the
           # BUNDLED runtime. better-sqlite3 is the ONLY native binding in
@@ -330,13 +330,13 @@ jobs:
           # not in the traced node_modules here, unlike the linux build).
           (cd "$SMOKE_DIR" && ./node/node.exe -e "require('better-sqlite3')(':memory:').close(); console.log('db driver probe ok')")
           # Zero-config boot through the launcher: storage defaults under
-          # %LOCALAPPDATA%\LibreDB\Studio, bind defaults to loopback, and
+          # %LOCALAPPDATA%\StorageBase\Studio, bind defaults to loopback, and
           # the first run must print generated admin credentials.
           PORT=3900
           # exec pins $! to the launcher itself (same pattern as the POSIX
           # smoke in scripts/build-standalone-payload.sh), not a wrapper
           # subshell.
-          (cd "$SMOKE_DIR" && PORT="$PORT" exec ./libredb-studio.exe) > /tmp/win-smoke.log 2>&1 &
+          (cd "$SMOKE_DIR" && PORT="$PORT" exec ./storagebase-studio.exe) > /tmp/win-smoke.log 2>&1 &
           LAUNCHER_PID=$!
           HEALTHY=false
           for _ in $(seq 1 60); do
@@ -356,7 +356,7 @@ jobs:
           # means the zip shipped without seed-assets/.
           SAMPLE_SEEDED=false
           for _ in $(seq 1 30); do
-            if [ -f "${LOCALAPPDATA}/LibreDB/Studio/sample-employees.db" ]; then SAMPLE_SEEDED=true; break; fi
+            if [ -f "${LOCALAPPDATA}/StorageBase/Studio/sample-employees.db" ]; then SAMPLE_SEEDED=true; break; fi
             sleep 1
           done
           if [ "$SAMPLE_SEEDED" != "true" ]; then
@@ -368,14 +368,14 @@ jobs:
           # Tear the whole tree down (launcher exe + its node.exe child) so
           # nothing holds files open while the artifact uploads; the doubled
           # slashes stop Git Bash's path mangling of taskkill's /flags.
-          taskkill //F //T //IM libredb-studio.exe 2>/dev/null || true
+          taskkill //F //T //IM storagebase-studio.exe 2>/dev/null || true
           kill "$LAUNCHER_PID" 2>/dev/null || true
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: standalone-win32-x64
-          path: dist/libredb-studio-standalone-*-win32-x64.zip
+          path: dist/storagebase-studio-standalone-*-win32-x64.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -410,7 +410,7 @@ jobs:
         # and the npx launcher all verify against this one checksum file.
         run: |
           cd dist
-          sha256sum libredb-studio-standalone-*.tar.gz libredb-studio-standalone-*.zip > SHA256SUMS
+          sha256sum storagebase-studio-standalone-*.tar.gz storagebase-studio-standalone-*.zip > SHA256SUMS
           cat SHA256SUMS
 
       # Sign before shipping: the action hashes the files itself, so the attested
@@ -421,20 +421,20 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            dist/libredb-studio-standalone-*.tar.gz
-            dist/libredb-studio-standalone-*.zip
+            dist/storagebase-studio-standalone-*.tar.gz
+            dist/storagebase-studio-standalone-*.zip
 
       - name: Upload artifacts to GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.guard.outputs.version }}
         run: |
-          gh release upload "$TAG" dist/libredb-studio-standalone-*.tar.gz \
-            dist/libredb-studio-standalone-*.zip dist/SHA256SUMS \
+          gh release upload "$TAG" dist/storagebase-studio-standalone-*.tar.gz \
+            dist/storagebase-studio-standalone-*.zip dist/SHA256SUMS \
             --clobber --repo "$GITHUB_REPOSITORY"
 
       # The Homebrew tap update is optional: it only runs when TAP_GITHUB_TOKEN
-      # (a token with write access to libredb/homebrew-tap) is configured, so
+      # (a token with write access to storagebase/homebrew-tap) is configured, so
       # forks without the secret still publish artifacts cleanly - mirroring
       # the DOCKER_HUB_TOKEN gate in docker-build-push.yml.
       - name: Check Homebrew tap availability
@@ -462,12 +462,12 @@ jobs:
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
           node scripts/render-homebrew-formula.mjs \
-            packaging/homebrew/libredb-studio.rb.tmpl \
+            packaging/homebrew/storagebase-studio.rb.tmpl \
             dist/SHA256SUMS \
             "$VERSION" \
-            dist/libredb-studio.rb
+            dist/storagebase-studio.rb
 
-      - name: Push formula to libredb/homebrew-tap
+      - name: Push formula to storagebase/homebrew-tap
         if: steps.tap.outputs.enabled == 'true'
         env:
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
@@ -479,17 +479,17 @@ jobs:
           # for the rest of the job; a per-command http.extraheader does not.
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TAP_GITHUB_TOKEN" | base64 -w0)"
           git -c http.extraheader="$AUTH_HEADER" clone --depth 1 \
-            "https://github.com/libredb/homebrew-tap.git" "$TAP_DIR"
+            "https://github.com/storagebase/homebrew-tap.git" "$TAP_DIR"
           mkdir -p "$TAP_DIR/Formula"
-          cp dist/libredb-studio.rb "$TAP_DIR/Formula/libredb-studio.rb"
+          cp dist/storagebase-studio.rb "$TAP_DIR/Formula/storagebase-studio.rb"
           cd "$TAP_DIR"
-          git add Formula/libredb-studio.rb
+          git add Formula/storagebase-studio.rb
           if git diff --cached --quiet; then
             echo "::notice::Formula already up to date for ${VERSION} - nothing to push"
             exit 0
           fi
           git -c user.name=cevheri -c user.email=cevheribozoglan@gmail.com \
-            commit -m "libredb-studio ${VERSION}"
+            commit -m "storagebase-studio ${VERSION}"
           git -c http.extraheader="$AUTH_HEADER" push origin HEAD
 
   sbom:
@@ -618,7 +618,7 @@ jobs:
               --skip-dirs dist \
               --skip-dirs coverage \
               --skip-dirs sbom \
-              --output "/repo/sbom/libredb-studio-${VERSION}.cdx.json" \
+              --output "/repo/sbom/storagebase-studio-${VERSION}.cdx.json" \
               .
           do
             attempt=$((attempt + 1))
@@ -642,18 +642,18 @@ jobs:
           # matters beyond cosmetics: a CycloneDX consumer such as
           # Dependency-Track keys a project by name+version, so successive
           # releases' unpatched SBOMs would all collapse into one
-          # unversioned "libredb-studio" project, each overwriting the last.
+          # unversioned "storagebase-studio" project, each overwriting the last.
           node -e '
             const fs = require("fs");
             const file = process.argv[1];
             const version = process.argv[2];
             const doc = JSON.parse(fs.readFileSync(file, "utf8"));
             if (doc.metadata && doc.metadata.component) {
-              doc.metadata.component.name = "libredb-studio";
+              doc.metadata.component.name = "storagebase-studio";
               doc.metadata.component.version = version;
             }
             fs.writeFileSync(file, JSON.stringify(doc, null, 2));
-          ' "sbom/libredb-studio-${VERSION}.cdx.json" "$VERSION"
+          ' "sbom/storagebase-studio-${VERSION}.cdx.json" "$VERSION"
 
       - name: Verify the SBOM describes something
         env:
@@ -678,19 +678,19 @@ jobs:
             const licensed = components.filter((c) => (c.licenses || []).length > 0).length;
             if (licensed === 0) throw new Error("no licence data - were dependencies installed?");
             console.log("SBOM ok: " + components.length + " components, " + licensed + " with licences");
-          ' "sbom/libredb-studio-${VERSION}.cdx.json"
+          ' "sbom/storagebase-studio-${VERSION}.cdx.json"
 
       - name: Attest the SBOM
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: sbom/libredb-studio-*.cdx.json
+          subject-path: sbom/storagebase-studio-*.cdx.json
 
       - name: Upload the SBOM to the draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.guard.outputs.version }}
         run: |
-          gh release upload "$TAG" sbom/libredb-studio-*.cdx.json \
+          gh release upload "$TAG" sbom/storagebase-studio-*.cdx.json \
             --clobber --repo "$GITHUB_REPOSITORY"
 
   linux-packages:
@@ -748,7 +748,7 @@ jobs:
         run: |
           PAYLOAD_DIR="$RUNNER_TEMP/payload"
           mkdir -p "$PAYLOAD_DIR"
-          tar -xzf "dist/libredb-studio-standalone-${VERSION}-linux-${TARBALL_ARCH}.tar.gz" -C "$PAYLOAD_DIR" --strip-components=1
+          tar -xzf "dist/storagebase-studio-standalone-${VERSION}-linux-${TARBALL_ARCH}.tar.gz" -C "$PAYLOAD_DIR" --strip-components=1
           bash packaging/linux/fetch-node.sh "$PAYLOAD_DIR" "$TARBALL_ARCH"
           # The amd64 container smoke below cannot run arm64 binaries, so at
           # minimum assert the bundled node matches the target architecture.
@@ -766,8 +766,8 @@ jobs:
           RPM_ARCH: ${{ matrix.rpm_arch }}
         run: |
           mkdir -p pkgs
-          nfpm package -f packaging/linux/nfpm.yaml -p deb -t "pkgs/libredb-studio_${VERSION}_${ARCH}.deb"
-          nfpm package -f packaging/linux/nfpm.yaml -p rpm -t "pkgs/libredb-studio-${VERSION}.${RPM_ARCH}.rpm"
+          nfpm package -f packaging/linux/nfpm.yaml -p deb -t "pkgs/storagebase-studio_${VERSION}_${ARCH}.deb"
+          nfpm package -f packaging/linux/nfpm.yaml -p rpm -t "pkgs/storagebase-studio-${VERSION}.${RPM_ARCH}.rpm"
           # Per-file checksum sidecars (SHA256SUMS covers only the tarballs
           # and is written by a different job, so packages ship their own).
           (cd pkgs && for f in *.deb *.rpm; do sha256sum "$f" > "$f.sha256"; done)
@@ -779,14 +779,14 @@ jobs:
           VERSION: ${{ needs.guard.outputs.version }}
           ARCH: ${{ matrix.arch }}
         run: |
-          sudo dpkg -i "pkgs/libredb-studio_${VERSION}_${ARCH}.deb"
+          sudo dpkg -i "pkgs/storagebase-studio_${VERSION}_${ARCH}.deb"
           # No systemd smoke on shared runners: run the packaged wrapper
           # directly; zero-config bootstrap generates the missing secrets.
           # HOSTNAME pins the bind address (an inherited HOSTNAME env var
           # would make the server bind the machine hostname instead).
-          sudo env STORAGE_SQLITE_PATH=/var/lib/libredb-studio-smoke/storage.db \
+          sudo env STORAGE_SQLITE_PATH=/var/lib/storagebase-studio-smoke/storage.db \
             HOSTNAME=127.0.0.1 \
-            libredb-studio > /tmp/studio-smoke.log 2>&1 &
+            storagebase-studio > /tmp/studio-smoke.log 2>&1 &
           HEALTHY=false
           for _ in $(seq 1 30); do
             CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/db/health || true)
@@ -830,14 +830,14 @@ jobs:
         env:
           VERSION: ${{ needs.guard.outputs.version }}
           ARCH: ${{ matrix.arch }}
-        run: bash scripts/channel-embedded-sample-e2e.sh deb "pkgs/libredb-studio_${VERSION}_${ARCH}.deb"
+        run: bash scripts/channel-embedded-sample-e2e.sh deb "pkgs/storagebase-studio_${VERSION}_${ARCH}.deb"
 
       - name: Channel E2E - rpm (native arch only)
         if: matrix.arch == 'amd64'
         env:
           VERSION: ${{ needs.guard.outputs.version }}
           RPM_ARCH: ${{ matrix.rpm_arch }}
-        run: bash scripts/channel-embedded-sample-e2e.sh rpm "pkgs/libredb-studio-${VERSION}.${RPM_ARCH}.rpm"
+        run: bash scripts/channel-embedded-sample-e2e.sh rpm "pkgs/storagebase-studio-${VERSION}.${RPM_ARCH}.rpm"
 
       # The packages only - pkgs/ also holds the .sha256 sidecars, and a
       # checksum file is not a subject worth a signature.
@@ -944,7 +944,7 @@ jobs:
         # README.md and src/ directories.
         run: |
           bash scripts/build-desktop-appimage.sh dist-desktop \
-            --payload "dist/libredb-studio-standalone-${VERSION}-linux-${ARCH}.tar.gz" \
+            --payload "dist/storagebase-studio-standalone-${VERSION}-linux-${ARCH}.tar.gz" \
             --smoke
 
       - name: Attest the AppImage and GUI .deb
@@ -1028,7 +1028,7 @@ jobs:
           TARBALL_ARCH: ${{ matrix.tarball_arch }}
         run: |
           mkdir -p snap-payload
-          tar -xzf "dist/libredb-studio-standalone-${VERSION}-linux-${TARBALL_ARCH}.tar.gz" -C snap-payload --strip-components=1
+          tar -xzf "dist/storagebase-studio-standalone-${VERSION}-linux-${TARBALL_ARCH}.tar.gz" -C snap-payload --strip-components=1
 
       - name: Build the snap
         if: steps.snapstore.outputs.enabled == 'true'
@@ -1038,14 +1038,14 @@ jobs:
       - name: Verify snap version matches the release
         if: steps.snapstore.outputs.enabled == 'true'
         # snapcraft.yaml adopts its version from package.json; the built
-        # filename (libredb-studio_<version>_<arch>.snap) must agree with
+        # filename (storagebase-studio_<version>_<arch>.snap) must agree with
         # the guarded release version before anything is published.
         env:
           SNAP_FILE: ${{ steps.snapcraft.outputs.snap }}
           VERSION: ${{ needs.guard.outputs.version }}
           ARCH: ${{ matrix.arch }}
         run: |
-          EXPECTED="libredb-studio_${VERSION}_${ARCH}.snap"
+          EXPECTED="storagebase-studio_${VERSION}_${ARCH}.snap"
           if [ "$(basename "$SNAP_FILE")" != "$EXPECTED" ]; then
             echo "Built snap '$SNAP_FILE' does not match expected '$EXPECTED' - refusing to publish" >&2
             exit 1
@@ -1135,29 +1135,29 @@ jobs:
           # Snap assets are intentionally NOT required: the snap job skips
           # cleanly when SNAPCRAFT_STORE_CREDENTIALS is not configured.
           for asset in \
-            "libredb-studio-standalone-${TAG}-linux-x64.tar.gz" \
-            "libredb-studio-standalone-${TAG}-linux-arm64.tar.gz" \
-            "libredb-studio-standalone-${TAG}-darwin-x64.tar.gz" \
-            "libredb-studio-standalone-${TAG}-darwin-arm64.tar.gz" \
-            "libredb-studio-standalone-${TAG}-win32-x64.zip" \
+            "storagebase-studio-standalone-${TAG}-linux-x64.tar.gz" \
+            "storagebase-studio-standalone-${TAG}-linux-arm64.tar.gz" \
+            "storagebase-studio-standalone-${TAG}-darwin-x64.tar.gz" \
+            "storagebase-studio-standalone-${TAG}-darwin-arm64.tar.gz" \
+            "storagebase-studio-standalone-${TAG}-win32-x64.zip" \
             "SHA256SUMS" \
-            "libredb-studio_${TAG}_amd64.deb" \
-            "libredb-studio_${TAG}_amd64.deb.sha256" \
-            "libredb-studio_${TAG}_arm64.deb" \
-            "libredb-studio_${TAG}_arm64.deb.sha256" \
-            "libredb-studio-${TAG}.x86_64.rpm" \
-            "libredb-studio-${TAG}.x86_64.rpm.sha256" \
-            "libredb-studio-${TAG}.aarch64.rpm" \
-            "libredb-studio-${TAG}.aarch64.rpm.sha256" \
-            "libredb-studio-desktop-${TAG}-linux-x64.AppImage" \
-            "libredb-studio-desktop-${TAG}-linux-x64.AppImage.sha256" \
-            "libredb-studio-desktop-${TAG}-linux-arm64.AppImage" \
-            "libredb-studio-desktop-${TAG}-linux-arm64.AppImage.sha256" \
-            "libredb-studio-desktop_${TAG}_amd64.deb" \
-            "libredb-studio-desktop_${TAG}_amd64.deb.sha256" \
-            "libredb-studio-desktop_${TAG}_arm64.deb" \
-            "libredb-studio-desktop_${TAG}_arm64.deb.sha256" \
-            "libredb-studio-${TAG}.cdx.json"; do
+            "storagebase-studio_${TAG}_amd64.deb" \
+            "storagebase-studio_${TAG}_amd64.deb.sha256" \
+            "storagebase-studio_${TAG}_arm64.deb" \
+            "storagebase-studio_${TAG}_arm64.deb.sha256" \
+            "storagebase-studio-${TAG}.x86_64.rpm" \
+            "storagebase-studio-${TAG}.x86_64.rpm.sha256" \
+            "storagebase-studio-${TAG}.aarch64.rpm" \
+            "storagebase-studio-${TAG}.aarch64.rpm.sha256" \
+            "storagebase-studio-desktop-${TAG}-linux-x64.AppImage" \
+            "storagebase-studio-desktop-${TAG}-linux-x64.AppImage.sha256" \
+            "storagebase-studio-desktop-${TAG}-linux-arm64.AppImage" \
+            "storagebase-studio-desktop-${TAG}-linux-arm64.AppImage.sha256" \
+            "storagebase-studio-desktop_${TAG}_amd64.deb" \
+            "storagebase-studio-desktop_${TAG}_amd64.deb.sha256" \
+            "storagebase-studio-desktop_${TAG}_arm64.deb" \
+            "storagebase-studio-desktop_${TAG}_arm64.deb.sha256" \
+            "storagebase-studio-${TAG}.cdx.json"; do
             if ! grep -Fqx "$asset" /tmp/assets.txt; then
               echo "::error::draft release '$TAG' is missing required asset '$asset' - refusing to publish an incomplete immutable release"
               missing=1
@@ -1191,11 +1191,11 @@ jobs:
             echo ""
             echo "Publishing this release does not update the separately reviewed Marketplace snapshot."
             echo ""
-            echo "- [ ] Wait for the Docker publish workflow to make \`ghcr.io/libredb/libredb-studio:${VERSION}\` available."
+            echo "- [ ] Wait for the Docker publish workflow to make \`ghcr.io/storagebase/storagebase-studio:${VERSION}\` available."
             echo "- [ ] Run [DO Packer Build](https://github.com/${REPOSITORY}/actions/workflows/do-packer-build.yml) on release tag \`${VERSION}\`, with \`version=${VERSION}\`."
             echo "- [ ] Test a fresh Droplet, including HTTP sign-in and \`AUTH_COOKIE_SECURE=false\`; follow the [pre-submission checks](https://github.com/${REPOSITORY}/blob/${VERSION}/deploy/digitalocean/README.md#pre-submission-checklist)."
             echo "- [ ] Submit the new snapshot and matching version through the [Vendor Portal](https://cloud.digitalocean.com/vendorportal); wait for approval."
-            echo "- [ ] Run \`bun run distribution:check\` and confirm the [live listing](https://marketplace.digitalocean.com/apps/libredb-studio) reports \`${VERSION}\`."
+            echo "- [ ] Run \`bun run distribution:check\` and confirm the [live listing](https://marketplace.digitalocean.com/apps/storagebase-studio) reports \`${VERSION}\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
   dispatch-downstream:
@@ -1291,8 +1291,8 @@ jobs:
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
           node scripts/render-windows-packaging.mjs \
-            packaging/chocolatey/libredb-studio.nuspec.tmpl \
-            dist/SHA256SUMS "$VERSION" pkg/choco/libredb-studio.nuspec
+            packaging/chocolatey/storagebase-studio.nuspec.tmpl \
+            dist/SHA256SUMS "$VERSION" pkg/choco/storagebase-studio.nuspec
           node scripts/render-windows-packaging.mjs \
             packaging/chocolatey/tools/chocolateyinstall.ps1.tmpl \
             dist/SHA256SUMS "$VERSION" pkg/choco/tools/chocolateyinstall.ps1
@@ -1335,7 +1335,7 @@ jobs:
           docker run --rm -v "$PWD/pkg/choco:/wd" -w /wd -e CHOCO_API_KEY -e VERSION \
             chocolatey/choco:v2.7.3-linux@sha256:ae878c6e550ed7bd0adfb958f2f54b3aadab585d6a9386ad9e23a1aae06bee3d sh -c '
               set -eu
-              choco push "libredb-studio.${VERSION}.nupkg" \
+              choco push "storagebase-studio.${VERSION}.nupkg" \
                 --source https://push.chocolatey.org/ --api-key="$CHOCO_API_KEY"
             '
 
@@ -1355,7 +1355,7 @@ jobs:
           PUSH_OUTCOME: ${{ steps.push.outcome }}
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
-          feed="https://community.chocolatey.org/api/v2/Packages(Id='libredb-studio',Version='${VERSION}')"
+          feed="https://community.chocolatey.org/api/v2/Packages(Id='storagebase-studio',Version='${VERSION}')"
           # `|| true`: the default shell is `bash -e`, and an unreachable feed
           # or an absent entity must degrade to "not visible yet", not kill the
           # step before it can print the warning below.
@@ -1367,8 +1367,8 @@ jobs:
             echo "- community feed status for ${VERSION}: \`${status:-not visible yet}\`"
             echo ""
             echo "\`Approved\` means it is installable now; anything else means it is queued for"
-            echo "human moderation and \`choco install libredb-studio\` still serves the previous"
-            echo "version. See [DISTRIBUTION.md](https://github.com/libredb/libredb-studio/blob/main/docs/DISTRIBUTION.md#windows-winget--chocolatey--portable-zip)."
+            echo "human moderation and \`choco install storagebase-studio\` still serves the previous"
+            echo "version. See [DISTRIBUTION.md](https://github.com/storagebase/storagebase-studio/blob/main/docs/DISTRIBUTION.md#windows-winget--chocolatey--portable-zip)."
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$PUSH_OUTCOME" != "success" ]; then
             echo "::warning::choco push for ${VERSION} did not succeed (outcome: ${PUSH_OUTCOME}). A 403 here is normally the moderation queue - too many unapproved versions - and not a fault in this release, which published correctly. Push the back version by hand once the queue drains."
@@ -1410,25 +1410,25 @@ jobs:
           fi
           # wingetcreate update cannot create a first listing; it exits with
           # a generic failure when the id is unknown, so pre-check instead.
-          if ! gh api "repos/microsoft/winget-pkgs/contents/manifests/l/LibreDB/Studio" --jq '.[0].name' >/dev/null 2>&1; then
+          if ! gh api "repos/microsoft/winget-pkgs/contents/manifests/l/StorageBase/Studio" --jq '.[0].name' >/dev/null 2>&1; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::LibreDB.Studio is not listed in microsoft/winget-pkgs yet - submit the first manifest manually (docs/DISTRIBUTION.md, Windows first-listing checklist)"
+            echo "::notice::StorageBase.Studio is not listed in microsoft/winget-pkgs yet - submit the first manifest manually (docs/DISTRIBUTION.md, Windows first-listing checklist)"
             exit 0
           fi
-          if gh api "repos/microsoft/winget-pkgs/contents/manifests/l/LibreDB/Studio/${VERSION}" --jq '.[0].name' >/dev/null 2>&1; then
+          if gh api "repos/microsoft/winget-pkgs/contents/manifests/l/StorageBase/Studio/${VERSION}" --jq '.[0].name' >/dev/null 2>&1; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::winget already carries LibreDB.Studio ${VERSION} - nothing to submit"
+            echo "::notice::winget already carries StorageBase.Studio ${VERSION} - nothing to submit"
             exit 0
           fi
           # The Contents API only reflects MERGED manifests, and wingetcreate
           # has no duplicate detection of its own - a rerun while this
           # version's update PR is still open must not submit a second one.
           OPEN_PRS=$(gh api -X GET search/issues \
-            -f q="repo:microsoft/winget-pkgs is:pr is:open in:title LibreDB.Studio ${VERSION}" \
+            -f q="repo:microsoft/winget-pkgs is:pr is:open in:title StorageBase.Studio ${VERSION}" \
             --jq '.total_count' 2>/dev/null || echo 0)
           if [ "$OPEN_PRS" != "0" ]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::an open winget-pkgs PR for LibreDB.Studio ${VERSION} already exists - skipping a duplicate submission"
+            echo "::notice::an open winget-pkgs PR for StorageBase.Studio ${VERSION} already exists - skipping a duplicate submission"
             exit 0
           fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
@@ -1454,6 +1454,6 @@ jobs:
             Write-Error "wingetcreate.exe sha256 mismatch: expected $wingetcreateSha256, got $actual"
             exit 1
           }
-          $url = "https://github.com/libredb/libredb-studio/releases/download/$env:VERSION/libredb-studio-standalone-$env:VERSION-win32-x64.zip"
-          .\wingetcreate.exe update LibreDB.Studio --version $env:VERSION --urls "$url|x64" --submit
+          $url = "https://github.com/storagebase/storagebase-studio/releases/download/$env:VERSION/storagebase-studio-standalone-$env:VERSION-win32-x64.zip"
+          .\wingetcreate.exe update StorageBase.Studio --version $env:VERSION --urls "$url|x64" --submit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

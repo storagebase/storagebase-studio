@@ -43,10 +43,10 @@ describe("snap/snapcraft.yaml app environment (#807)", () => {
   const manifest = Bun.YAML.parse(readFileSync(join(REPO_ROOT, "snap/snapcraft.yaml"), "utf8")) as {
     apps: Record<string, { command: string; environment?: Record<string, string> }>;
   };
-  const app = manifest.apps["libredb-studio"];
+  const app = manifest.apps["storagebase-studio"];
 
   test("the parsed app is the daemon the launcher serves", () => {
-    expect(app.command).toBe("bin/libredb-studio-launch");
+    expect(app.command).toBe("bin/storagebase-studio-launch");
   });
 
   test.each([...DEFAULTED_KEYS])("does not set %s, which would shadow a systemd override", (key) => {
@@ -62,7 +62,7 @@ describeIf(CANNOT_RUN, "snap/local/launch.sh defaults (#807)", () => {
   });
 
   function runLauncher(env: Record<string, string> = {}): Record<string, string> {
-    const root = mkdtempSync(join(tmpdir(), "libredb-snap-launcher-"));
+    const root = mkdtempSync(join(tmpdir(), "storagebase-snap-launcher-"));
     fixtureRoots.push(root);
     const snap = join(root, "snap");
     mkdirSync(join(snap, "node/bin"), { recursive: true });
@@ -88,12 +88,12 @@ describeIf(CANNOT_RUN, "snap/local/launch.sh defaults (#807)", () => {
   }
 
   test("applies the local-first defaults when systemd passes nothing", () => {
-    const env = runLauncher({ INVOCATION_ID: SYSTEMD_INVOCATION_ID, SNAP_DATA: "/var/snap/libredb-studio/69" });
+    const env = runLauncher({ INVOCATION_ID: SYSTEMD_INVOCATION_ID, SNAP_DATA: "/var/snap/storagebase-studio/69" });
     expect(env).toEqual({
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
       STORAGE_PROVIDER: "sqlite",
-      STORAGE_SQLITE_PATH: "/var/snap/libredb-studio/69/libredb-storage.db",
+      STORAGE_SQLITE_PATH: "/var/snap/storagebase-studio/69/storagebase-storage.db",
       PORT: "3000",
       HOSTNAME: "127.0.0.1",
     });
@@ -104,7 +104,7 @@ describeIf(CANNOT_RUN, "snap/local/launch.sh defaults (#807)", () => {
       NODE_ENV: "test",
       NEXT_TELEMETRY_DISABLED: "0",
       STORAGE_PROVIDER: "postgres",
-      STORAGE_SQLITE_PATH: "/var/snap/libredb-studio/common/other.db",
+      STORAGE_SQLITE_PATH: "/var/snap/storagebase-studio/common/other.db",
       PORT: "3999",
       HOSTNAME: "0.0.0.0",
     };

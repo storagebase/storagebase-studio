@@ -1,5 +1,5 @@
 // Pure helpers for the Windows launcher (main.go) - the win32 sibling of
-// packaging/linux/libredb-studio. Everything here is host-agnostic (built
+// packaging/linux/storagebase-studio. Everything here is host-agnostic (built
 // with filepath so the same assertions hold under `go test` on any OS) and
 // covered by launch_test.go; main.go stays a thin composition.
 package main
@@ -41,14 +41,14 @@ func envValue(environ []string, key string) (string, bool) {
 }
 
 // defaultStoragePath is the zero-config server-side SQLite location:
-// <localAppData>\LibreDB\Studio\libredb-storage.db. Returns "" when
+// <localAppData>\StorageBase\Studio\storagebase-storage.db. Returns "" when
 // localAppData is unknown - the caller then leaves STORAGE_SQLITE_PATH
 // unset and the server falls back to its relative ./data default.
 func defaultStoragePath(localAppData string) string {
 	if localAppData == "" {
 		return ""
 	}
-	return filepath.Join(localAppData, "LibreDB", "Studio", "libredb-storage.db")
+	return filepath.Join(localAppData, "StorageBase", "Studio", "storagebase-storage.db")
 }
 
 // resolveLocalAppData returns %LOCALAPPDATA%, falling back to the
@@ -69,7 +69,7 @@ func resolveLocalAppData(environ []string) string {
 // inherited duplicates (os/exec: "only the last value in the slice for each
 // duplicate key is used", case-insensitively deduped on Windows):
 //   - HOSTNAME is ALWAYS overridden to LIBREDB_BIND or loopback - the
-//     local-first bind contract of packaging/linux/libredb-studio (issue
+//     local-first bind contract of packaging/linux/storagebase-studio (issue
 //     #134): an inherited HOSTNAME (e.g. a container hostname) must never
 //     silently become the server's bind address.
 //   - STORAGE_SQLITE_PATH defaults under LOCALAPPDATA when unset, so the
