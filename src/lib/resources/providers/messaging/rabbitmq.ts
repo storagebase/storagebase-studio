@@ -1,6 +1,5 @@
 import { BaseResourceProvider } from "../../base-provider";
 import { registerResourceProviderLoader } from "../../registry";
-import type { Channel, Options } from "amqplib";
 import {
   ResourceConfigError,
   ResourceConnectionError,
@@ -37,17 +36,22 @@ import type { BrowseMessagesPage, MessagingOperations } from "../../operations";
  * browse a bound queue).
  */
 
-type AmqpModule = typeof import("amqplib");
+interface AmqpClient {
+  connect(url: string): Promise<AmqpConnection>;
+}
 
-let amqpModule: AmqpModule | null = null;
+let amqpClient: AmqpClient | null = null;
 
-async function loadAmqp(): Promise<AmqpModule> {
-  if (amqpModule) return amqpModule;
+async function loadAmqp(): Promise<AmqpClient> {
+  if (amqpClient) return amqpClient;
   try {
     // Same ruling as the kafka loader above: amqplib requires node:net and
-    // only ever loads server-side.
-    amqpModule = await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "amqplib");
-    return amqpModule;
+    // only ever loads server-side. The double cast is the documented cost of
+    // widening without @types/amqplib (see the structural interfaces above):
+    // there are no declarations to resolve against by design.
+    const sdk = (await import(/* turbopackIgnore: true */ /* webpackIgnore: true */ "amqplib")) as unknown as AmqpClient;
+    amqpClient = sdk;
+    return sdk;
   } catch {
     throw new ResourceConfigError(
       "AMQP client (amqplib) is not available in this environment. Install it with: bun add amqplib",
@@ -58,6 +62,40 @@ async function loadAmqp(): Promise<AmqpModule> {
 export const RABBITMQ_BROWSE_LIMIT = 100;
 
 export const RABBITMQ_PREVIEW_CHARS = 200;
+
+/**
+ * The narrow slice of the amqplib surface this provider touches, stated
+ * structurally rather than imported from `@types/amqplib`: the module loads
+ * dynamically (node-only, never bundled), which knip cannot follow, so a
+ * type-only import leaves a devDependency neither gate can see. The shapes
+ * below mirror amqplib's documented API one for one; a narrower surface here
+ * than the provider uses fails typecheck at the call site, not silently.
+ */
+interface AmqpMessage {
+  content: Uint8Array;
+  fields: { deliveryTag: number; redelivered: boolean; exchange: string; routingKey: string };
+}
+
+interface AmqpChannel {
+  checkQueue(queue: string): Promise<unknown>;
+  checkExchange(exchange: string): Promise<unknown>;
+  get(queue: string, options?: { noAck?: boolean }): Promise<false | AmqpMessage>;
+  nack(message: AmqpMessage, allUpTo?: boolean, requeue?: boolean): void;
+  publish(exchange: string, routingKey: string, content: Uint8Array, options?: { headers?: Record<string, string> }): boolean;
+  purgeQueue(queue: string): Promise<{ messageCount: number }>;
+  close(): Promise<void>;
+  on(event: string, listener: () => void): void;
+}
+
+interface AmqpClient {
+  connect(url: string): Promise<AmqpConnection>;
+}
+
+interface AmqpConnection {
+  createChannel(): Promise<AmqpChannel>;
+  close(): Promise<void>;
+  on(event: string, listener: () => void): void;
+}
 
 /** Default exchange: the empty name routes on the queue name. Never listed (unaddressable for publish). */
 const DEFAULT_EXCHANGE = "";
@@ -116,7 +154,7 @@ export class RabbitMQProvider extends BaseResourceProvider implements MessagingO
     return { url, managementBase: `http://${host}:15672`, managementUser: "guest", managementPassword: "guest" };
   }
 
-  private async withChannel<T>(run: (channel: Channel) => Promise<T>): Promise<T> {
+  private async withChannel<T>(run: (channel: AmqpChannel) => Promise<T>): Promise<T> {
     const sdk = await loadAmqp();
     const connection = await sdk.connect(this.addressing().url);
     // A refused check (unknown queue/exchange) makes the server CLOSE the
@@ -328,7 +366,7 @@ export class RabbitMQProvider extends BaseResourceProvider implements MessagingO
   }
 }
 
-function toPublishOptions(attributes?: Record<string, string>): Options.Publish {
+function toPublishOptions(attributes?: Record<string, string>): { headers?: Record<string, string> } {
   if (!attributes) return {};
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(attributes)) {
