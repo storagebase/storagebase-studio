@@ -440,7 +440,7 @@ describe("image-scan reports and never gates", () => {
   });
 
   test("scans the image users actually run", () => {
-    expect(resolve?.run).toContain("ghcr.io/libredb/libredb-studio:latest");
+    expect(resolve?.run).toContain("ghcr.io/storagebase/storagebase-studio:latest");
   });
 
   test("resolves :latest to one digest and reuses it for both the vuln scan and the SBOM", () => {
@@ -450,7 +450,7 @@ describe("image-scan reports and never gates", () => {
     // images with no shared identity - the class of bug a digest-pinned
     // reference exists everywhere else in this workflow to rule out.
     expect(resolve?.run).toContain("imagetools inspect");
-    expect(resolve?.run).toContain("image_ref=ghcr.io/libredb/libredb-studio@$digest");
+    expect(resolve?.run).toContain("image_ref=ghcr.io/storagebase/storagebase-studio@$digest");
     expect(scan?.env?.IMAGE_REF).toBe("${{ steps.image.outputs.image_ref }}");
     expect(sbom?.env?.IMAGE_REF).toBe("${{ steps.image.outputs.image_ref }}");
     expect(scan?.run).toContain('"$IMAGE_REF"');

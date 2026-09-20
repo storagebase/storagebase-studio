@@ -8,7 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { renderHomebrewFormula } from "../../scripts/render-homebrew-formula.mjs";
 
-const TEMPLATE_PATH = path.join(__dirname, "../../packaging/homebrew/libredb-studio.rb.tmpl");
+const TEMPLATE_PATH = path.join(__dirname, "../../packaging/homebrew/storagebase-studio.rb.tmpl");
 const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
 
 const VERSION = "0.9.41";
@@ -22,7 +22,7 @@ const DIGESTS = {
 function fixtureSums(targets: Record<string, string> = DIGESTS, version = VERSION): string {
   return (
     Object.entries(targets)
-      .map(([target, digest]) => `${digest}  libredb-studio-standalone-${version}-${target}.tar.gz`)
+      .map(([target, digest]) => `${digest}  storagebase-studio-standalone-${version}-${target}.tar.gz`)
       .join("\n") + "\n"
   );
 }
@@ -35,8 +35,8 @@ describe("renderHomebrewFormula", () => {
     expect(rendered).toContain("class LibredbStudio < Formula");
     for (const [target, digest] of Object.entries(DIGESTS)) {
       expect(rendered).toContain(
-        `url "https://github.com/libredb/libredb-studio/releases/download/${VERSION}/` +
-          `libredb-studio-standalone-${VERSION}-${target}.tar.gz"`,
+        `url "https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/` +
+          `storagebase-studio-standalone-${VERSION}-${target}.tar.gz"`,
       );
       expect(rendered).toContain(`sha256 "${digest}"`);
     }
@@ -49,7 +49,7 @@ describe("renderHomebrewFormula", () => {
   });
 
   test("ignores unrelated SHA256SUMS entries", () => {
-    const sums = fixtureSums() + `${"e".repeat(64)}  libredb-studio_0.9.41_amd64.deb\n`;
+    const sums = fixtureSums() + `${"e".repeat(64)}  storagebase-studio_0.9.41_amd64.deb\n`;
     const rendered = renderHomebrewFormula(template, sums, VERSION);
     expect(rendered).not.toContain("e".repeat(64));
   });
@@ -58,7 +58,7 @@ describe("renderHomebrewFormula", () => {
     const partial: Record<string, string> = { ...DIGESTS };
     delete partial["linux-arm64"];
     expect(() => renderHomebrewFormula(template, fixtureSums(partial), VERSION)).toThrow(
-      /SHA256SUMS has no entry for libredb-studio-standalone-0\.9\.41-linux-arm64\.tar\.gz/,
+      /SHA256SUMS has no entry for storagebase-studio-standalone-0\.9\.41-linux-arm64\.tar\.gz/,
     );
   });
 

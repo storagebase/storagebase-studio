@@ -19,7 +19,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { parse as parseYaml } from "yaml";
 
-const APP_ID = "org.libredb.Studio";
+const APP_ID = "org.storagebase.Studio";
 const DIR = path.join(__dirname, "../../packaging/flatpark");
 
 const read = (name: string): string => fs.readFileSync(path.join(DIR, name), "utf8");
@@ -126,7 +126,7 @@ describe("flatpark.yml catalog descriptor (#241)", () => {
     }
 
     // The keys their scanner extracts must each sit on their own plain line.
-    expect(raw).toMatch(/^id: org\.libredb\.Studio$/m);
+    expect(raw).toMatch(/^id: org\.storagebase\.Studio$/m);
     expect(raw).toMatch(/^name: .+$/m);
     expect(raw).toMatch(/^summary: .+$/m);
     expect(raw).toMatch(/^ {2}manifest: .+$/m);
@@ -140,7 +140,7 @@ describe("flatpark.yml catalog descriptor (#241)", () => {
   });
 });
 
-describe("org.libredb.Studio.yml manifest (#241)", () => {
+describe("org.storagebase.Studio.yml manifest (#241)", () => {
   test("targets the GNOME runtime, which is the only one shipping webkit2gtk-4.1", () => {
     expect(manifest.runtime).toBe("org.gnome.Platform");
     expect(manifest.sdk).toBe("org.gnome.Sdk");
@@ -151,8 +151,8 @@ describe("org.libredb.Studio.yml manifest (#241)", () => {
   });
 
   test("runs the wrapper, not the shell binary directly", () => {
-    expect(manifest.command).toBe("libredb-studio");
-    expect(module0["build-commands"]).toContain("install -Dm755 libredb-studio-wrapper /app/bin/libredb-studio");
+    expect(manifest.command).toBe("storagebase-studio");
+    expect(module0["build-commands"]).toContain("install -Dm755 storagebase-studio-wrapper /app/bin/storagebase-studio");
   });
 
   test("keeps the managed extra-data markers FlatPark's bot rewrites between", () => {
@@ -165,7 +165,7 @@ describe("org.libredb.Studio.yml manifest (#241)", () => {
   test("pins exactly one extra-data archive, fully specified", () => {
     expect(extraData).toHaveLength(1);
     const [source] = extraData;
-    expect(source.filename).toBe("libredb-studio-desktop.deb");
+    expect(source.filename).toBe("storagebase-studio-desktop.deb");
     expect(source["only-arches"]).toEqual(["x86_64"]);
     // A digest of all digits parses as a number unless it is quoted, and
     // flatpak-builder then rejects the manifest.
@@ -187,10 +187,10 @@ describe("org.libredb.Studio.yml manifest (#241)", () => {
 
   test("pins the desktop GUI package, never the headless server deb or the AppImage", () => {
     const [source] = extraData;
-    expect(source.url).toStartWith("https://github.com/libredb/libredb-studio/releases/download/");
+    expect(source.url).toStartWith("https://github.com/storagebase/storagebase-studio/releases/download/");
     // The GUI package name carries the -desktop suffix; the server package is
-    // libredb-studio_<version>_<arch>.deb and would install a systemd unit.
-    expect(source.url).toMatch(/\/libredb-studio-desktop_[0-9]+\.[0-9]+\.[0-9]+_amd64\.deb$/);
+    // storagebase-studio_<version>_<arch>.deb and would install a systemd unit.
+    expect(source.url).toMatch(/\/storagebase-studio-desktop_[0-9]+\.[0-9]+\.[0-9]+_amd64\.deb$/);
     expect(source.url).not.toContain(".AppImage");
   });
 
@@ -267,14 +267,14 @@ describe("apply_extra.sh install-time unpack (#241)", () => {
   test("verifies all three payload pieces before committing the unpack", () => {
     // A partially-extracted tree that still launches is the worst outcome: the
     // window opens and every query fails.
-    expect(script).toContain("stage/usr/bin/libredb-studio-desktop");
-    expect(script).toContain("stage/usr/bin/libredb-studio-node");
-    expect(script).toContain("stage/usr/lib/libredb-studio-desktop/payload/server.js");
+    expect(script).toContain("stage/usr/bin/storagebase-studio-desktop");
+    expect(script).toContain("stage/usr/bin/storagebase-studio-node");
+    expect(script).toContain("stage/usr/lib/storagebase-studio-desktop/payload/server.js");
   });
 
   test("keeps the whole usr tree, which the shell's resource lookup depends on", () => {
     // The shell resolves resources as <exe dir>/../lib/<product name>, so
-    // usr/bin has to stay next to usr/lib/libredb-studio-desktop.
+    // usr/bin has to stay next to usr/lib/storagebase-studio-desktop.
     expect(script).toContain("mv stage/usr usr");
   });
 
@@ -287,15 +287,15 @@ describe("apply_extra.sh install-time unpack (#241)", () => {
 
 describe("wrapper and update resolver (#241)", () => {
   test("the wrapper disables the DMABUF renderer, which paints a blank window", () => {
-    const wrapper = read("libredb-studio-wrapper");
+    const wrapper = read("storagebase-studio-wrapper");
     expect(wrapper).toContain("export WEBKIT_DISABLE_DMABUF_RENDERER=1");
-    expect(wrapper).toContain("exec /app/extra/usr/bin/libredb-studio-desktop");
+    expect(wrapper).toContain("exec /app/extra/usr/bin/storagebase-studio-desktop");
   });
 
   test("the resolver emits the contract FlatPark parses, and hashes nothing", () => {
     const resolver = read("resolve-update.sh");
-    expect(resolver).toContain("libredb/libredb-studio");
-    expect(resolver).toContain('filename:"libredb-studio-desktop.deb"');
+    expect(resolver).toContain("storagebase/storagebase-studio");
+    expect(resolver).toContain('filename:"storagebase-studio-desktop.deb"');
     // FlatPark downloads the URL and computes sha256/size itself.
     expect(resolver).not.toContain("sha256sum");
   });
@@ -305,10 +305,10 @@ describe("wrapper and update resolver (#241)", () => {
     const pattern = resolver.match(/test\("([^"]+)"\)/)?.[1];
     expect(pattern).toBeTruthy();
     const assetRe = new RegExp((pattern as string).replaceAll("\\\\", "\\"));
-    expect(assetRe.test("libredb-studio-desktop_0.9.62_amd64.deb")).toBe(true);
-    expect(assetRe.test("libredb-studio_0.9.62_amd64.deb")).toBe(false);
-    expect(assetRe.test("libredb-studio-desktop_0.9.62_arm64.deb")).toBe(false);
-    expect(assetRe.test("libredb-studio-desktop-0.9.62-linux-x64.AppImage")).toBe(false);
+    expect(assetRe.test("storagebase-studio-desktop_0.9.62_amd64.deb")).toBe(true);
+    expect(assetRe.test("storagebase-studio_0.9.62_amd64.deb")).toBe(false);
+    expect(assetRe.test("storagebase-studio-desktop_0.9.62_arm64.deb")).toBe(false);
+    expect(assetRe.test("storagebase-studio-desktop-0.9.62-linux-x64.AppImage")).toBe(false);
   });
 
   test("release tags are bare semver, so the resolver must not strip a v prefix", () => {
@@ -327,8 +327,8 @@ describe("release wiring for the pinned artifact (#241)", () => {
     // These three have to agree or the channel breaks silently: the bundler
     // writes a name, release CI requires that name, and FlatPark's bot resolves
     // it. Only the last failure is visible to users.
-    expect(buildScript).toContain('ASSET_DEB="libredb-studio-desktop_${VERSION}_${DEB_ARCH}.deb"');
-    const built = "libredb-studio-desktop_0.9.62_amd64.deb";
+    expect(buildScript).toContain('ASSET_DEB="storagebase-studio-desktop_${VERSION}_${DEB_ARCH}.deb"');
+    const built = "storagebase-studio-desktop_0.9.62_amd64.deb";
     const pattern = read("resolve-update.sh").match(/test\("([^"]+)"\)/)?.[1] as string;
     expect(new RegExp(pattern.replaceAll("\\\\", "\\")).test(built)).toBe(true);
   });
@@ -363,34 +363,34 @@ describe("release wiring for the pinned artifact (#241)", () => {
 
   test("release CI refuses to publish without both GUI debs", () => {
     for (const arch of ["amd64", "arm64"]) {
-      expect(releaseWorkflow).toContain(`"libredb-studio-desktop_\${TAG}_${arch}.deb"`);
-      expect(releaseWorkflow).toContain(`"libredb-studio-desktop_\${TAG}_${arch}.deb.sha256"`);
+      expect(releaseWorkflow).toContain(`"storagebase-studio-desktop_\${TAG}_${arch}.deb"`);
+      expect(releaseWorkflow).toContain(`"storagebase-studio-desktop_\${TAG}_${arch}.deb.sha256"`);
     }
   });
 
   test("the sidecar name is the same in the bundler config, the script and the shell", () => {
     const tauriConf = fs.readFileSync(path.join(__dirname, "../../desktop/src-tauri/tauri.conf.json"), "utf8");
     const layout = fs.readFileSync(path.join(__dirname, "../../desktop/src-tauri/src/layout.rs"), "utf8");
-    expect(JSON.parse(tauriConf).bundle.externalBin).toEqual(["bin/libredb-studio-node"]);
-    expect(buildScript).toContain('NODE_BIN="libredb-studio-node"');
-    expect(layout).toContain('pub const NODE_BIN: &str = "libredb-studio-node";');
+    expect(JSON.parse(tauriConf).bundle.externalBin).toEqual(["bin/storagebase-studio-node"]);
+    expect(buildScript).toContain('NODE_BIN="storagebase-studio-node"');
+    expect(layout).toContain('pub const NODE_BIN: &str = "storagebase-studio-node";');
   });
 
   test("the Flathub manifest tolerates both sidecar names across the rename", () => {
     // Flathub's checker can re-render this template against a release from
     // before 0.9.62, whose AppImage still carries the old name.
-    const tmpl = fs.readFileSync(path.join(__dirname, "../../packaging/flatpak/org.libredb.Studio.yml.tmpl"), "utf8");
-    expect(tmpl).toContain("for candidate in libredb-studio-node node; do");
+    const tmpl = fs.readFileSync(path.join(__dirname, "../../packaging/flatpak/org.storagebase.Studio.yml.tmpl"), "utf8");
+    expect(tmpl).toContain("for candidate in storagebase-studio-node node; do");
   });
 });
 
 describe("desktop entry and metainfo (#241)", () => {
   test("the desktop entry launches the wrapper and matches the exported icon name", () => {
     const desktop = read(`${APP_ID}.desktop`);
-    expect(desktop).toContain("Exec=libredb-studio\n");
+    expect(desktop).toContain("Exec=storagebase-studio\n");
     expect(desktop).toContain(`Icon=${APP_ID}\n`);
     // Wayland/X11 window matching needs the binary's own class, not the app id.
-    expect(desktop).toContain("StartupWMClass=libredb-studio-desktop\n");
+    expect(desktop).toContain("StartupWMClass=storagebase-studio-desktop\n");
   });
 
   test("the metainfo declares the id and launchable Flatpak exports it under", () => {

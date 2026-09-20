@@ -34,7 +34,7 @@ const REPO_ROOT = join(import.meta.dir, "../../..");
  *
  * `deploy/rancher/app-readme.md` is the one that is not itself the submitted artifact: the
  * file Rancher renders lives in `rancher/partner-charts` under
- * `packages/libredb/libredb-studio/overlay/`, out of reach of any test here, and it drifted
+ * `packages/storagebase/storagebase-studio/overlay/`, out of reach of any test here, and it drifted
  * six engines behind before anybody looked. This copy is what a submission is cut from, so
  * the drift fails here first.
  *
@@ -46,10 +46,10 @@ const REPO_ROOT = join(import.meta.dir, "../../..");
  */
 const COPY_FILES: ReadonlyArray<{ path: string; from?: string; to?: string }> = [
   { path: "packaging/linux/nfpm.yaml" },
-  { path: "packaging/winget/LibreDB.Studio.locale.en-US.yaml.tmpl" },
-  { path: "packaging/chocolatey/libredb-studio.nuspec.tmpl" },
+  { path: "packaging/winget/StorageBase.Studio.locale.en-US.yaml.tmpl" },
+  { path: "packaging/chocolatey/storagebase-studio.nuspec.tmpl" },
   { path: "desktop/src-tauri/tauri.conf.json" },
-  { path: "deploy/caprover/libredb-studio.yml" },
+  { path: "deploy/caprover/storagebase-studio.yml" },
   { path: "deploy/railway/template.json" },
   { path: "deploy/azure/listing/listing-fields.md" },
   { path: "deploy/azure/listing/description.html" },

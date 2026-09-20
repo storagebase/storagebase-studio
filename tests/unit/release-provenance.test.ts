@@ -83,13 +83,13 @@ const releaseArtifacts = workflow("release-artifacts.yml");
  * this list, which is the point.
  */
 const ATTESTED_JOBS: { job: string; globs: string[] }[] = [
-  { job: "publish", globs: ["libredb-studio-standalone-*.tar.gz", "libredb-studio-standalone-*.zip"] },
+  { job: "publish", globs: ["storagebase-studio-standalone-*.tar.gz", "storagebase-studio-standalone-*.zip"] },
   { job: "linux-packages", globs: ["pkgs/*.deb", "pkgs/*.rpm"] },
   { job: "desktop-appimage", globs: ["dist-desktop/*.AppImage", "dist-desktop/*.deb"] },
   { job: "snap", globs: ["${{ steps.snapcraft.outputs.snap }}"] },
   // An unsigned SBOM is a text file anyone can rewrite, and it is the one asset
   // whose entire value is that its claims are trustworthy.
-  { job: "sbom", globs: ["sbom/libredb-studio-*.cdx.json"] },
+  { job: "sbom", globs: ["sbom/storagebase-studio-*.cdx.json"] },
 ];
 
 describe.each(ATTESTED_JOBS)("release-artifacts.yml attestation: $job", ({ job, globs }) => {
@@ -181,11 +181,11 @@ describe("the launcher's pinned signer workflow", () => {
   test("names the workflow that actually attests the standalone archives", () => {
     expect(fileName).toBe("release-artifacts.yml");
     const subjects = (releaseArtifacts.jobs.publish?.steps ?? []).filter(isAttestStep).map(subjectPathOf).join("\n");
-    expect(subjects).toContain("libredb-studio-standalone-*.tar.gz");
+    expect(subjects).toContain("storagebase-studio-standalone-*.tar.gz");
   });
 
   test("is scoped to this repository", () => {
-    expect(PROVENANCE_SIGNER_WORKFLOW.startsWith("libredb/libredb-studio/")).toBe(true);
+    expect(PROVENANCE_SIGNER_WORKFLOW.startsWith("storagebase/storagebase-studio/")).toBe(true);
   });
 });
 

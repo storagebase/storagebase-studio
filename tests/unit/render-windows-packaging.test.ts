@@ -13,10 +13,10 @@ const VERSION = "0.9.41";
 const ZIP_DIGEST = "a".repeat(64);
 
 const TEMPLATES = [
-  "packaging/winget/LibreDB.Studio.yaml.tmpl",
-  "packaging/winget/LibreDB.Studio.installer.yaml.tmpl",
-  "packaging/winget/LibreDB.Studio.locale.en-US.yaml.tmpl",
-  "packaging/chocolatey/libredb-studio.nuspec.tmpl",
+  "packaging/winget/StorageBase.Studio.yaml.tmpl",
+  "packaging/winget/StorageBase.Studio.installer.yaml.tmpl",
+  "packaging/winget/StorageBase.Studio.locale.en-US.yaml.tmpl",
+  "packaging/chocolatey/storagebase-studio.nuspec.tmpl",
   "packaging/chocolatey/tools/chocolateyinstall.ps1.tmpl",
 ].map((relative) => path.join(__dirname, "../..", relative));
 
@@ -26,8 +26,8 @@ function readTemplate(templatePath: string): string {
 
 function fixtureSums(version = VERSION, digest = ZIP_DIGEST): string {
   return (
-    `${"1".repeat(64)}  libredb-studio-standalone-${version}-linux-x64.tar.gz\n` +
-    `${digest}  libredb-studio-standalone-${version}-win32-x64.zip\n`
+    `${"1".repeat(64)}  storagebase-studio-standalone-${version}-linux-x64.tar.gz\n` +
+    `${digest}  storagebase-studio-standalone-${version}-win32-x64.zip\n`
   );
 }
 
@@ -52,11 +52,11 @@ describe("renderWindowsPackagingTemplate", () => {
     const template = readTemplate(TEMPLATES[1]);
     const rendered = renderWindowsPackagingTemplate(template, fixtureSums(), VERSION);
     expect(rendered).toContain(
-      `https://github.com/libredb/libredb-studio/releases/download/${VERSION}/` +
-        `libredb-studio-standalone-${VERSION}-win32-x64.zip`,
+      `https://github.com/storagebase/storagebase-studio/releases/download/${VERSION}/` +
+        `storagebase-studio-standalone-${VERSION}-win32-x64.zip`,
     );
     expect(rendered).toContain(`InstallerSha256: ${ZIP_DIGEST}`);
-    expect(rendered).toContain("RelativeFilePath: libredb-studio.exe");
+    expect(rendered).toContain("RelativeFilePath: storagebase-studio.exe");
   });
 
   test("the Chocolatey install script pins the checksum", () => {
@@ -67,9 +67,9 @@ describe("renderWindowsPackagingTemplate", () => {
   });
 
   test("throws when the win32 zip digest is missing from SHA256SUMS", () => {
-    const sums = `${"1".repeat(64)}  libredb-studio-standalone-${VERSION}-linux-x64.tar.gz\n`;
+    const sums = `${"1".repeat(64)}  storagebase-studio-standalone-${VERSION}-linux-x64.tar.gz\n`;
     expect(() => renderWindowsPackagingTemplate("{{SHA256_WIN32_X64}}", sums, VERSION)).toThrow(
-      /SHA256SUMS has no entry for libredb-studio-standalone-0\.9\.41-win32-x64\.zip/,
+      /SHA256SUMS has no entry for storagebase-studio-standalone-0\.9\.41-win32-x64\.zip/,
     );
   });
 
