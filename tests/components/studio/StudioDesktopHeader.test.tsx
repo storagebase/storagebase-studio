@@ -328,30 +328,17 @@ describe("StudioDesktopHeader", () => {
   // ── GitHub Link ──
 
   describe("github link", () => {
-    test("renders a repository link beside the version badge", () => {
+    test("renders no repository link (social links removed in the fork)", () => {
       const { container } = render(<StudioDesktopHeader {...defaultProps} />);
       const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]');
 
-      expect(link).not.toBeNull();
-      expect(link!.getAttribute("href")).toBe("https://github.com/storagebase/storagebase-studio");
-      expect(link!.getAttribute("target")).toBe("_blank");
-      expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(link).toBeNull();
     });
 
     // Someone who has already been to the repository must not be asked again by
     // the tenth-query toast. Asserted through the observable effect: a
     // `not.toThrow()` here could not fail, because the handler swallows every
     // storage error internally.
-    test("following the link marks the star prompt handled", () => {
-      localStorage.removeItem("libredb_star_prompt_handled");
-      const { container } = render(<StudioDesktopHeader {...defaultProps} />);
-      const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]')!;
-
-      fireEvent.click(link);
-
-      expect(localStorage.getItem("libredb_star_prompt_handled")).not.toBeNull();
-      localStorage.removeItem("libredb_star_prompt_handled");
-    });
   });
 
   // ── Combinations / Edge Cases ──

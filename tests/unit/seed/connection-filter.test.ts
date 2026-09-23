@@ -82,6 +82,28 @@ describe("filterByRoles: engine-specific fields", () => {
 
     expect(managed.authSource).toBe("admin");
   });
+  it("carries a Redis Sentinel connection's sentinels, group and password through", () => {
+    // Dropped here, a seeded Sentinel connection would reach the browser with no address.
+    const [managed] = filterByRoles(
+      [
+        {
+          ...baseConn,
+          type: "redis",
+          host: undefined,
+          sentinels: "sentinel-0:26379",
+          sentinelMasterName: "mymaster",
+          sentinelPassword: "spw",
+        },
+      ],
+      ["user"],
+    );
+
+    expect(managed).toMatchObject({
+      sentinels: "sentinel-0:26379",
+      sentinelMasterName: "mymaster",
+      sentinelPassword: "spw",
+    });
+  });
   it("carries a Trino connection's session schema through to the managed connection", () => {
     const [managed] = filterByRoles(
       [{ ...baseConn, type: "trino", port: 8080, database: "memory", schema: "default" }],

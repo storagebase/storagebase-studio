@@ -2,6 +2,8 @@ import "../setup-dom";
 
 import { describe, test, expect, mock, beforeEach, afterEach } from "bun:test";
 import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { mockGlobalFetch, restoreGlobalFetch } from "../helpers/mock-fetch";
 
 // ── Mock storage module ─────────────────────────────────────────────────────
@@ -23,6 +25,7 @@ const mockStorage = {
   getDismissedSeeds: mock(() => ["seed-1"]),
   getFavoriteConnectionIds: mock(() => ["fav-1"]),
   getConnectionOrder: mock(() => ["c1"]),
+  getResourceConnections: mock(() => [{ id: "r1", type: "kafka" }]),
 };
 
 const ALL_COLLECTIONS = [
@@ -38,6 +41,7 @@ const ALL_COLLECTIONS = [
   "dismissed_seeds",
   "favorite_connections",
   "connection_order",
+  "resource_connections",
 ];
 
 mock.module("@/lib/storage", () => ({
@@ -295,6 +299,15 @@ describe("useStorageSync", () => {
       expect(mockStorage.getDismissedSeeds).toHaveBeenCalled();
       expect(mockStorage.getFavoriteConnectionIds).toHaveBeenCalled();
       expect(mockStorage.getConnectionOrder).toHaveBeenCalled();
+      expect(mockStorage.getResourceConnections).toHaveBeenCalled();
+    });
+
+    test("the mocked collection list is the real STORAGE_COLLECTIONS", () => {
+      // The module is mocked above, so the list is a copy; this keeps the copy honest.
+      // A collection missing here is a collection no test here would notice going unsynced.
+      const source = readFileSync(join(import.meta.dir, "..", "..", "src", "lib", "storage", "types.ts"), "utf8");
+      const block = /STORAGE_COLLECTIONS: StorageCollection\[\] = \[([^\]]*)\]/.exec(source)?.[1] ?? "";
+      expect([...block.matchAll(/"([^"]+)"/g)].map((match) => match[1])).toEqual(ALL_COLLECTIONS);
     });
   });
 
@@ -418,6 +431,27 @@ describe("useStorageSync", () => {
       const stored = localStorage.getItem("libredb_connection_order");
       expect(stored).not.toBeNull();
       expect(JSON.parse(stored!)).toEqual(["c2", "c1"]);
+    });
+
+    test("writes resource_connections to localStorage on pull", async () => {
+      localStorage.setItem("libredb_server_migrated", "true");
+      setupServerMode({
+        "/api/storage": {
+          ok: true,
+          status: 200,
+          json: { resource_connections: [{ id: "k1", type: "kafka", endpoint: "broker:9092" }] },
+        },
+      });
+
+      const { result } = renderHook(() => useStorageSync());
+
+      await waitFor(() => {
+        expect(result.current.lastSyncedAt).not.toBeNull();
+      });
+
+      const stored = localStorage.getItem("libredb_resource_connections");
+      expect(stored).not.toBeNull();
+      expect(JSON.parse(stored!)).toEqual([{ id: "k1", type: "kafka", endpoint: "broker:9092" }]);
     });
 
     test("removes active_connection_id from localStorage when server returns null", async () => {
@@ -803,6 +837,36 @@ describe("useStorageSync", () => {
         },
         { timeout: 3000 },
       );
+    });
+
+    test("pushes resource_connections from the storage facade", async () => {
+      localStorage.setItem("libredb_server_migrated", "true");
+      const fetchMock = setupServerMode();
+
+      const { result } = renderHook(() => useStorageSync());
+
+      await waitFor(() => {
+        expect(result.current.isServerMode).toBe(true);
+      });
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent("libredb-storage-change", { detail: { collection: "resource_connections" } }),
+        );
+      });
+
+      await waitFor(
+        () => {
+          expect(calledPaths(fetchMock)).toContain("/api/storage/resource_connections");
+        },
+        { timeout: 3000 },
+      );
+
+      const call = (fetchMock.mock.calls as unknown[][]).find((c) => {
+        const url = typeof c[0] === "string" ? c[0] : "";
+        return new URL(url, "http://localhost:3000").pathname === "/api/storage/resource_connections";
+      });
+      expect((call![1] as RequestInit).body).toBe(JSON.stringify({ data: [{ id: "r1", type: "kafka" }] }));
     });
 
     test("pushes null data for an unknown collection", async () => {

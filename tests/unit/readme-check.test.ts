@@ -12,9 +12,9 @@ import {
   parseTables,
 } from "../../scripts/readme-check.mjs";
 
-// The localized READMEs (#317) duplicate the engine table and the install
-// commands from README.md, and nothing else in the repo notices when they
-// drift. The bugs this guard exists to catch are real ones that shipped in
+// Upstream's localized READMEs (#317) duplicated the engine table and the install
+// commands from README.md, and nothing else in the repo noticed when they
+// drifted. The fork ships none, but the comparison stays tested. The bugs this guard exists to catch are real ones that shipped in
 // review: a Homebrew row missing `brew trust`, a Helm row that only added a
 // repo, and an engine list that would silently keep saying ten after an
 // eleventh provider lands.
@@ -273,32 +273,26 @@ describe("checkReadmes", () => {
 });
 
 describe("readme-check CLI", () => {
-  test("passes on a consistent set and names the invariant it checked", () => {
-    const { exitCode, stdout } = runCLI({
-      "README.md": readme(),
-      "README_zh.md": readme(ENGINES, [COMMANDS[0]]),
-      "README_ja.md": readme(),
-    });
+  // The fork ships no translations (LOCALIZED is empty), so the CLI checks README.md alone;
+  // the localized comparison is covered through checkReadmes above.
+  test("passes on a consistent README.md and names the invariant it checked", () => {
+    const { exitCode, stdout } = runCLI({ "README.md": readme() });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("OK");
     expect(stdout).toContain("3 engines");
+    expect(stdout).toContain("none");
   });
 
-  test("fails with the drift on stderr and points at the fix", () => {
-    const { exitCode, stderr } = runCLI({
-      "README.md": readme(),
-      "README_zh.md": readme(["PostgreSQL", "MySQL"]),
-      "README_ja.md": readme(),
-    });
+  test("fails with the violation on stderr and points at the fix", () => {
+    const { exitCode, stderr } = runCLI({ "README.md": withoutWarning(readme()) });
     expect(exitCode).toBe(1);
-    expect(stderr).toContain("Redis");
+    expect(stderr).toContain("AUTH_COOKIE_SECURE");
     expect(stderr).toContain("README.md");
   });
 
-  test("skips a localized file that does not exist", () => {
-    const { exitCode, stdout } = runCLI({ "README.md": readme(), "README_ja.md": readme() });
+  test("ignores a translation the guard does not list", () => {
+    const { exitCode, stdout } = runCLI({ "README.md": readme(), "README_zh.md": readme(["PostgreSQL"]) });
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("README_ja.md");
     expect(stdout).not.toContain("README_zh.md");
   });
 

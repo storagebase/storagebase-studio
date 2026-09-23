@@ -129,6 +129,10 @@ const mockHandlePasteConnectionString = mock(() => {});
 
 const mockSetLocalDataCenter = mock(() => {});
 const mockSetAuthSource = mock(() => {});
+const mockSetConnectionTopology = mock(() => {});
+const mockSetSentinels = mock(() => {});
+const mockSetSentinelMasterName = mock(() => {});
+const mockSetSentinelPassword = mock(() => {});
 const mockSetSkipObjectScan = mock(() => {});
 
 let mockFormOverrides: Record<string, unknown> = {};
@@ -189,6 +193,14 @@ function getDefaultForm() {
     setSchema: mock(() => {}),
     authSource: "",
     setAuthSource: mockSetAuthSource,
+    connectionTopology: "standalone" as const,
+    setConnectionTopology: mockSetConnectionTopology,
+    sentinels: "",
+    setSentinels: mockSetSentinels,
+    sentinelMasterName: "",
+    setSentinelMasterName: mockSetSentinelMasterName,
+    sentinelPassword: "",
+    setSentinelPassword: mockSetSentinelPassword,
     showSSH: false,
     setShowSSH: mockSetShowSSH,
     sshEnabled: false,
@@ -250,6 +262,7 @@ const MOCK_CONNECTION_FIELDS: Record<string, string[]> = {
   druid: ["host", "port", "user", "password"],
   elasticsearch: ["host", "port", "user", "password"],
   opensearch: ["host", "port", "user", "password"],
+  redis: ["host", "port", "user", "password", "database", "sentinels", "sentinelMasterName", "sentinelPassword"],
 };
 const mockFields = (type: string): string[] =>
   MOCK_CONNECTION_FIELDS[type] ?? ["host", "port", "user", "password", "database"];
@@ -294,6 +307,7 @@ mock.module("lucide-react", () => {
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { ConnectionModal } from "@/components/ConnectionModal";
+import { registerResourceProviderLoader } from "@/lib/resources/registry";
 
 // =============================================================================
 // ConnectionModal Tests
@@ -325,6 +339,22 @@ describe("ConnectionModal", () => {
     mockSetShowSSL.mockClear();
     mockHandleTestConnection.mockClear();
     mockHandleConnect.mockClear();
+  });
+
+  test("closing the dialog resets the category tab, so it reopens on Databases", () => {
+    registerResourceProviderLoader("kafka", async () => {
+      throw new Error("never loaded by the dialog");
+    });
+    const props = createDefaultProps({ onConnectResource: mock(() => {}) });
+    const { getByRole, rerender } = render(React.createElement(ConnectionModal, props));
+    const tab = (name: string) => getByRole("tab", { name });
+
+    fireEvent.click(tab("Messaging"));
+    expect(tab("Messaging").getAttribute("aria-selected")).toBe("true");
+
+    rerender(React.createElement(ConnectionModal, { ...props, isOpen: false }));
+    rerender(React.createElement(ConnectionModal, props));
+    expect(tab("Databases").getAttribute("aria-selected")).toBe("true");
   });
 
   // ── 1. Does not render when isOpen=false ────────────────────────────────────
@@ -1035,6 +1065,72 @@ describe("ConnectionModal", () => {
     const { container } = render(React.createElement(ConnectionModal, props));
 
     expect(container.querySelector("#authSource")).toBeNull();
+  });
+
+  // ── 34e. Redis offers Sentinel mode ────────────────────────────────────────
+  //
+  // A Sentinel deployment has no fixed master: the sentinels name it at every connect,
+  // which is what lets a connection follow a failover. So Sentinel mode replaces host and
+  // port with the sentinel list and the master group name.
+
+  test("Redis offers Standalone and Sentinel, and choosing one reaches the form state", () => {
+    mockFormOverrides = { type: "redis" };
+    const props = createDefaultProps();
+    const { getByRole } = render(React.createElement(ConnectionModal, props));
+
+    expect(getByRole("button", { name: "Standalone" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(getByRole("button", { name: "Sentinel" }));
+    expect(mockSetConnectionTopology).toHaveBeenCalledWith("sentinel");
+    fireEvent.click(getByRole("button", { name: "Standalone" }));
+    expect(mockSetConnectionTopology).toHaveBeenCalledWith("standalone");
+  });
+
+  test("Standalone mode draws host and port and no Sentinel input", () => {
+    mockFormOverrides = { type: "redis" };
+    const props = createDefaultProps();
+    const { container } = render(React.createElement(ConnectionModal, props));
+
+    expect(container.querySelector("#host")).not.toBeNull();
+    expect(container.querySelector("#port")).not.toBeNull();
+    for (const id of ["#sentinels", "#sentinelMasterName", "#sentinelPassword"]) {
+      expect(container.querySelector(id)).toBeNull();
+    }
+  });
+
+  test("Sentinel mode replaces host and port with the sentinels, the master name and their password", () => {
+    mockFormOverrides = { type: "redis", connectionTopology: "sentinel" };
+    const props = createDefaultProps();
+    const { container } = render(React.createElement(ConnectionModal, props));
+
+    expect(container.querySelector("#host")).toBeNull();
+    expect(container.querySelector("#port")).toBeNull();
+    // The Redis credentials and the database stay.
+    expect(container.querySelector("#user")).not.toBeNull();
+    expect(container.querySelector("#password")).not.toBeNull();
+    expect(container.querySelector("#database")).not.toBeNull();
+
+    fireEvent.change(container.querySelector("#sentinels") as HTMLInputElement, { target: { value: "s0:26379" } });
+    fireEvent.change(container.querySelector("#sentinelMasterName") as HTMLInputElement, {
+      target: { value: "mymaster" },
+    });
+    const sentinelPassword = container.querySelector("#sentinelPassword") as HTMLInputElement;
+    expect(sentinelPassword.type).toBe("password");
+    expect(sentinelPassword.placeholder).toBe("defaults to the Redis password");
+    fireEvent.change(sentinelPassword, { target: { value: "spw" } });
+
+    expect(mockSetSentinels).toHaveBeenCalledWith("s0:26379");
+    expect(mockSetSentinelMasterName).toHaveBeenCalledWith("mymaster");
+    expect(mockSetSentinelPassword).toHaveBeenCalledWith("spw");
+  });
+
+  test("no other type offers Sentinel mode", () => {
+    mockFormOverrides = { connectionTopology: "sentinel" };
+    const props = createDefaultProps();
+    const { container, queryByRole } = render(React.createElement(ConnectionModal, props));
+
+    expect(queryByRole("button", { name: "Sentinel" })).toBeNull();
+    expect(container.querySelector("#host")).not.toBeNull();
+    expect(container.querySelector("#sentinels")).toBeNull();
   });
 
   // ── 35. Browser autofill stays out of the credential fields ───────────────

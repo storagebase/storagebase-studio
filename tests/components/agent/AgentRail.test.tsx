@@ -686,7 +686,7 @@ describe("AgentRail", () => {
 
   test("a store that refuses the write costs the notice, never the run", async () => {
     // Safari private mode and a full quota both land here. The bookkeeping is a nudge; the
-    // run is the work, and the same policy is written into `star-prompt.ts`.
+    // run is the work.
     const realSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = () => {
       throw new Error("QuotaExceededError");

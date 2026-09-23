@@ -22,6 +22,10 @@
 #                                      (ORACLE_CLIENT_LIB_DIR) loads a native
 #                                      addon from build/Release, which file
 #                                      tracing never sees (#538)
+#   - resource SDKs                 -> kafkajs, amqplib, @aws-sdk/*, @azure/*
+#                                      with their dependency closure, staged by
+#                                      scripts/stage-resource-sdks.mjs (lazy
+#                                      computed imports, not seen by tracing)
 #   - seed-assets/                  -> vendored sample DB templates (fs-read
 #                                      at runtime, not seen by file tracing)
 #   - data/                         -> default SQLite storage directory
@@ -250,6 +254,11 @@ if ! ls "$PAYLOAD_DIR"/node_modules/oracledb/build/Release/oracledb-*-"${OS}"-"$
   echo "node_modules - reinstall with 'bun install --frozen-lockfile'." >&2
   exit 1
 fi
+
+# Resource SDKs (StorageBase fork): loaded through a computed import that file
+# tracing cannot follow. The script copies each SDK's dependency closure into
+# $PAYLOAD_DIR/node_modules (mirrors the Dockerfile builder/runner stages).
+node scripts/stage-resource-sdks.mjs "$PAYLOAD_DIR"
 
 # Vendored sample database templates (seed-assets/): read at runtime relative
 # to the payload root, so output file tracing never includes them — copy

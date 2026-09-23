@@ -1964,6 +1964,61 @@ describe("cached connection query timeout", () => {
   );
 });
 
+describe("cached connection settings", () => {
+  // The id survives an edit, so the id alone cannot say whether a cached provider was
+  // opened for the settings the caller now holds. A saved host, credential or Sentinel
+  // change kept being served the client opened for the old ones.
+  test.each([false, true])(
+    "an edited address, credential or Sentinel group replaces the cached provider (profiled: %s)",
+    async (profiled) => {
+      const acquire = (connection: DatabaseConnection) =>
+        profiled ? acquireExecutionProfileProvider(connection, "agent-read-only") : getOrCreateProvider(connection);
+      const connection = makeConnection("postgres", { id: `edited-${profiled}` });
+      let previous = await acquire(connection);
+      for (const edit of [
+        { host: "db.other" },
+        { port: 5433 },
+        { password: "rotated" },
+        { ssl: { mode: "require" as const } },
+        { sentinels: "s1:26379", sentinelMasterName: "mymaster" },
+        { sentinels: "s1:26379", sentinelMasterName: "othermaster" },
+      ]) {
+        const edited = await acquire({ ...connection, ...edit });
+        expect(edited).not.toBe(previous);
+        expect(previous.isConnected()).toBe(false);
+        previous = edited;
+      }
+    },
+  );
+
+  test.each([false, true])(
+    "a renamed or recoloured connection keeps its open provider (profiled: %s)",
+    async (profiled) => {
+      const acquire = (connection: DatabaseConnection) =>
+        profiled ? acquireExecutionProfileProvider(connection, "agent-read-only") : getOrCreateProvider(connection);
+      const connection = makeConnection("postgres", {
+        id: `cosmetic-${profiled}`,
+        ssl: { mode: "require", rejectUnauthorized: false },
+        // A resolved seed carries its role list at runtime, so arrays are part of the key too.
+        ...({ roles: ["admin"] } as Partial<DatabaseConnection>),
+      });
+      const initial = await acquire(connection);
+      const same = await acquire({
+        ...connection,
+        name: "Renamed",
+        color: "#123456",
+        group: "Team",
+        environment: "production",
+        createdAt: new Date(0),
+        skipObjectScan: true,
+        // Key order is not a setting: the same values in another order are the same config.
+        ssl: { rejectUnauthorized: false, mode: "require" },
+      });
+      expect(same).toBe(initial);
+    },
+  );
+});
+
 // ============================================================================
 // The tunnel's far end reaches the plan seal (X23)
 // ----------------------------------------------------------------------------

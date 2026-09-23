@@ -69,10 +69,29 @@ describe("connectionFingerprint", () => {
     expect(await connectionFingerprint(vary({ serviceName: "XEPDB1" }))).not.toBe(base);
     expect(await connectionFingerprint(vary({ instanceName: "SQLEXPRESS" }))).not.toBe(base);
     // The tenth, which the four above were audited without and which a review of THAT audit found
-    // one field away: the bastion is the ROUTE, and `factory.ts:533-540` rewrites `host` and `port`
+    // one field away: the bastion is the ROUTE, and `factory.ts:582-589` rewrites `host` and `port`
     // to the tunnel's local endpoint before the provider is constructed, so the tunnel and not the
     // record decides which machine the sealed statement reaches.
     expect(await connectionFingerprint(vary({ sshTunnel: BASTION }))).not.toBe(base);
+  });
+
+  test("a Redis Sentinel connection is framed by its sentinels and master group", async () => {
+    // In Sentinel mode the record carries no `host` or `port` the driver reads: the master is
+    // whoever the sentinels answer for the group. So two Sentinel connections equal on every
+    // one of the ten fields above still reach two different servers when either of these differs.
+    const sentinel = vary({
+      type: "redis",
+      host: undefined,
+      port: undefined,
+      sentinels: "s1:26379",
+      sentinelMasterName: "m",
+    });
+    const digest = await connectionFingerprint(sentinel);
+    expect(await connectionFingerprint({ ...sentinel, sentinels: "s2:26379" })).not.toBe(digest);
+    expect(await connectionFingerprint({ ...sentinel, sentinelMasterName: "other" })).not.toBe(digest);
+    expect(await connectionFingerprint({ ...sentinel, sentinels: undefined })).not.toBe(digest);
+    // The sentinel password is a credential, and rotating one never changes which server this is.
+    expect(await connectionFingerprint({ ...sentinel, sentinelPassword: "rotated" })).toBe(digest);
   });
 
   test("two connections differing ONLY in their BASTION are two different servers", async () => {
@@ -95,7 +114,7 @@ describe("connectionFingerprint", () => {
     expect(ours).not.toBe(await connectionFingerprint(vary({ sshTunnel: { ...BASTION, port: 2222 } })));
     expect(ours).not.toBe(await connectionFingerprint(vary({ sshTunnel: { ...BASTION, username: "mallory" } })));
     // A DISABLED tunnel is not the same route as an enabled one to the same bastion, because
-    // `factory.ts:533` branches on exactly that flag and only the enabled arm rewrites the endpoint.
+    // `factory.ts:582` branches on exactly that flag and only the enabled arm rewrites the endpoint.
     expect(ours).not.toBe(await connectionFingerprint(vary({ sshTunnel: { ...BASTION, enabled: false } })));
     // And the tunnel's SECRETS are out, on the rule the database password already follows: rotating
     // a key changes who may reach the bastion, never which machine it is. `hostKeyFingerprint` is

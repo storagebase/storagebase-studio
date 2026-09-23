@@ -76,6 +76,9 @@ connections:
     # instanceName: "MSSQL$"  # SQL Server only
     # localDataCenter: "datacenter1"  # Cassandra only - REQUIRED there
     # authSource: "admin"     # MongoDB only - the database the user was created in
+    # sentinels: "${REDIS_SENTINELS}"   # Redis Sentinel - host[:port] list, replaces host/port
+    # sentinelMasterName: "mymaster"    # Redis Sentinel - REQUIRED with sentinels
+    # sentinelPassword: "${REDIS_SENTINEL_PASSWORD}"  # Redis Sentinel - defaults to password
 
   - id: "dev-mysql"
     name: "Dev MySQL"
@@ -165,6 +168,9 @@ connections:
 | `connections[].instanceName` | No | — | SQL Server instance name |
 | `connections[].localDataCenter` | No¹ | — | Cassandra local data centre (`datacenter1`). ¹Optional in the schema because no other engine has it, and **required by the Cassandra provider**: the driver refuses to connect without one |
 | `connections[].authSource` | No | — | MongoDB: the database its credentials live in (`admin` in the ordinary deployment). Without it the driver checks the user against the database being opened, which reports a credentials error |
+| `connections[].sentinels` | No | — | Redis Sentinel: comma-separated `host[:port]` sentinel nodes (port defaults to `26379`). Puts the connection in Sentinel mode, where `host`/`port` are not read. `${ENV_VAR}` is resolved |
+| `connections[].sentinelMasterName` | No¹ | — | Redis Sentinel: the master group name. ¹Required by the Redis provider in Sentinel mode |
+| `connections[].sentinelPassword` | No | `password` | Redis Sentinel: the sentinels' AUTH password. `${ENV_VAR}` is resolved |
 
 ---
 

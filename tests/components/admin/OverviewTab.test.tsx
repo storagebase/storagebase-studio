@@ -369,6 +369,26 @@ describe("OverviewTab", () => {
               user: "admin",
               result: "failure",
             },
+            {
+              id: "a4",
+              timestamp: new Date(now - 6 * 60 * 1000).toISOString(),
+              type: "query_execution",
+              action: "executed",
+              target: "POST /api/db/query",
+              user: "alice",
+              result: "success",
+              statement: "SELECT * FROM t WHERE id = ?",
+            },
+            {
+              id: "a5",
+              timestamp: new Date(now - 7 * 60 * 1000).toISOString(),
+              type: "query_execution",
+              action: "executed",
+              target: "POST /api/db/query",
+              user: "bob",
+              result: "success",
+              statement: `SELECT ${"a, ".repeat(40)}b FROM t`,
+            },
           ],
         },
       },
@@ -399,6 +419,9 @@ describe("OverviewTab", () => {
       // Audit events are mapped into the feed alongside query history
       expect(queryByText("Executed query orders")).not.toBeNull();
       expect(queryByText("Killed session session-42")).not.toBeNull();
+      // A query_execution event shows who ran which (masked) statement, cut at 60 characters.
+      expect(queryByText("alice: SELECT * FROM t WHERE id = ?")).not.toBeNull();
+      expect(queryByText(`bob: ${`SELECT ${"a, ".repeat(40)}`.slice(0, 60)}...`)).not.toBeNull();
       // formatRelativeTime: minutes / hours / days branches
       expect(queryByText("5m ago")).not.toBeNull();
       expect(queryByText("5h ago")).not.toBeNull();

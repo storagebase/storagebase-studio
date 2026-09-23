@@ -207,7 +207,7 @@ describe("instrumentation register()", () => {
     }
 
     expect(output).toContain("StorageBase Studio");
-    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
+    expect(output).toContain("http://127.0.0.1:");
   });
 
   test("prints no banner when the server refuses to boot (#227)", async () => {
@@ -232,7 +232,8 @@ describe("instrumentation register()", () => {
       errorSpy.mockRestore();
     }
 
-    expect(output).not.toContain("Star the project");
+    // The banner's one fixed shape: "<title>  ->  <url>".
+    expect(output).not.toContain("  ->  http");
   });
 
   // The failure is produced by a directory whose mode forbids writing, which nothing can arrange

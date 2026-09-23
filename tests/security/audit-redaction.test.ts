@@ -26,6 +26,21 @@ const ALLOWED_KEYS = new Set([
   "duration_ms",
   "bucket",
   "correlation_id",
+  // The request context and the query_execution fields (StorageBase fork).
+  "role",
+  "user_agent",
+  "forwarded_for",
+  "connection_id",
+  "engine",
+  "host",
+  "database",
+  "statement_kind",
+  "statement",
+  "statement_truncated",
+  "rows_returned",
+  "rows_affected",
+  "error",
+  "query_id",
 ]);
 
 function captureLine(emit: () => void): Record<string, unknown> {
@@ -216,6 +231,109 @@ describe("emitAuditEvent", () => {
 
     expect(line.connection).toBe("sample-employees");
     expect(line.duration_ms).toBe(42);
+  });
+
+  test("carries every query_execution field under the allowlist, on one line", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "query_execution",
+        action: "executed",
+        target: "POST /api/db/query",
+        user: "alice",
+        result: "success",
+        role: "user",
+        userAgent: "Mozilla/5.0",
+        forwardedFor: "203.0.113.9, 10.0.0.1",
+        ip: "203.0.113.9",
+        connectionId: "conn-1",
+        connectionName: "Orders",
+        engine: "postgres",
+        host: "db.internal:5432",
+        database: "orders",
+        statementKind: "UPDATE",
+        statement: "UPDATE t SET a = ?\nWHERE id = ?",
+        statementTruncated: true,
+        rowsReturned: 0,
+        rowsAffected: 3,
+        error: "QueryError: ?",
+        queryId: "q-1",
+        duration: 12,
+      }),
+    );
+
+    for (const key of Object.keys(line)) {
+      expect({ key, allowed: ALLOWED_KEYS.has(key) }).toEqual({ key, allowed: true });
+    }
+    expect(line).toMatchObject({
+      role: "user",
+      user_agent: "Mozilla/5.0",
+      forwarded_for: "203.0.113.9, 10.0.0.1",
+      connection_id: "conn-1",
+      engine: "postgres",
+      host: "db.internal:5432",
+      database: "orders",
+      statement_kind: "UPDATE",
+      statement: "UPDATE t SET a = ?\nWHERE id = ?",
+      statement_truncated: true,
+      rows_returned: 0,
+      rows_affected: 3,
+      error: "QueryError: ?",
+      query_id: "q-1",
+    });
+  });
+
+  test("omits every query_execution field an event does not carry", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "logout",
+        action: "logout",
+        target: "POST /api/auth/logout",
+        user: "a",
+        result: "success",
+      }),
+    );
+
+    for (const key of ["role", "user_agent", "forwarded_for", "statement", "statement_truncated", "rows_returned"]) {
+      expect(key in line).toBe(false);
+    }
+  });
+
+  test("bounds the statement at its own limit and every other field at the common one", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "query_execution",
+        action: "executed",
+        target: "POST /api/db/query",
+        user: "alice",
+        result: "success",
+        statement: "s".repeat(10_000),
+        userAgent: "u".repeat(10_000),
+        forwardedFor: "1.1.1.1, ".repeat(2_000),
+        error: "e".repeat(10_000),
+      }),
+    );
+
+    expect(String(line.statement).length).toBe(4096);
+    expect(String(line.user_agent).length).toBe(254);
+    expect(String(line.forwarded_for).length).toBe(254);
+    expect(String(line.error).length).toBe(254);
+  });
+
+  test("omits a non-finite row count rather than writing null", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "query_execution",
+        action: "executed",
+        target: "POST /api/db/query",
+        user: "alice",
+        result: "success",
+        rowsReturned: Number.NaN,
+        rowsAffected: Number.POSITIVE_INFINITY,
+      }),
+    );
+
+    expect("rows_returned" in line).toBe(false);
+    expect("rows_affected" in line).toBe(false);
   });
 
   test("also pushes the event to the buffer the admin UI reads, sharing its id", () => {

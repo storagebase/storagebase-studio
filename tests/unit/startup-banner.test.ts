@@ -33,15 +33,15 @@ describe("printStartupBanner", () => {
     }
   });
 
-  test("prints the version, the local URL and the repository invitation", () => {
+  test("prints the version and the local URL, with no repository invitation", () => {
     process.env.NEXT_PUBLIC_APP_VERSION = "1.2.3";
 
     const output = capture();
 
     expect(output).toContain("StorageBase Studio 1.2.3");
     expect(output).toContain("http://127.0.0.1:3000");
-    expect(output).toContain("Star the project if it helps you");
-    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
+    expect(output).not.toContain("Star the project");
+    expect(output).not.toContain("github.com");
   });
 
   test("reflects a custom PORT", () => {
@@ -102,7 +102,7 @@ describe("printStartupBanner", () => {
 
     expect(output).toContain("StorageBase Studio");
     expect(output).not.toContain("undefined");
-    expect(output).toContain("https://github.com/storagebase/storagebase-studio");
+    expect(output).toContain("http://127.0.0.1:3000");
   });
 
   test("prints nothing when LIBREDB_NO_BANNER=1", () => {

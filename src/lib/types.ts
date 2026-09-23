@@ -260,6 +260,25 @@ export interface DatabaseConnection {
    */
   authSource?: string;
   /**
+   * Redis Sentinel: the sentinel nodes to ask for the current master, as a comma-separated
+   * `host[:port]` list (`sentinel-0:26379, sentinel-1`); a node without a port takes
+   * Sentinel's own default, 26379.
+   *
+   * Setting it (or `sentinelMasterName`) puts the connection in Sentinel mode, where `host`
+   * and `port` are not read at all: the master's address is whatever the sentinels answer
+   * at connect time, which is what lets the connection follow a failover. A separate field
+   * rather than a reuse of `host`, because a sentinel is not the server the statements run
+   * on and a list is not an address.
+   */
+  sentinels?: string;
+  /** Redis Sentinel: the master group name the sentinels monitor (`mymaster`). */
+  sentinelMasterName?: string;
+  /**
+   * Redis Sentinel: the password the SENTINELS authenticate with. Empty means the Redis
+   * `password` is used for them too, which is how the common charts deploy it.
+   */
+  sentinelPassword?: string;
+  /**
    * Read no catalog when this connection opens.
    *
    * For a connection whose owner holds tens of thousands of objects, even the two cheap

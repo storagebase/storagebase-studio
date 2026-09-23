@@ -112,6 +112,34 @@ export interface SearchQueryResult {
    * nullable rather than defaulted.
    */
   totalHits: number | null;
+
+  /**
+   * Present when the primary SQL engine refused the statement and a secondary engine
+   * served it instead; absent for every ordinary answer.
+   *
+   * A fallback answer is not the same answer: it may carry no column types and
+   * different column names, so the provider owes the user a notice saying which
+   * engine served the rows and why. See {@link SearchEngineFallback}.
+   */
+  engineFallback?: SearchEngineFallback;
+}
+
+/**
+ * Why a statement was served by a secondary engine.
+ *
+ * One reason exists, measured against OpenSearch 2.7.0 on 2026-09-23: the SQL
+ * plugin's new engine cannot read a `date` field mapped with a CUSTOM format and
+ * refuses any statement that projects one, while the plugin's legacy engine answers
+ * the same statement. The reason is a union so that a second trigger is a new member
+ * the provider's notice table must answer for, not a reuse of this one's wording.
+ */
+export type SearchFallbackReason = "custom-date-format";
+
+/** See {@link SearchFallbackReason} for the one trigger that exists. */
+export interface SearchEngineFallback {
+  readonly reason: SearchFallbackReason;
+  /** The primary engine's own refusal, verbatim, so the notice can quote it. */
+  readonly primaryMessage: string;
 }
 
 /**
@@ -307,6 +335,11 @@ export interface SearchTransport {
    * @param signal aborts the request. Both products keep executing server-side
    *   after a client abort, so this bounds the CLIENT's wait, not the cluster's
    *   work - the distinction matters for the message a cancelled query shows.
+   *
+   * An implementation MAY answer a SELECT from a secondary engine when the primary
+   * one refuses it for a reason the secondary is known to survive, and must then
+   * set {@link SearchQueryResult.engineFallback}. When the secondary engine fails
+   * too, the PRIMARY engine's failure is what is thrown.
    */
   query(sql: string, signal?: AbortSignal): Promise<SearchQueryResult>;
 

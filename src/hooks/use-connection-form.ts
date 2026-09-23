@@ -11,7 +11,7 @@ import {
   SSLConfig,
   SSHTunnelConfig,
 } from "@/lib/types";
-import { getDBConfig } from "@/lib/db-ui-config";
+import { getDBConfig, takesConnectionField } from "@/lib/db-ui-config";
 import { parseConnectionString } from "@/lib/connection-string-parser";
 import { newLocalId } from "@/lib/ids";
 
@@ -61,6 +61,10 @@ const FIELD_OWNERSHIP: Record<keyof DatabaseConnection, FieldOwnership> = {
   instanceName: "edited",
   localDataCenter: "edited",
   authSource: "edited",
+  // The Sentinel inputs own these, so switching back to Standalone has to CLEAR them.
+  sentinels: "edited",
+  sentinelMasterName: "edited",
+  sentinelPassword: "edited",
   // The checkbox owns it, so unticking it has to CLEAR it. `preserved` would make the
   // box unticked on screen while the saved connection still skipped its scan.
   skipObjectScan: "edited",
@@ -194,6 +198,15 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
   // what the ordinary deployment (users in `admin`) cannot connect without.
   const [authSource, setAuthSource] = useState("");
   /**
+   * Redis: a fixed node, or the master the sentinels name. Offered only where the engine
+   * lists `sentinels` among its connection fields; in Sentinel mode host and port are not
+   * written, because the sentinels answer the address at every connect.
+   */
+  const [connectionTopology, setConnectionTopology] = useState<"standalone" | "sentinel">("standalone");
+  const [sentinels, setSentinels] = useState("");
+  const [sentinelMasterName, setSentinelMasterName] = useState("");
+  const [sentinelPassword, setSentinelPassword] = useState("");
+  /**
    * Read no catalog when this connection opens (#765).
    *
    * Engine-independent, unlike the four fields above: every engine has a catalog and any
@@ -259,6 +272,12 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       // Overwritten for the same reason: a connection that names no auth database must
       // show an empty field, not the last one edited.
       setAuthSource(editConnection.authSource || "");
+      // Overwritten for the same reason: a standalone connection must not open showing the
+      // previously edited connection's sentinels.
+      setConnectionTopology(editConnection.sentinels || editConnection.sentinelMasterName ? "sentinel" : "standalone");
+      setSentinels(editConnection.sentinels || "");
+      setSentinelMasterName(editConnection.sentinelMasterName || "");
+      setSentinelPassword(editConnection.sentinelPassword || "");
       // Overwritten, not set only when true: a connection that reads its catalog has to
       // show an unticked box, or the previously edited connection's choice is saved onto
       // it and the catalog silently stops being read.
@@ -332,6 +351,11 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
         // A leftover auth database sends the next connection's credentials to a
         // database that may not hold them, which reads as a wrong password.
         setAuthSource("");
+        // A leftover Sentinel group would send the next connection to a master it never named.
+        setConnectionTopology("standalone");
+        setSentinels("");
+        setSentinelMasterName("");
+        setSentinelPassword("");
         // A leftover choice would open the next connection with no object list and no
         // explanation, which reads as an engine that answered nothing.
         setSkipObjectScan(false);
@@ -383,6 +407,7 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       made the agent rail refuse a connection it had just accepted.
     */
     const addressedFields = new Set<string>(getDBConfig(type).connectionFields);
+    const viaSentinel = addressedFields.has("sentinels") && connectionTopology === "sentinel";
 
     return {
       // First, so a form-owned field always wins.
@@ -390,8 +415,8 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       id: editConnection?.id || newLocalId(),
       name: name || `${type}-connection`,
       type,
-      ...(addressedFields.has("host") ? { host } : {}),
-      ...(addressedFields.has("port") ? { port: parseInt(port) } : {}),
+      ...(addressedFields.has("host") && !viaSentinel ? { host } : {}),
+      ...(addressedFields.has("port") && !viaSentinel ? { port: parseInt(port) } : {}),
       ...(addressedFields.has("user") ? { user } : {}),
       ...(addressedFields.has("password") ? { password } : {}),
       ...(addressedFields.has("database") ? { database } : {}),
@@ -418,6 +443,8 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       ...(type === "mssql" && instanceName ? { instanceName } : {}),
       ...(type === "cassandra" && localDataCenter ? { localDataCenter } : {}),
       ...(type === "mongodb" && authSource ? { authSource } : {}),
+      // Empty sentinel password is left unwritten: the provider then uses `password`.
+      ...(viaSentinel ? { sentinels, sentinelMasterName, ...(sentinelPassword ? { sentinelPassword } : {}) } : {}),
       // Written only when it says something, like every other optional field here: a
       // stored `false` is noise on every connection ever saved.
       ...(skipObjectScan ? { skipObjectScan } : {}),
@@ -452,6 +479,10 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
     instanceName,
     localDataCenter,
     authSource,
+    connectionTopology,
+    sentinels,
+    sentinelMasterName,
+    sentinelPassword,
     skipObjectScan,
   ]);
 
@@ -488,8 +519,18 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       });
       return false;
     }
+    // Both empty would save a connection with neither a host nor a sentinel, which the
+    // server can only answer with "host is required" - the wrong field for this mode.
+    if (
+      takesConnectionField(type, "sentinels") &&
+      connectionTopology === "sentinel" &&
+      (!sentinels.trim() || !sentinelMasterName.trim())
+    ) {
+      setTestResult({ tone: "error", message: "Sentinel mode needs the sentinel nodes and the master name." });
+      return false;
+    }
     return true;
-  }, [queryTimeout]);
+  }, [queryTimeout, type, connectionTopology, sentinels, sentinelMasterName]);
 
   const handleTestConnection = useCallback(async () => {
     if (!validateQueryTimeout()) return;
@@ -748,6 +789,14 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
     setLocalDataCenter,
     authSource,
     setAuthSource,
+    connectionTopology,
+    setConnectionTopology,
+    sentinels,
+    setSentinels,
+    sentinelMasterName,
+    setSentinelMasterName,
+    sentinelPassword,
+    setSentinelPassword,
     skipObjectScan,
     setSkipObjectScan,
 

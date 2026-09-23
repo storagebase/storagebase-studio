@@ -41,6 +41,11 @@ export function filterByRoles(connections: SeedConnection[], userRoles: string[]
       // MongoDB's auth database. Dropping it here would list a seeded connection that
       // authenticates against the wrong database and reports a credentials error.
       authSource: conn.authSource,
+      // Redis Sentinel. Dropping them here would list a seeded Sentinel connection
+      // with no address at all.
+      sentinels: conn.sentinels,
+      sentinelMasterName: conn.sentinelMasterName,
+      sentinelPassword: conn.sentinelPassword,
       schema: conn.schema,
       // The second half of the seed round-trip, and the half a zod field cannot cover:
       // this mapper is a hand-written field list, so a field validated above and not

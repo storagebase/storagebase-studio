@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { createMockRequest, parseResponseJSON } from "../../helpers/mock-next";
 import { clearRateLimitState } from "@/lib/api/rate-limit";
+import { ResourceConnectionError } from "@/lib/resources/errors";
 
 const mockEmitAuditEvent = mock((_event: Record<string, unknown>) => ({ id: "audit-1" }));
 
@@ -154,6 +155,26 @@ describe("secret routes", () => {
     expect(events).toHaveLength(2);
     expect(events[0]).toMatchObject({ action: "secret.delete", result: "success" });
     expect(events[1].correlationId).toBe(events[0].correlationId);
+  });
+
+  test("a provider failure on read is a 502 with resource_failed in the outcome", async () => {
+    mockReadSecret.mockRejectedValueOnce(new ResourceConnectionError("vault sealed"));
+    const req = createMockRequest("/api/resources/secret/read", {
+      method: "POST",
+      body: { connection, path: "storagebase/fixture" },
+    });
+    expect((await postRead(req as never)).status).toBe(502);
+    expect(auditEvents()[1]).toMatchObject({ action: "secret.read", result: "failure", reason: "resource_failed" });
+  });
+
+  test("a provider failure on delete is a 502 with resource_failed in the outcome", async () => {
+    mockDeleteSecret.mockRejectedValueOnce(new ResourceConnectionError("vault sealed"));
+    const req = createMockRequest("/api/resources/secret/delete", {
+      method: "POST",
+      body: { connection, path: "storagebase/old" },
+    });
+    expect((await postDelete(req as never)).status).toBe(502);
+    expect(auditEvents()[1]).toMatchObject({ action: "secret.delete", result: "failure", reason: "resource_failed" });
   });
 
   test("routes require a session", async () => {

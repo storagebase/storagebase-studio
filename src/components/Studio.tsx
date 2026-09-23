@@ -66,6 +66,9 @@ import type { ResourceConnection } from "@/lib/resources/types";
 import "@/lib/resources/providers";
 import type { ResourceNode } from "@/lib/resources/types";
 import { ResourceInspector } from "@/components/resources/ResourceInspector";
+import { useResourceWorkbench } from "@/hooks/use-resource-workbench";
+import { KafkaWorkbench } from "@/components/resources/kafka";
+import { WorkbenchConnectionRows } from "@/components/resources/WorkbenchConnectionRows";
 import { useTabManager } from "@/hooks/use-tab-manager";
 import { useTransactionControl } from "@/hooks/use-transaction-control";
 import { useQueryExecution } from "@/hooks/use-query-execution";
@@ -129,6 +132,9 @@ export default function Studio() {
   // 2.5. Resource connections (StorageBase fork). Same storage-ready gate as
   // the database manager; no seeds, catalogs or polling (see the hook).
   const res = useResourceConnections(storageReady);
+  // Workbench resource types (Kafka) list beside the databases and open in the
+  // main area; the rest keep the Resources section (see the hook).
+  const workbench = useResourceWorkbench(res);
 
   // 3. Tab Manager
   const tabMgr = useTabManager({
@@ -936,8 +942,13 @@ export default function Studio() {
             <ResizablePanel id="studio-sidebar" defaultSize="22" minSize="15" maxSize="35">
               <Sidebar
                 connections={conn.connections}
-                activeConnection={conn.activeConnection}
-                onSelectConnection={conn.setActiveConnection}
+                // An open workbench owns the main area, so no database row
+                // reads as active and no object tree offers clicks behind it.
+                activeConnection={workbench.activeWorkbench ? null : conn.activeConnection}
+                onSelectConnection={(c) => {
+                  workbench.closeWorkbench();
+                  conn.setActiveConnection(c);
+                }}
                 onDeleteConnection={requestDeleteConnection}
                 onEditConnection={(c) => {
                   setEditingConnection(c);
@@ -952,10 +963,13 @@ export default function Studio() {
                 onObjectClick={onObjectClick}
                 objectActions={objectActions}
                 onShowDiagram={() => setShowDiagram(true)}
-                resourceConnections={res.connections}
-                activeResourceConnection={res.activeConnection}
+                resourceConnections={workbench.treeConnections}
+                activeResourceConnection={workbench.activeTreeConnection}
                 onSelectResourceConnection={res.setActiveConnection}
-                onDeleteResourceConnection={res.deleteResourceConnection}
+                onDeleteResourceConnection={workbench.deleteConnection}
+                workbenchConnections={workbench.workbenchConnections}
+                activeWorkbenchConnection={workbench.activeWorkbench}
+                onSelectWorkbenchConnection={workbench.openWorkbench}
                 onEditResourceConnection={(c) => {
                   setEditingResourceConnection(c);
                   setIsConnectionModalOpen(true);
@@ -1037,6 +1051,24 @@ export default function Studio() {
             />
 
             <main className="flex-1 overflow-hidden relative">
+              {/*
+                The Kafka workbench (StorageBase fork) covers the editor rather than
+                replacing it: the editor, its tabs and results stay mounted underneath,
+                so closing the workbench returns to exactly where the user was.
+              */}
+              {workbench.activeWorkbench && (
+                <div className="absolute inset-0 z-30 bg-surface">
+                  <KafkaWorkbench
+                    key={workbench.activeWorkbench.id}
+                    connection={workbench.activeWorkbench}
+                    onClose={workbench.closeWorkbench}
+                    onEditConnection={(c) => {
+                      setEditingResourceConnection(c);
+                      setIsConnectionModalOpen(true);
+                    }}
+                  />
+                </div>
+              )}
               <AnimatePresence>
                 {showDiagram && (
                   /*
@@ -1087,6 +1119,19 @@ export default function Studio() {
                     connectionOrder={connectionOrder}
                     onReorderConnections={setConnectionOrder}
                     onAddConnection={() => setIsConnectionModalOpen(true)}
+                    trailingItems={
+                      workbench.workbenchConnections.length > 0 ? (
+                        <WorkbenchConnectionRows
+                          connections={workbench.workbenchConnections}
+                          activeConnection={workbench.activeWorkbench}
+                          onSelect={(c) => {
+                            workbench.openWorkbench(c);
+                            setActiveMobileTab("editor");
+                          }}
+                          onDelete={workbench.deleteConnection}
+                        />
+                      ) : undefined
+                    }
                   />
                 </div>
               )}
@@ -1354,6 +1399,7 @@ export default function Studio() {
         editConnection={editingConnection}
         onConnectResource={(c) => {
           res.saveResourceConnection(c);
+          workbench.handleSaved(c);
           setIsConnectionModalOpen(false);
           setEditingResourceConnection(null);
         }}

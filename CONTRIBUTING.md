@@ -10,7 +10,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 **Open an issue or a pull request in Chinese (中文) or Japanese (日本語) if that is easier for you.** You do not need fluent English to report a bug or propose a change, and a report we have to translate is far better than one you did not send. Maintainers will usually reply in English; say so if that does not work for you.
 
-This applies to the conversation, not to the repository. Everything that lands in the tree stays in English: code, comments, commit messages, documentation and the pull request title. The exceptions are the translated READMEs themselves ([README_es.md](README_es.md), [README_hi.md](README_hi.md), [README_ja.md](README_ja.md), [README_ur.md](README_ur.md), [README_zh.md](README_zh.md)), which are maintained in their own language.
+This applies to the conversation, not to the repository. Everything that lands in the tree stays in English: code, comments, commit messages, documentation and the pull request title.
 
 If you are updating a translated README, note that `bun run readme:check` enforces that its engine table and install commands match [README.md](README.md). Translations may cover fewer install channels, but a command must never be paraphrased - a reader copy-pastes it.
 
@@ -73,8 +73,9 @@ Feature suggestions are welcome! Please provide:
 5. **Keep the provider triad in lockstep.** Anything under `src/lib/db/providers/**` has a matching
    `docs/providers/<type-id>.md` and `tests/integration/db/<type-id>-provider.test.ts`; a change to
    one moves the other two in the same PR.
-6. **Localized READMEs are guarded.** `README_es.md`, `README_hi.md`, `README_ja.md`, `README_ur.md`, and `README_zh.md` must list the same engines
-   as `README.md` and quote install commands verbatim; `bun run readme:check` enforces it.
+6. **The README is guarded.** `README.md` must keep its engine table, its install table and the
+   plain-HTTP login warning under the quick start; `bun run readme:check` enforces it. This fork
+   ships no translated READMEs.
 7. **Follow the coding style**, write clear commit messages, and update documentation with the code.
 
 ### Keeping your branch current
@@ -348,7 +349,7 @@ bun run test             # every test file, one bun process each; never bare `bu
 bun run test:unit        # one layer; also test:api, test:integration, test:hooks, test:security, test:evals, test:components
 bun run test:coverage    # coverage report (merged lcov)
 bun run coverage:check   # enforce 100% line coverage on the merged lcov
-bun run readme:check     # localized README drift guard
+bun run readme:check     # README drift guard
 bun run chart:check      # Helm chart version sync guard
 bun run security:check   # security posture drift guard
 bun run build:lib        # @libredb/studio package dist (after changing anything under src/exports/)

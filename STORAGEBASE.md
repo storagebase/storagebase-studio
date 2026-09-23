@@ -28,6 +28,20 @@ merge them regularly from `libredb/libredb-studio` and do not fork their behavio
   exception: purely additive registration entries in shared registries (for example a new storage
   collection) are allowed when there is no alternative; keep them one-line and append-only.
 
+## Recorded fork exceptions (upstream territory we deliberately changed)
+
+Each entry below edits an upstream-territory file on purpose, with the owner's approval. Keep every one
+small and upstream-quality, re-check it on each upstream sync ([`docs/UPSTREAM_SYNC.md`](docs/UPSTREAM_SYNC.md)),
+and drop it once an equivalent change lands upstream. Offer each one upstream as a PR.
+
+| Exception | Files | Why | Upstream status |
+| :--- | :--- | :--- | :--- |
+| Redis Sentinel connections | `src/lib/db/providers/keyvalue/redis.ts`, `src/lib/types.ts`, `src/lib/db-ui-config.ts`, `src/hooks/use-connection-form.ts`, `src/hooks/use-connection-payload.ts`, `src/components/ConnectionModal.tsx`, `src/lib/storage/connection-secrets.ts`, `src/lib/seed/{types,connection-filter,credential-resolver}.ts`, `src/lib/agent/context-snapshot.ts`, `src/lib/db/connection-fingerprint.ts`; triad in `docs/providers/redis.md` §4.4 and `tests/integration/db/redis-provider.test.ts` | A Redis connection must follow master failover; standalone-only pins a pod that changes | to offer |
+| Provider cache invalidation on config change | `src/lib/db/factory.ts` | The cache compared only `queryTimeout`, so an edited host/port/password kept reusing the old client | to offer |
+| OpenSearch legacy-engine fallback for custom date formats | `src/lib/db/providers/sql/search/{http-transport,transport,index}.ts`; triad in `docs/providers/opensearch.md` §5.8 and `tests/integration/db/opensearch-provider.test.ts` | OpenSearch 2.x's new SQL engine refuses any `SELECT` over a `date` field with a custom format | to offer |
+| Query audit hook | `src/app/api/db/query/route.ts` (one additive call), `src/lib/audit.ts` (optional event fields; masked-SQL rule) — logic in fork-owned `src/lib/audit-sql.ts`, `src/lib/api/query-audit.ts`, `src/lib/api/audit-request.ts` | "Who ran which query when": every query emits a `query_execution` event with literal-masked SQL, user, IP/XFF, rows, duration, result | fork-only for now |
+| No social / star / repository links in the UI | `src/components/sidebar/Sidebar.tsx`, `src/components/studio/Studio{Desktop,Mobile}Header.tsx`, `src/app/login/login-form.tsx`, `src/app/error.tsx`, `src/hooks/use-query-execution.ts`, `src/workspace/hooks/use-query-adapter.ts`, `src/lib/startup-banner.ts`; removed the community/star-prompt/social-link modules | Product decision: StorageBase Studio ships without social links or star prompts | fork-only (expect merge conflicts in these files; resolve by keeping them removed) |
+
 ## Resource type-ids (the only list)
 
 - blob: `azure-blob`, `s3` (S3-compatible endpoints such as MinIO, Cloudflare R2 and DigitalOcean

@@ -112,6 +112,11 @@ const CONNECTION_RELEVANCE: Record<keyof DatabaseConnection, FieldRelevance> = {
   // somewhere else is authenticating as a different principal, so it does not resolve
   // to the same connection.
   authSource: "resolution",
+  // In Sentinel mode these, and not `host`/`port`, decide which server answers: the
+  // sentinels name the master. The password is a credential like `password` above.
+  sentinels: "resolution",
+  sentinelMasterName: "resolution",
+  sentinelPassword: "resolution",
   // The role a run executes as. A copy that carries its own is a different execution
   // profile even when it points at the same database (#328).
   agentUser: "resolution",

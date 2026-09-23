@@ -10,7 +10,9 @@ export type ResourceErrorCode =
   | "RESOURCE_CONNECTION_ERROR"
   | "RESOURCE_PROVIDER_UNAVAILABLE"
   | "RESOURCE_OPERATION_UNSUPPORTED"
-  | "RESOURCE_NOT_FOUND";
+  | "RESOURCE_NOT_FOUND"
+  | "RESOURCE_INVALID_REQUEST"
+  | "RESOURCE_CONFLICT";
 
 export class ResourceError extends Error {
   public readonly code: ResourceErrorCode;
@@ -67,5 +69,29 @@ export class ResourceNotFoundError extends ResourceError {
   constructor(message: string) {
     super(message, "RESOURCE_NOT_FOUND", 404);
     this.name = "ResourceNotFoundError";
+  }
+}
+
+/**
+ * The service refused the request as malformed for ITS rules (a replication
+ * factor above the broker count, an unknown topic config) — a caller mistake
+ * the route could not have decided from the body's shape alone.
+ */
+export class ResourceInvalidRequestError extends ResourceError {
+  constructor(message: string) {
+    super(message, "RESOURCE_INVALID_REQUEST", 400);
+    this.name = "ResourceInvalidRequestError";
+  }
+}
+
+/**
+ * The request is well-formed but the resource's current state forbids it (a
+ * topic that already exists, an offset reset on a group with live members).
+ * The sentence says which state and what would make the request legal.
+ */
+export class ResourceConflictError extends ResourceError {
+  constructor(message: string) {
+    super(message, "RESOURCE_CONFLICT", 409);
+    this.name = "ResourceConflictError";
   }
 }

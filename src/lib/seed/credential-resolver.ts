@@ -2,7 +2,16 @@ import { logger } from "@/lib/logger";
 import type { SeedConnection } from "./types";
 
 const ENV_VAR_PATTERN = /^\$\{([A-Z_][A-Z0-9_]*)\}$/;
-const RESOLVABLE_FIELDS = ["password", "connectionString", "user", "host", "database"] as const;
+const RESOLVABLE_FIELDS = [
+  "password",
+  "connectionString",
+  "user",
+  "host",
+  "database",
+  "sentinels",
+  "sentinelPassword",
+] as const;
+const PASSWORD_FIELDS: ReadonlySet<string> = new Set(["password", "sentinelPassword"]);
 
 const warnedPlaintext = new Set<string>();
 
@@ -15,7 +24,7 @@ function resolveField(value: string | undefined, fieldName: string, connId: stri
 
   const match = value.match(ENV_VAR_PATTERN);
   if (!match) {
-    if (fieldName === "password" && value.length > 0 && !warnedPlaintext.has(connId)) {
+    if (PASSWORD_FIELDS.has(fieldName) && value.length > 0 && !warnedPlaintext.has(connId)) {
       warnedPlaintext.add(connId);
       logger.warn("Seed connection has plaintext password, use ${ENV_VAR} syntax", {
         route: "seed/credential-resolver",

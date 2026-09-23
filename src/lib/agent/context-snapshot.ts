@@ -1070,6 +1070,12 @@ export function connectionIdentity(connection: DatabaseConnection): string {
               connection.sshTunnel.port,
               connection.sshTunnel.username,
             ],
+        // Redis Sentinel: the sentinels and the master group name decide which server
+        // answers, in place of `host` and `port`. Appended only when set, so every
+        // identity recorded before the fields existed still matches its connection.
+        ...(connection.sentinels || connection.sentinelMasterName
+          ? [connection.sentinels ?? "", connection.sentinelMasterName ?? ""]
+          : []),
       ]),
     )
     .digest("hex");

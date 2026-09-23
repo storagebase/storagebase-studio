@@ -32,7 +32,7 @@ const MOCK_CONNECTION_FIELDS: Record<string, string[]> = {
   // Named explicitly even though it matches the default: it is the one this table exists
   // for, and `user` being present here is a statement about the real config, not a
   // convenience.
-  redis: ["host", "port", "user", "password", "database"],
+  redis: ["host", "port", "user", "password", "database", "sentinels", "sentinelMasterName", "sentinelPassword"],
   druid: ["host", "port", "user", "password"],
   elasticsearch: ["host", "port", "user", "password"],
   opensearch: ["host", "port", "user", "password"],
@@ -1903,6 +1903,174 @@ describe("useConnectionForm", () => {
     rerender({ ...defaultProps, isOpen: false });
 
     expect(result.current.authSource).toBe("");
+  });
+
+  // ── Redis Sentinel ─────────────────────────────────────────────────────
+
+  /** Runs the connection test and answers the body the route was sent. */
+  const testedBody = async (result: { current: ReturnType<typeof useConnectionForm> }) => {
+    const fetchMock = mockGlobalFetch({
+      "/api/db/test-connection": { ok: true, json: { success: true, latency: 20 } },
+    });
+    await act(async () => {
+      await result.current.handleTestConnection();
+    });
+    const testCall = fetchMock.mock.calls.find(
+      (call) => typeof call[0] === "string" && call[0].includes("/api/db/test-connection"),
+    );
+    return testCall ? JSON.parse(testCall[1]!.body as string) : undefined;
+  };
+
+  test("Sentinel mode writes the sentinels and the master name in place of host and port", async () => {
+    const { result } = renderHook(() => useConnectionForm(defaultProps));
+    act(() => {
+      result.current.setType("redis");
+      result.current.setConnectionTopology("sentinel");
+      result.current.setSentinels("s0:26379, s1");
+      result.current.setSentinelMasterName("mymaster");
+      result.current.setPassword("pw");
+    });
+
+    const body = await testedBody(result);
+
+    expect(body).toMatchObject({ sentinels: "s0:26379, s1", sentinelMasterName: "mymaster", password: "pw" });
+    expect(body.host).toBeUndefined();
+    expect(body.port).toBeUndefined();
+    // Left unwritten when empty, so the provider falls back to the Redis password.
+    expect(body.sentinelPassword).toBeUndefined();
+
+    act(() => result.current.setSentinelPassword("spw"));
+    expect((await testedBody(result)).sentinelPassword).toBe("spw");
+  });
+
+  test("Standalone mode writes host and port and no Sentinel field, whatever was typed", async () => {
+    const { result } = renderHook(() => useConnectionForm(defaultProps));
+    act(() => {
+      result.current.setType("redis");
+      result.current.setSentinels("s0");
+      result.current.setSentinelMasterName("mymaster");
+    });
+
+    const body = await testedBody(result);
+
+    expect(body).toMatchObject({ host: "localhost" });
+    expect(body.sentinels).toBeUndefined();
+    expect(body.sentinelMasterName).toBeUndefined();
+  });
+
+  test("Sentinel mode is not offered by an engine that does not list the fields", async () => {
+    const { result } = renderHook(() => useConnectionForm(defaultProps));
+    act(() => {
+      result.current.setType("postgres");
+      result.current.setConnectionTopology("sentinel");
+      result.current.setSentinels("s0");
+    });
+
+    const body = await testedBody(result);
+
+    expect(body.host).toBe("localhost");
+    expect(body.sentinels).toBeUndefined();
+  });
+
+  test("Sentinel mode without the nodes or the master name is refused before anything is sent", async () => {
+    const { result } = renderHook(() => useConnectionForm(defaultProps));
+    act(() => {
+      result.current.setType("redis");
+      result.current.setConnectionTopology("sentinel");
+      result.current.setSentinels("s0");
+    });
+
+    expect(await testedBody(result)).toBeUndefined();
+    expect(result.current.testResult).toEqual({
+      tone: "error",
+      message: "Sentinel mode needs the sentinel nodes and the master name.",
+    });
+
+    act(() => {
+      result.current.setSentinels(" ");
+      result.current.setSentinelMasterName("mymaster");
+    });
+    await act(async () => {
+      await result.current.handleConnect();
+    });
+    expect(defaultProps.onConnect).not.toHaveBeenCalled();
+  });
+
+  test("editing opens a Sentinel connection in Sentinel mode, and a standalone one in Standalone", () => {
+    const viaSentinel: DatabaseConnection = {
+      id: "r1",
+      name: "Cache",
+      type: "redis",
+      sentinels: "s0:26379",
+      sentinelMasterName: "mymaster",
+      sentinelPassword: "spw",
+      createdAt: new Date(),
+    };
+    const standalone: DatabaseConnection = {
+      id: "r2",
+      name: "Other",
+      type: "redis",
+      host: "redis.internal",
+      port: 6379,
+      createdAt: new Date(),
+    };
+
+    const { result, rerender } = renderHook((props) => useConnectionForm(props), {
+      initialProps: { ...defaultProps, editConnection: viaSentinel },
+    });
+
+    expect(result.current.connectionTopology).toBe("sentinel");
+    expect(result.current.sentinels).toBe("s0:26379");
+    expect(result.current.sentinelMasterName).toBe("mymaster");
+    expect(result.current.sentinelPassword).toBe("spw");
+
+    rerender({ ...defaultProps, editConnection: standalone });
+
+    expect(result.current.connectionTopology).toBe("standalone");
+    expect(result.current.sentinels).toBe("");
+    expect(result.current.sentinelMasterName).toBe("");
+    expect(result.current.sentinelPassword).toBe("");
+  });
+
+  test("switching an edited Sentinel connection to Standalone clears its Sentinel fields", async () => {
+    const viaSentinel: DatabaseConnection = {
+      id: "r1",
+      name: "Cache",
+      type: "redis",
+      sentinels: "s0:26379",
+      sentinelMasterName: "mymaster",
+      sentinelPassword: "spw",
+      createdAt: new Date(),
+    };
+    const { result } = renderHook(() => useConnectionForm({ ...defaultProps, editConnection: viaSentinel }));
+    act(() => result.current.setConnectionTopology("standalone"));
+
+    const body = await testedBody(result);
+
+    expect(body.sentinels).toBeUndefined();
+    expect(body.sentinelMasterName).toBeUndefined();
+    expect(body.sentinelPassword).toBeUndefined();
+    expect(body.host).toBe("localhost");
+  });
+
+  test("clearing the modal clears the Sentinel fields before the next new connection", () => {
+    const { result, rerender } = renderHook((props) => useConnectionForm(props), {
+      initialProps: { ...defaultProps, isOpen: true },
+    });
+    act(() => {
+      result.current.setType("redis");
+      result.current.setConnectionTopology("sentinel");
+      result.current.setSentinels("s0");
+      result.current.setSentinelMasterName("mymaster");
+      result.current.setSentinelPassword("spw");
+    });
+
+    rerender({ ...defaultProps, isOpen: false });
+
+    expect(result.current.connectionTopology).toBe("standalone");
+    expect(result.current.sentinels).toBe("");
+    expect(result.current.sentinelMasterName).toBe("");
+    expect(result.current.sentinelPassword).toBe("");
   });
 
   test("buildConnection includes the Trino schema", async () => {

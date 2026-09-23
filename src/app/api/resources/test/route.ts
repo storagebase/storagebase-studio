@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleResourceRequest } from "@/lib/api/resource-route";
 import { testResourceConnection } from "@/lib/resources/factory";
 import { emitAuditEvent } from "@/lib/audit";
+import { auditRequestFields } from "@/lib/api/audit-request";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
         ...(result.success ? {} : { reason: "resource_unreachable" as const }),
         ...(result.degraded ? { details: "connected, but the health check failed" } : {}),
         ...(result.latencyMs === undefined ? {} : { duration: result.latencyMs }),
+        ...auditRequestFields(req),
       });
     } catch (auditError) {
       logger.error("Failed to record resource_connection_test audit event", auditError, {

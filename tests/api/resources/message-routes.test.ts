@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { createMockRequest, parseResponseJSON } from "../../helpers/mock-next";
 import { clearRateLimitState } from "@/lib/api/rate-limit";
+import { ResourceConnectionError } from "@/lib/resources/errors";
 import type { BrowseMessagesPage } from "@/lib/resources/operations";
 
 const mockEmitAuditEvent = mock((_event: Record<string, unknown>) => ({ id: "audit-1" }));
@@ -156,6 +157,21 @@ describe("message routes", () => {
     expect(events).toHaveLength(2);
     expect(events[0]).toMatchObject({ action: "message.purge", result: "success" });
     expect(events[1].correlationId).toBe(events[0].correlationId);
+  });
+
+  test("a provider failure on purge is a 502 with resource_failed in the outcome", async () => {
+    mockGetOrCreateResourceProvider.mockImplementationOnce(async () => ({
+      ...fakeMessaging,
+      purgeQueue: mock(async () => {
+        throw new ResourceConnectionError("channel closed");
+      }),
+    }));
+    const req = createMockRequest("/api/resources/message/purge", {
+      method: "POST",
+      body: { connection, destination: "queue/orders" },
+    });
+    expect((await postPurge(req as never)).status).toBe(502);
+    expect(auditEvents()[1]).toMatchObject({ action: "message.purge", result: "failure", reason: "resource_failed" });
   });
 
   test("routes require a session and parse no body without one", async () => {

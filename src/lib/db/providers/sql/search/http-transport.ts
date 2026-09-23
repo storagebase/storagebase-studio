@@ -479,7 +479,71 @@ interface SearchDialectSpec {
    * grammar, or null when it needs none.
    */
   readonly syntaxTypePattern: RegExp | null;
+  /**
+   * A second SQL engine behind the same endpoint that may serve a SELECT the primary
+   * one refuses, or null when the product has none. See {@link LegacyEngineFallback}.
+   */
+  readonly legacyEngine: LegacyEngineFallback | null;
 }
+
+/**
+ * OpenSearch's LEGACY SQL engine, and the one refusal it is asked to answer instead.
+ *
+ * Measured against OpenSearch 2.7.0 on 2026-09-23, over an index mapping several
+ * `date` fields, one of them with `"format": "uuuu-MM-dd HH:mm:ss.SSS"`:
+ *
+ * - `POST /_plugins/_sql` - the new engine, the endpoint's default - answers
+ *   `SELECT * FROM <index> LIMIT 50` with HTTP 503, `IllegalStateException`,
+ *   "Construct ExprTimestampValue from \"2026-09-12 23:59:59.854\" failed,
+ *   unsupported date format.", and PPL refuses the same index the same way;
+ * - projecting only the non-date columns through the new engine works;
+ * - `POST /_plugins/_sql?format=json` routes the SAME statement to the legacy engine,
+ *   which answers HTTP 200 with a raw search response: `hits.hits[]._source`.
+ *
+ * So the fallback is keyed on the fault NAME and its WORDING together, never on the
+ * status: `IllegalStateException` alone is the plugin's generic "internal problem"
+ * and would send every backend fault to a second engine. It is asked only for a
+ * SELECT, and only once per statement.
+ *
+ * Elasticsearch has no such engine and its row is null: its `format=json` IS its
+ * primary engine's envelope.
+ */
+interface LegacyEngineFallback {
+  /** The query string that routes a statement to the legacy engine. */
+  readonly sqlQuery: string;
+  /** The primary engine's fault name for the refusal, exact match. */
+  readonly faultType: string;
+  /** The primary engine's wording for the refusal, since the fault name is generic. */
+  readonly faultDetail: RegExp;
+  /**
+   * What the user can do when the legacy engine cannot help either, appended to the
+   * engine's own words rather than replacing them.
+   */
+  readonly hint: string;
+}
+
+/**
+ * The legacy engine's answer is a raw search response, not a SQL envelope:
+ * `{"hits":{"total":{"value":N,"relation":"eq"},"hits":[{"_source":{...}}]}}`. An
+ * aggregation adds `aggregations` beside `hits`, and its values live there rather
+ * than in any document, so such an answer is not rows this client can rebuild.
+ */
+const LEGACY_FIELDS = Object.freeze({
+  HITS: "hits",
+  TOTAL: "total",
+  TOTAL_VALUE: "value",
+  SOURCE: "_source",
+  AGGREGATIONS: "aggregations",
+} as const);
+
+/**
+ * Whether a statement is a SELECT, past any leading whitespace and comments.
+ *
+ * The legacy engine is asked to READ a statement the new engine refused to read, and
+ * nothing else: a `DELETE` there would be a second chance at a write the user never
+ * got an answer for.
+ */
+const LEADING_SELECT = /^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*select\b/i;
 
 /**
  * The whole product difference, as data.
@@ -527,6 +591,7 @@ const DIALECTS: Readonly<Record<SearchDialectId, SearchDialectSpec>> = Object.fr
     },
     // Not needed: every grammar rejection measured here is `parsing_exception`.
     syntaxTypePattern: null,
+    legacyEngine: null,
   },
   opensearch: {
     label: "OpenSearch",
@@ -581,6 +646,14 @@ const DIALECTS: Readonly<Record<SearchDialectId, SearchDialectSpec>> = Object.fr
      * a user hits it rather than reported as an engine fault.
      */
     syntaxTypePattern: /ParserException$/,
+    legacyEngine: {
+      sqlQuery: "format=json",
+      faultType: "IllegalStateException",
+      faultDetail: /unsupported date format/i,
+      hint:
+        "This index maps a date field with a custom format, which this OpenSearch SQL engine cannot read. " +
+        "Select specific columns that leave the custom-format date fields out.",
+    },
   },
 });
 
@@ -767,6 +840,51 @@ function toQueryResult(spec: SearchDialectSpec, envelope: Record<string, unknown
   };
 }
 
+/**
+ * The legacy engine's search response as the seam's rows, or null when it is not rows.
+ *
+ * The documents' own fields are the columns, as the union of every `_source`'s keys
+ * in first-seen order: the answer declares no columns, and two documents of one index
+ * need not carry the same fields. A document missing a field reads null there, which
+ * keeps the seam's "exactly the key set of every row" invariant. Values are served
+ * verbatim - an object field stays the sub-document the new engine also serves, and a
+ * custom-format date stays the string the document holds - and there are no column
+ * types, because the answer carries none.
+ *
+ * Null for an aggregation answer and for any hit with no readable `_source`: neither
+ * holds the rows the statement asked for, and the caller then reports the new
+ * engine's refusal rather than a result that is quietly something else.
+ */
+function toLegacyResult(body: unknown): SearchQueryResult | null {
+  const envelope = asRecord(body);
+  const hits = asRecord(envelope?.[LEGACY_FIELDS.HITS]);
+  const listed = hits?.[LEGACY_FIELDS.HITS];
+  if (!Array.isArray(listed) || Object.hasOwn(envelope as object, LEGACY_FIELDS.AGGREGATIONS)) return null;
+
+  const sources: Record<string, unknown>[] = [];
+  for (const hit of listed as unknown[]) {
+    const source = asRecord(asRecord(hit)?.[LEGACY_FIELDS.SOURCE]);
+    if (source === null) return null;
+    sources.push(source);
+  }
+
+  const fieldNames = [...new Set(sources.flatMap((source) => Object.keys(source)))];
+  const total = (hits as Record<string, unknown>)[LEGACY_FIELDS.TOTAL];
+
+  return {
+    // `Object.hasOwn`, because a document missing a field called `constructor` would
+    // otherwise read the prototype's function into the cell.
+    rows: sources.map((source) =>
+      Object.fromEntries(fieldNames.map((name) => [name, Object.hasOwn(source, name) ? source[name] : null])),
+    ),
+    // No documents means nothing described the columns, which the seam spells null.
+    fieldNames: sources.length === 0 ? null : fieldNames,
+    columnTypes: null,
+    // `{"value":N,"relation":"eq"}` on current releases, a bare number on older ones.
+    totalHits: toNumberOrNull(asRecord(total)?.[LEGACY_FIELDS.TOTAL_VALUE] ?? total),
+  };
+}
+
 // ============================================================================
 // Failures
 // ============================================================================
@@ -918,6 +1036,18 @@ function requestFailure(spec: SearchDialectSpec, cause: unknown, signal?: AbortS
 function carriesFailureEnvelope(text: string): boolean {
   const body = asRecord(parseJson(text));
   return body !== null && Object.hasOwn(body, ERROR_FIELDS.ENVELOPE);
+}
+
+/**
+ * Whether a failure is the one refusal the legacy engine is asked to answer instead.
+ * Fault name AND wording, because the name alone is the plugin's generic backend fault.
+ */
+function isLegacyEngineFault(legacy: LegacyEngineFallback, error: unknown): error is SearchTransportError {
+  return (
+    error instanceof SearchTransportError &&
+    error.engineType === legacy.faultType &&
+    legacy.faultDetail.test(error.message)
+  );
 }
 
 /** A body the server announced as JSON that is not the object this file parses. */
@@ -1139,6 +1269,50 @@ export class SearchHttpTransport implements SearchTransport {
    * stops early is closed on the way out, because that one IS server-side state.
    */
   public async query(sql: string, signal?: AbortSignal): Promise<SearchQueryResult> {
+    try {
+      return await this.queryPrimary(sql, signal);
+    } catch (error) {
+      const legacy = this.spec.legacyEngine;
+      if (legacy === null || !isLegacyEngineFault(legacy, error)) throw error;
+      return await this.queryLegacy(legacy, sql, error, signal);
+    }
+  }
+
+  /**
+   * Ask the legacy engine for a SELECT the primary engine refused (see
+   * {@link LegacyEngineFallback}), once.
+   *
+   * When it cannot help - the statement is not a SELECT, the request fails, or the
+   * answer is not rows - the PRIMARY refusal is thrown, with the hint appended to the
+   * engine's own words: the legacy engine's failure would describe a request the user
+   * never sent. The one exception is a deadline or a cancellation that landed during
+   * the second request, which is the truer report of why nothing came back.
+   */
+  private async queryLegacy(
+    legacy: LegacyEngineFallback,
+    sql: string,
+    primary: SearchTransportError,
+    signal?: AbortSignal,
+  ): Promise<SearchQueryResult> {
+    const refused = new SearchTransportError(primary.category, `${primary.message} ${legacy.hint}`, primary.engineType);
+    if (!LEADING_SELECT.test(sql)) throw refused;
+
+    let body: unknown;
+    try {
+      body = await this.request(`${this.spec.sqlPath}?${legacy.sqlQuery}`, signal, JSON.stringify({ query: sql }));
+    } catch (error) {
+      // `request` throws nothing but the seam's own error type.
+      const { category } = error as SearchTransportError;
+      throw category === "timeout" || category === "cancelled" ? error : refused;
+    }
+
+    const result = toLegacyResult(body);
+    if (result === null) throw refused;
+    return { ...result, engineFallback: { reason: "custom-date-format", primaryMessage: primary.message } };
+  }
+
+  /** The statement through the endpoint's default engine, pages followed as `query` describes. */
+  private async queryPrimary(sql: string, signal?: AbortSignal): Promise<SearchQueryResult> {
     const path = `${this.spec.sqlPath}${this.spec.sqlQuery === "" ? "" : `?${this.spec.sqlQuery}`}`;
 
     const first = asRecord(

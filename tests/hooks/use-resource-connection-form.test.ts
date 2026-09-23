@@ -107,7 +107,11 @@ describe("useResourceConnectionForm", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0] as [unknown, RequestInit];
-    const body = JSON.parse(init.body as string) as ResourceConnection;
+    // The route reads the connection from `connection`, the same body shape
+    // every other /api/resources route takes; a flat body is rejected with 400.
+    const payload = JSON.parse(init.body as string) as { connection: ResourceConnection };
+    expect(Object.keys(payload)).toEqual(["connection"]);
+    const body = payload.connection;
     expect(body.type).toBe("s3");
     expect(body.name).toBe("backups");
     expect(body.region).toBe("us-east-1");

@@ -1,8 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import {
   ResourceConfigError,
+  ResourceConflictError,
   ResourceConnectionError,
   ResourceError,
+  ResourceInvalidRequestError,
   ResourceNotFoundError,
   ResourceOperationUnsupportedError,
   ResourceProviderUnavailableError,
@@ -30,6 +32,16 @@ describe("resource errors", () => {
       code: "RESOURCE_NOT_FOUND",
       statusCode: 404,
     });
+    expect(new ResourceInvalidRequestError("replication factor too high")).toMatchObject({
+      name: "ResourceInvalidRequestError",
+      code: "RESOURCE_INVALID_REQUEST",
+      statusCode: 400,
+    });
+    expect(new ResourceConflictError("group has live members")).toMatchObject({
+      name: "ResourceConflictError",
+      code: "RESOURCE_CONFLICT",
+      statusCode: 409,
+    });
   });
 
   test("an unavailable type names the type and, when loaders exist, which ids are ready", () => {
@@ -47,6 +59,8 @@ describe("resource errors", () => {
       new ResourceConnectionError("b"),
       new ResourceOperationUnsupportedError("c"),
       new ResourceNotFoundError("d"),
+      new ResourceInvalidRequestError("e"),
+      new ResourceConflictError("f"),
       new ResourceProviderUnavailableError("s3", []),
     ]) {
       expect(error).toBeInstanceOf(ResourceError);

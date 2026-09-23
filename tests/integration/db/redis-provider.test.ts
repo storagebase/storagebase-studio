@@ -355,6 +355,12 @@ const OVERFLOW_KEYS: string[] = Array.from({ length: 1000 }, (_, index) => `bulk
 const capturedRedisOptions: Record<string, unknown>[] = [];
 
 /**
+ * The listeners the provider registered on each client, in construction order, so a test
+ * can play the driver's own `end` event (a client that has given up reconnecting).
+ */
+const capturedRedisListeners: Array<Record<string, Array<() => void>>> = [];
+
+/**
  * When set, `info()` rejects with this message instead of answering. A Redis 6 ACL
  * user without `+info` is refused exactly this way, and it is the one shape where
  * the server is reachable but every INFO-derived surface is not (D29).
@@ -384,7 +390,15 @@ mock.module("ioredis", () => {
       this._config = config;
       const options = (config ?? {}) as Record<string, unknown>;
       capturedRedisOptions.push(options);
+      capturedRedisListeners.push(this._listeners);
       this._db = typeof options.db === "number" ? options.db : 0;
+    }
+
+    private _listeners: Record<string, Array<() => void>> = {};
+
+    on(event: string, listener: () => void) {
+      (this._listeners[event] ??= []).push(listener);
+      return this;
     }
 
     async connect() {
@@ -530,6 +544,50 @@ describe("RedisProvider", () => {
           }),
       ).toThrow(DatabaseConfigError);
     });
+
+    // Sentinel mode reads no host: the sentinels name the master.
+    const sentinelConfig: DatabaseConnection = {
+      ...baseConfig,
+      host: undefined,
+      port: undefined,
+      sentinels: "sentinel-0:26379",
+      sentinelMasterName: "mymaster",
+    };
+
+    test("a Sentinel connection needs no host", () => {
+      expect(() => new RedisProvider(sentinelConfig)).not.toThrow();
+    });
+
+    test("Sentinel mode without a master group name is refused, naming what is missing", () => {
+      expect(() => new RedisProvider({ ...sentinelConfig, sentinelMasterName: "  " })).toThrow(
+        "Redis Sentinel mode requires the master group name",
+      );
+    });
+
+    test("a master group name without any sentinel is refused, not read as a standalone node", () => {
+      expect(() => new RedisProvider({ ...sentinelConfig, sentinels: " , " })).toThrow(
+        "Redis Sentinel mode requires at least one sentinel node",
+      );
+      expect(() => new RedisProvider({ ...sentinelConfig, host: "localhost", sentinels: undefined })).toThrow(
+        DatabaseConfigError,
+      );
+    });
+
+    test("a sentinel whose port is not a TCP port is refused rather than defaulted", () => {
+      for (const sentinels of ["sentinel-0:abc", "sentinel-0:", "sentinel-0:70000", "::1"]) {
+        expect(() => new RedisProvider({ ...sentinelConfig, sentinels })).toThrow("is not a host[:port] address");
+      }
+    });
+
+    test("Sentinel mode through an SSH tunnel is refused, because there is no host:port to forward", () => {
+      expect(
+        () =>
+          new RedisProvider({
+            ...sentinelConfig,
+            sshTunnel: { enabled: true, host: "bastion", port: 22, username: "u", authMethod: "password" },
+          }),
+      ).toThrow("Redis Sentinel mode cannot run through an SSH tunnel");
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -579,6 +637,104 @@ describe("RedisProvider", () => {
 
     test("an empty user string is sent as no username at all", async () => {
       expect((await connectAs("")).username).toBeUndefined();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Sentinel
+  // --------------------------------------------------------------------------
+
+  describe("the Sentinel options handed to ioredis", () => {
+    /** The options object of the connection this test just opened. */
+    const lastOptions = (): Record<string, unknown> => capturedRedisOptions[capturedRedisOptions.length - 1];
+
+    const connectVia = async (overrides: Partial<DatabaseConnection>) => {
+      provider = new RedisProvider({
+        ...baseConfig,
+        host: undefined,
+        port: undefined,
+        sentinels: "redis-node-0.redis-headless:26379, redis-node-1.redis-headless,[::1]:26380",
+        sentinelMasterName: " mymaster ",
+        password: "redispw",
+        ...overrides,
+      });
+      await provider.connect();
+      return lastOptions();
+    };
+
+    test("the sentinels and the master group reach ioredis, with no fixed host", async () => {
+      const options = await connectVia({ database: "2" });
+      expect(options).toMatchObject({
+        sentinels: [
+          { host: "redis-node-0.redis-headless", port: 26379 },
+          // A node listed without a port takes Sentinel's own default.
+          { host: "redis-node-1.redis-headless", port: 26379 },
+          { host: "::1", port: 26380 },
+        ],
+        name: "mymaster",
+        password: "redispw",
+        db: 2,
+        lazyConnect: true,
+      });
+      expect("host" in options).toBe(false);
+      expect("port" in options).toBe(false);
+    });
+
+    // The Bitnami chart protects Redis and Sentinel with one secret.
+    test("the sentinels authenticate with the Redis password when none of their own is given", async () => {
+      expect((await connectVia({})).sentinelPassword).toBe("redispw");
+      expect((await connectVia({ sentinelPassword: "sentinelpw" })).sentinelPassword).toBe("sentinelpw");
+      expect((await connectVia({ password: undefined })).sentinelPassword).toBeUndefined();
+    });
+
+    test("an unreachable sentinel list is retried a bounded number of times, then given up", async () => {
+      const strategy = (await connectVia({})).sentinelRetryStrategy as (attempt: number) => number | null;
+      expect([1, 2, 3].map(strategy)).toEqual([200, 400, 600]);
+      expect(strategy(4)).toBeNull();
+    });
+
+    test("TLS covers the sentinel hop and the master hop alike", async () => {
+      const options = await connectVia({ ssl: { mode: "require" } });
+      expect(options).toMatchObject({
+        tls: { rejectUnauthorized: false },
+        sentinelTLS: { rejectUnauthorized: false },
+        enableTLSForSentinelMode: true,
+      });
+      expect("sentinelTLS" in (await connectVia({}))).toBe(false);
+    });
+
+    test("the short-lived per-database clients resolve the master through the sentinels too", async () => {
+      await connectVia({});
+      await provider.countObjects(["3"]);
+      expect(lastOptions()).toMatchObject({ db: 3, name: "mymaster" });
+    });
+
+    test("a standalone connection carries no Sentinel option at all", async () => {
+      await provider.connect();
+      const options = lastOptions();
+      expect(options).toMatchObject({ host: "localhost", port: 6379 });
+      for (const key of ["sentinels", "name", "sentinelPassword", "sentinelRetryStrategy"]) {
+        expect(key in options).toBe(false);
+      }
+    });
+
+    // ioredis ends a client for good when every sentinel stayed unreachable through a
+    // reconnect. The provider has to stop reporting itself connected, or the cache keeps
+    // serving a client that can never answer again.
+    test("a client the driver has ended is no longer reported connected", async () => {
+      await connectVia({});
+      expect(provider.isConnected()).toBe(true);
+      for (const listener of capturedRedisListeners[capturedRedisListeners.length - 1].end ?? []) listener();
+      expect(provider.isConnected()).toBe(false);
+    });
+
+    test("an ended client that was already replaced leaves the new one's state alone", async () => {
+      await connectVia({});
+      const stale = capturedRedisListeners[capturedRedisListeners.length - 1];
+      await provider.disconnect();
+      await provider.connect();
+      for (const listener of stale.end ?? []) listener();
+      expect(provider.isConnected()).toBe(true);
     });
   });
 

@@ -220,3 +220,63 @@ describe("Sidebar resource sections", () => {
     }
   });
 });
+
+describe("Sidebar workbench connections (Kafka)", () => {
+  const kafkaConnection: ResourceConnection = {
+    id: "res-k",
+    name: "events",
+    type: "kafka",
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  test("render inside the Connections list in place of the empty-state card, and select", () => {
+    const onSelectWorkbenchConnection = mock((_c: ResourceConnection) => {});
+    render(
+      <Sidebar
+        {...baseProps()}
+        workbenchConnections={[kafkaConnection]}
+        activeWorkbenchConnection={kafkaConnection}
+        onSelectWorkbenchConnection={onSelectWorkbenchConnection}
+        onDeleteResourceConnection={mock((_id: string) => {})}
+      />,
+    );
+    try {
+      expect(screen.getByText("Connections")).toBeDefined();
+      expect(screen.queryByText("No database connections established yet.")).toBeNull();
+      const row = screen.getByTestId("workbench-connection-row");
+      expect(row.getAttribute("aria-current")).toBe("true");
+      screen.getByText("events").click();
+      expect(onSelectWorkbenchConnection).toHaveBeenCalledWith(kafkaConnection);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("render after the database rows when both exist", () => {
+    render(
+      <Sidebar
+        {...baseProps()}
+        connections={[dbConnection]}
+        workbenchConnections={[kafkaConnection]}
+        onSelectWorkbenchConnection={mock((_c: ResourceConnection) => {})}
+        onDeleteResourceConnection={mock((_id: string) => {})}
+      />,
+    );
+    try {
+      expect(screen.getByText("pg")).toBeDefined();
+      expect(screen.getByTestId("workbench-connection-row").getAttribute("aria-current")).toBeNull();
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("render nothing without a select handler or with no workbench connections", () => {
+    render(<Sidebar {...baseProps()} workbenchConnections={[]} />);
+    try {
+      expect(screen.queryByTestId("workbench-connection-row")).toBeNull();
+      expect(screen.getByText("No database connections established yet.")).toBeDefined();
+    } finally {
+      cleanup();
+    }
+  });
+});

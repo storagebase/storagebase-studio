@@ -23,7 +23,7 @@
 | **Transactions** | Not exposed (the engine has none) |
 | **Maintenance** | None — nothing in `MaintenanceType` has a SQL-reachable analogue ([§8](#8-maintenance)) |
 | **Query cancellation** | No `cancelQuery`. An abort closes **this client's** socket; the cluster keeps working ([§3.8](#38-the-deadline-is-the-clients-and-only-the-clients)) |
-| **Verified against** | **OpenSearch 3.8.0**, image `opensearchproject/opensearch:3.8.0` (security disabled, stock single node — `GET /` reported distribution `opensearch`, number `3.8.0`, build_date `2026-08-01`), software licence **Apache-2.0** (the image ships the Apache License, Version 2.0 as `/usr/share/opensearch/LICENSE.txt`) with no subscription tier to confuse it with, indices `probe_orders` (1 doc) and `probe_shapes` (2 docs, an object, a `nested` and a multi-field), measured 2026-08-19 |
+| **Verified against** | **OpenSearch 3.8.0**, image `opensearchproject/opensearch:3.8.0` (security disabled, stock single node — `GET /` reported distribution `opensearch`, number `3.8.0`, build_date `2026-08-01`), software licence **Apache-2.0** (the image ships the Apache License, Version 2.0 as `/usr/share/opensearch/LICENSE.txt`) with no subscription tier to confuse it with, indices `probe_orders` (1 doc) and `probe_shapes` (2 docs, an object, a `nested` and a multi-field), measured 2026-08-19. The custom-format `date` fallback was measured separately against **OpenSearch 2.7.0**, 2026-09-23 ([§5.8](#58-a-custom-format-date-field-the-legacy-engine-fallback)) |
 | **Source** | [`src/lib/db/providers/sql/search/`](../../src/lib/db/providers/sql/search/) |
 | **Tests** | [`tests/integration/db/opensearch-provider.test.ts`](../../tests/integration/db/opensearch-provider.test.ts) + [`tests/unit/db/search/`](../../tests/unit/db/search/) |
 | **Tracking issue** | [#424 — Search providers, Phase 1](https://github.com/libredb/libredb-studio/issues/424) |
@@ -522,7 +522,7 @@ error message, which is more useful than anything substituted here
 | the measured exchange | `executionTime` | Rounded milliseconds, **measured by this process**. Neither the body nor the headers carry any timing |
 | `schema[].type` | `columnTypes` | The engine's **mapping** types; **absent** when the answer declared none ([§3.9](#39-columns-are-labelled-with-mapping-types-not-sql-types)) |
 | `total` | — | **Deliberately dropped.** See below |
-| — | `warnings` | None are produced |
+| — | `warnings` | Absent, except the one notice a legacy-engine answer carries ([§5.8](#58-a-custom-format-date-field-the-legacy-engine-fallback)) |
 
 **`totalHits` is available here and is deliberately unused.** The upstream product reports no
 matching-document count at all, so a "showing 50 of 4,812" notice would appear on one product and never
@@ -706,6 +706,73 @@ What was read, and measured verbatim on OpenSearch 3.8.0 through this provider:
 
 So there is nothing for the route to end, and the absence is a declared boundary rather than a
 fallback: the caller shape-checks for the method and this provider does not answer it.
+
+### 5.8 A custom-format `date` field: the legacy engine fallback
+
+**The limitation is the SQL plugin's, not the provider's.** Measured against **OpenSearch 2.7.0** on
+2026-09-23 (not the 3.8.0 probe cluster the rest of this document was measured on), over an index whose
+mapping holds several `date` fields, one of them with a **custom** format — the shape a log pipeline
+commonly writes:
+
+```json
+{"mappings":{"properties":{"timestamp":{"type":"date","format":"uuuu-MM-dd HH:mm:ss.SSS"}, "level":{"type":"keyword"}}}}
+```
+
+| Request | Answer |
+|---|---|
+| `POST /_plugins/_sql` — the new engine, the endpoint's default — `SELECT * FROM app-logs LIMIT 50` | HTTP **503**, `IllegalStateException`, "Construct ExprTimestampValue from \"2026-09-12 23:59:59.854\" failed, unsupported date format." |
+| `POST /_plugins/_ppl`, `source=app-logs \| head 2` | the same 503 |
+| `POST /_plugins/_sql?format=json` — routes the statement to the **legacy** engine | HTTP **200**, a raw search response (`hits.hits[]._source`) |
+| the new engine, projecting only non-date columns | HTTP 200 |
+
+So the transport asks the legacy engine **once** for that statement
+([`http-transport.ts`](../../src/lib/db/providers/sql/search/http-transport.ts), `LegacyEngineFallback`
+and `queryLegacy`), under all of these conditions and no others:
+
+- the new engine's fault is `IllegalStateException` **and** its wording says "unsupported date format".
+  The name alone is the plugin's generic "internal problem at backend", so it is never enough; the status
+  is not read at all ([§3.6](#36-two-fault-vocabularies-in-one-cluster));
+- the statement is a `SELECT`, past any leading whitespace and comments. A `DELETE` never gets a second
+  engine;
+- the dialect declares a legacy engine. Only OpenSearch's row does; **Elasticsearch never falls back**,
+  because its `format=json` *is* its primary engine.
+
+The search response becomes the ordinary result shape: the columns are the **union of every document's
+`_source` keys in first-seen order**, a document missing a field reads `null` there, and values are
+served verbatim — an object field stays the sub-document the new engine also serves
+([§5.3](#53-a-container-field-comes-back-as-its-sub-document)), and the custom-format date stays the
+string the document holds. The statement is sent **unchanged**, so the `LIMIT n` / `LIMIT n OFFSET m` the
+shared limiter wrote ([§5.5](#55-offset-works-here-which-is-why-paging-does)) is what bounds the rows,
+exactly as on the new engine. Table browsing and "Select Top 50 Documents" run through the same
+`query()`, so they are covered by the same path; a `COUNT(*)` reads no date value and is not affected.
+
+The result carries **one warning** — the only one this provider ever raises (§5.2) — saying the legacy SQL
+engine served it because the index has a custom-format date field, and quoting the new engine's refusal.
+
+**When the legacy engine cannot help** — the statement is not a `SELECT`, the second request fails, or its
+answer is not rows (an aggregation answers `aggregations` beside `hits`; a hit with no `_source`) — the
+**new engine's** refusal is raised, never the legacy engine's, because that one describes a request the
+user never sent. It keeps the engine's own words and gains a hint:
+
+```text
+Construct ExprTimestampValue from "2026-09-12 23:59:59.854" failed, unsupported date format. This index maps a date field with a custom format, which this OpenSearch SQL engine cannot read. Select specific columns that leave the custom-format date fields out.
+```
+
+The one exception is a deadline or a cancellation that lands during the second request, which is
+reported as itself ([§3.8](#38-the-deadline-is-the-clients-and-only-the-clients)).
+
+What a legacy answer does **not** give, all stated in the warning:
+
+- **no column types** — the search response declares none, so the grid shows no type labels;
+- **no column aliases and no computed expressions** — the legacy engine returns the documents, so
+  `SELECT level AS severity` shows `level`, and a computed column does not appear;
+- **document field order, not projection order** — `SELECT b, a` lists the columns in the order the
+  documents hold them.
+
+Not measured, and so not claimed: whether a `CAST` of the date field gets past the new engine (the
+failure is in reading the stored value, so the hint does not suggest it), and which later release reads
+custom date formats in the new engine. A cluster that does never raises the fault, so it never reaches
+the fallback.
 
 ---
 
@@ -1403,7 +1470,7 @@ quietly swallowed as a query error.
 | `syntax` | `ParserException`, `EOFParserException` (matched by suffix), `NumberFormatException` | `QueryError` |
 | `unknown-object` | `IndexNotFoundException` (SQL, 404), `index_not_found_exception` (core REST, 404), `SemanticCheckException` | `QueryError` |
 | `unsupported` | `SQLFeatureNotSupportedException` — a mistyped leading keyword, every refused mutation, a statement-form `EXPLAIN` | `QueryError` |
-| `engine` | `IllegalArgumentException` (duplicate output names), `NullPointerException`, any unrecognised fault name, the paging ceiling, an unreadable body | `QueryError` |
+| `engine` | `IllegalArgumentException` (duplicate output names), `NullPointerException`, `IllegalStateException` (including the custom-format date refusal the legacy engine could not answer — [§5.8](#58-a-custom-format-date-field-the-legacy-engine-fallback)), any unrecognised fault name, the paging ceiling, an unreadable body | `QueryError` |
 
 The four that collapse onto `QueryError` do so because they describe the same event to a user — the
 cluster read the statement and refused it — and the engine's own wording, carried through the seam
@@ -1635,6 +1702,10 @@ because the provider exposes no `cancelQuery`
   mapping does not say which types SQL supports, and enumerating them would be a per-version list this
   code cannot verify
   ([introspect.ts:46-52](../../src/lib/db/providers/sql/search/introspect.ts)).
+- **A `date` field with a custom format defeats the SQL plugin's new engine** on OpenSearch 2.7.0
+  (measured). A `SELECT` is then answered by the legacy engine, without column types, aliases or computed
+  expressions, and with a warning saying so; anything else raises the engine's refusal with a hint
+  ([§5.8](#58-a-custom-format-date-field-the-legacy-engine-fallback)).
 - **The whole result body is buffered** before it is parsed
   ([§3.1](#31-http-only--no-driver-and-what-that-costs)).
 

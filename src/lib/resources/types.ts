@@ -126,7 +126,13 @@ export type ResourceOperation =
   | "message.purge"
   | "secret.read"
   | "secret.write"
-  | "secret.delete";
+  | "secret.delete"
+  // Kafka workbench (docs/resources/kafka.md). Declared by the kafka provider
+  // only; the generic message.* set above keeps serving the Resources section.
+  | "kafka.inspect"
+  | "kafka.topic.write"
+  | "kafka.produce"
+  | "kafka.group.write";
 
 export interface ResourceProviderCapabilities {
   category: ResourceCategory;

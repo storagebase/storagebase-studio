@@ -46,6 +46,11 @@ export interface DatabaseUIConfig {
     // MongoDB only: the database its credentials live in, which the driver otherwise
     // assumes is the one being opened.
     | "authSource"
+    // Redis only: the Sentinel mode inputs. Listing them is what offers the Standalone /
+    // Sentinel choice; in Sentinel mode `host` and `port` are not written at all.
+    | "sentinels"
+    | "sentinelMasterName"
+    | "sentinelPassword"
   )[];
 }
 
@@ -139,7 +144,16 @@ export const DB_UI_CONFIG: Record<DatabaseType, DatabaseUIConfig> = {
     // documented it as a connection field all along - this list was the one place that
     // disagreed, and since it decides what a save WRITES, the value never reached the
     // driver that #502 taught to send it.
-    connectionFields: ["host", "port", "user", "password", "database"],
+    connectionFields: [
+      "host",
+      "port",
+      "user",
+      "password",
+      "database",
+      "sentinels",
+      "sentinelMasterName",
+      "sentinelPassword",
+    ],
   },
   oracle: {
     icon: OracleIcon,

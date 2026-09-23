@@ -337,7 +337,11 @@ export function OverviewTab({ user }: OverviewTabProps) {
       items.push({
         id: e.id,
         type: "audit",
-        text: `${e.action} ${e.target}`,
+        // A query_execution event names the route as its target; the masked statement and who
+        // ran it are what the feed reader wants instead.
+        text: e.statement
+          ? `${e.user}: ${e.statement.length > 60 ? e.statement.slice(0, 60) + "..." : e.statement}`
+          : `${e.action} ${e.target}`,
         status: e.result,
         time: e.timestamp,
         connectionName: e.connectionName,

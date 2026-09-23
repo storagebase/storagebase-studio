@@ -386,28 +386,15 @@ describe("StudioMobileHeader", () => {
     expect(String((mockToastError.mock.calls as unknown[][])[0][0])).toContain("Could not copy");
   });
 
-  test("renders a repository link in the header actions", () => {
+  test("renders no repository link in the header actions", () => {
     const { container } = render(<StudioMobileHeader {...defaults} />);
     const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]');
 
-    expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("https://github.com/storagebase/storagebase-studio");
-    expect(link!.getAttribute("target")).toBe("_blank");
-    expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link).toBeNull();
   });
 
   // Asserted through the observable effect rather than `not.toThrow()`: the
   // handler swallows every storage error, so a throw assertion could not fail.
-  test("following the repository link marks the star prompt handled", () => {
-    localStorage.removeItem("libredb_star_prompt_handled");
-    const { container } = render(<StudioMobileHeader {...defaults} />);
-    const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]')!;
-
-    fireEvent.click(link);
-
-    expect(localStorage.getItem("libredb_star_prompt_handled")).not.toBeNull();
-    localStorage.removeItem("libredb_star_prompt_handled");
-  });
 
   test("transactionActive=true shows TXN badge", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} transactionActive />);

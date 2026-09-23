@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * Localized README drift guard.
+ * README drift guard.
  *
- * README_zh.md and README_ja.md (#317) restate two things README.md already
- * says: which engines exist, and what the install commands are. Both are
- * hardcoded in all three files, and the repo has no other check that notices
- * when they diverge - `distribution:check` covers channels.yaml, `chart:check`
- * covers the chart, nothing covered this. Review of #317 found a Homebrew row
- * missing its mandatory `brew trust`, a Snap row missing `sudo`, and a Helm row
- * that added a repo without installing anything; the next provider to land will
- * leave both translations claiming the old engine count.
+ * Upstream shipped translations of README.md (README_zh.md, README_ja.md, ... #317) that
+ * restated its engine table and install commands, and this guard kept them in line. The
+ * StorageBase fork ships no translations: they described upstream's distribution channels,
+ * which this fork does not publish, so they were deleted and LOCALIZED below is empty. The
+ * comparison logic stays - it is what a future translation would be held to - and the
+ * canonical checks keep running on README.md alone: it must carry an engine table, an
+ * install table, and the plain-HTTP login warning (invariant 3).
  *
  * Three invariants, chosen so that abridgement stays legal and errors do not:
  *
- *   1. The engine name set is identical in all three files. A translation that
+ *   1. The engine name set is identical in README.md and every translation. One that
  *      omits an engine is wrong, and so is one that invents an engine.
  *   2. Every command in a localized install table appears verbatim in
  *      README.md's. Localized files may list fewer channels - they deliberately
@@ -28,8 +27,8 @@
  *      now shipped (#232, Unraid, #307, #901).
  *
  * Tables are located structurally (the table holding the PostgreSQL row, the
- * table holding `docker run`) rather than by heading text, because the headings
- * are in Chinese and Japanese.
+ * table holding `docker run`) rather than by heading text, because a
+ * translation's headings are not in English.
  *
  * Pure functions below are unit tested in tests/unit/readme-check.test.ts.
  */
@@ -39,7 +38,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CANONICAL = "README.md";
-const LOCALIZED = ["README_zh.md", "README_ja.md", "README_es.md", "README_ur.md", "README_hi.md"];
+/** Translations held to README.md. None ship in this fork (see the docblock). */
+const LOCALIZED = [];
 
 /** The variable the quickstart warning must name. */
 const WARNING_VARIABLE = "AUTH_COOKIE_SECURE";

@@ -300,12 +300,15 @@ Redis uses the discrete-field form of `DatabaseConnection` (not `connectionStrin
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `host` | ✅ | Validated in `validate()` — throws `DatabaseConfigError` if missing |
-| `port` | — | Defaults to `6379` |
+| `host` | ✅ standalone | Validated in `validate()` — throws `DatabaseConfigError` if missing. Not read in Sentinel mode ([§4.4](#44-sentinel)) |
+| `port` | — | Defaults to `6379`. Not read in Sentinel mode |
 | `user` | — | The **Redis 6 ACL user**, sent as ioredis's `username`; empty means `default` ([§4.1a](#41a-acl-users-d29)) |
 | `password` | — | Sent as `password`; omit for unauthenticated instances |
 | `database` | — | Logical DB index, parsed as int; defaults to `0` |
 | `ssl` | — | `SSLConfig`; becomes the ioredis `tls` option ([§4.3](#43-ssl--tls)) |
+| `sentinels` | ✅ Sentinel | Comma-separated `host[:port]` sentinel list; a node without a port takes `26379` ([§4.4](#44-sentinel)) |
+| `sentinelMasterName` | ✅ Sentinel | The master group the sentinels monitor, sent as ioredis's `name` |
+| `sentinelPassword` | — | Sentinel `AUTH`; empty falls back to `password`. Secret-classified, sealed at rest |
 
 ```ts
 const connection = {
@@ -423,6 +426,67 @@ does, so the pair is what distinguishes a wired path from a documented shape.
 > rediss://localhost:6390 -> sslMode require | connected, PING = [{"result":"PONG"}] | 14ms
 > redis://localhost:6390  -> sslMode disable | FAILED: Failed to connect to Redis: Connection is closed.
 > ```
+
+### 4.4 Sentinel
+
+A connection that sets `sentinels` or `sentinelMasterName` is in **Sentinel mode**. `host` and
+`port` are not read at all: `redisOptions()` hands ioredis the sentinel list and the group name,
+and ioredis asks the sentinels for the current master on every connect and reconnect. That is what
+makes a failover transparent: when Sentinel promotes a replica it kills the old master's normal
+clients (`CLIENT KILL TYPE normal` is part of its reconfiguration), ioredis reconnects through the
+sentinels, and it lands on the new master. `role` stays ioredis's default, `master`. The
+connection form offers **Standalone** (the default and the old behaviour, unchanged) or
+**Sentinel**. In Sentinel mode host and port give way to *Sentinel Nodes* and *Master Name*.
+
+```ts
+const connection = {
+  id: 'redis-ha',
+  name: 'Cache (HA)',
+  type: 'redis',
+  sentinels: 'redis-node-0.redis-headless:26379, redis-node-1.redis-headless:26379',
+  sentinelMasterName: 'mymaster',
+  password: 'secret',     // Redis AUTH; the sentinels use it too unless sentinelPassword is set
+  database: '0',
+  createdAt: new Date(),
+};
+// -> new Redis({ sentinels: [{host, port: 26379}, ...], name: 'mymaster', password,
+//                sentinelPassword: password, db: 0, sentinelRetryStrategy, ... })
+```
+
+- **Parsing.** `parseSentinelNodes()` splits on commas, drops blanks, reads `[::1]:26380` as an
+  IPv6 host, and gives a node without a port `26379`. A port that is not a TCP port (`host:abc`,
+  `host:`, `host:70000`) and an unbracketed IPv6 address are refused with a `DatabaseConfigError`
+  naming the entry, not defaulted.
+- **`validate()`** refuses Sentinel mode with no sentinel node, with no master name, or with an SSH
+  tunnel enabled. The factory forwards `host:port` through a tunnel, and a Sentinel connection has
+  neither, so the alternative would be a connection quietly going around the bastion.
+- **Sentinel password defaults to the Redis password.** The ordinary chart deployment (Bitnami's
+  `sentinel.enabled`) protects Redis and Sentinel with one secret, so an empty `sentinelPassword`
+  sends `password`. A sentinel that requires no password is still reached: ioredis catches the
+  server's *"AUTH ... called without any password configured"* reply, logs a warning and carries on
+  (`event_handler.js` in ioredis 5.11.1). Set `sentinelPassword` only when the two differ. There is
+  no separate sentinel ACL user (`sentinelUsername`). The connection's `user` is the Redis ACL user
+  only.
+- **Bounded sentinel retries.** ioredis retries an unreachable sentinel list forever by default,
+  and `connect()` would then never settle, so the connection test would hang with nothing on screen.
+  `sentinelRetryStrategy` retries the whole list three times (200, 400 and 600 ms apart) and then
+  gives up with ioredis's own *"All sentinels are unreachable and retry is disabled. Last error:
+  ..."*. A master that is unreachable after the sentinels answered is a different case. ioredis's
+  ordinary `retryStrategy` handles it and keeps retrying, which is the failover window.
+- **A client that gave up is reported.** When the bounded retries run out during a *reconnect*,
+  ioredis ends the client for good. `connect()` listens for `end` and marks the provider
+  disconnected, so the provider cache opens a fresh client on the next request instead of serving
+  a dead one.
+- **TLS covers both hops.** With the SSL panel on, the same `tls` object goes to the sentinels as
+  `sentinelTLS` and to the master with `enableTLSForSentinelMode: true`. Without that flag ioredis
+  speaks plaintext to the master it resolved, whatever `tls` says.
+- **Per-database reads resolve too.** The object surface opens a short-lived client per numbered
+  database ([§6.1](#61-the-object-surface-789)). It goes through the same `redisOptions()`, so each
+  one asks the sentinels for the master as well. That costs one extra round trip per read.
+- **Identity.** `connectionFingerprint` (the object-edit plan seal) and the agent's
+  `connectionIdentity` frame `sentinels` and `sentinelMasterName` in Sentinel mode, because they,
+  not `host`/`port`, decide which server answers. They are appended only when set, so no digest
+  recorded for a standalone connection moves.
 
 ---
 
@@ -1419,7 +1483,10 @@ battery of common commands (`KEYS`, `SET`, `DEL`, `PING`, `DBSIZE`), the whole o
 asserted against the options object the `Redis` constructor received. The same captured options carry
 the **ACL user** assertions ([§4.1a](#41a-acl-users-d29)) — `username` present for a named user,
 absent for both an empty string and an unset field — and a refused `INFO` is asserted to raise the
-server's own `NOPERM` sentence out of `getHealth()`.
+server's own `NOPERM` sentence out of `getHealth()`. **Sentinel mode** ([§4.4](#44-sentinel)) is
+asserted the same way: the parsed sentinel list, default port and IPv6 form, the master name, the
+sentinel-password fallback, the bounded retry strategy, TLS on both hops, the per-database clients,
+the `end` listener, and every `validate()` refusal. There is no live Sentinel in the suite.
 
 ### 11.3 Run it
 
@@ -1548,7 +1615,10 @@ request/response contract.
   in a `rediss://` URL says whose certificate to trust - and the ordinary self-hosted `--tls-port`
   node presents a self-signed one, which a verifying mode would refuse. Verification therefore stays
   an explicit choice in the SSL panel; the URL alone never turns it on.
-- **No Cluster / Sentinel support.** Only a single standalone node is supported.
+- **Redis Cluster is not supported.** A standalone node and a Sentinel-managed master
+  ([§4.4](#44-sentinel)) are. A cluster node connects as a standalone one and answers `MOVED`
+  for keys it does not own. Sentinel mode has no `sentinelUsername`, cannot run through an SSH
+  tunnel, and never reads from replicas (`role: master` only).
 - **`SCAN` is capped at 1000 keys** for schema discovery — prefixes that only appear beyond the cap
   won't show as "tables". This is a deliberate bound, not a bug. The object surface shares the same
   walk and the same bound, so on a keyspace larger than it the `keyspace` folder's badge and its rows

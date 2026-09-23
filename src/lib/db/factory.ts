@@ -16,6 +16,7 @@ import type { TunnelInfo } from "@/lib/ssh/tunnel";
 import { readSecret } from "@/lib/storage/encryption";
 import { TUNNEL_FAR_END, type WithTunnelFarEnd } from "@/lib/types";
 import { logger } from "@/lib/logger";
+import { createHash } from "node:crypto";
 import * as path from "path";
 
 // ============================================================================
@@ -306,6 +307,8 @@ interface CachedProvider {
    * `null` on every other provider, which is all of them but one.
    */
   singleWriterFile?: string | null;
+  /** `providerConfigKey` of the connection this entry was opened for. */
+  configKey: string;
 }
 
 const providerCache = new Map<string, CachedProvider>();
@@ -491,6 +494,53 @@ function startIdleSweep(): void {
 }
 
 /**
+ * Fields that decide how a connection is LISTED and nothing about what it opens. Everything
+ * else is in the key below, so a field added to `DatabaseConnection` later invalidates by
+ * default - the safe direction, costing at worst one reconnect.
+ */
+const PRESENTATION_FIELDS: ReadonlySet<string> = new Set([
+  "id",
+  "name",
+  "color",
+  "group",
+  "environment",
+  "createdAt",
+  "managed",
+  "seedId",
+  "skipObjectScan",
+]);
+
+/** JSON with every object's keys sorted, so two equal configs always print alike. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const entries = Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * What a cached provider was OPENED with: the connection as the caller sent it, minus its
+ * presentation fields, as a digest.
+ *
+ * Both caches are keyed by connection id, and the id survives an edit. Comparing only
+ * `queryTimeout`, as they once did, meant a saved change of host, port, password or Sentinel
+ * group kept being served the client opened for the old settings until the idle sweep evicted
+ * it. Taken from the caller's connection rather than `provider.config`, because a tunnelled
+ * provider holds the tunnel's local endpoint and would never compare equal. Hashed because it
+ * covers the credentials, and a process-lifetime map should not hold one.
+ */
+function providerConfigKey(connection: DatabaseConnection): string {
+  const relevant = Object.fromEntries(Object.entries(connection).filter(([key]) => !PRESENTATION_FIELDS.has(key)));
+  return createHash("sha256").update(stableJson(relevant)).digest("hex");
+}
+
+/**
  * Get or create a database provider with caching
  * Useful for API routes to reuse connections
  *
@@ -503,16 +553,15 @@ export async function getOrCreateProvider(
   options: ProviderOptions = {},
 ): Promise<DatabaseProvider> {
   const cacheKey = connection.id;
-
-  // Check cache
+  const configKey = providerConfigKey(connection);
   const cached = providerCache.get(cacheKey);
 
-  // A saved timeout change must reach the next query, even when the connection is already open.
-  if (cached && cached.provider.config.queryTimeout !== connection.queryTimeout) {
+  // A saved change - an address, a credential, a timeout - must reach the next query, even when open.
+  if (cached && cached.configKey !== configKey) {
     try {
       await cached.provider.disconnect();
     } catch (error) {
-      logger.warn(`[DB] Error disconnecting provider after query timeout change`, {
+      logger.warn(`[DB] Error disconnecting provider after a connection settings change`, {
         connectionId: connection.id,
         error: String(error),
       });
@@ -555,7 +604,7 @@ export async function getOrCreateProvider(
   // Cache it, remembering the file when this engine admits only one handle on it -
   // that is what lets the callers that would otherwise open a second one find this.
   const singleWriterFile = provider.getCapabilities().singleWriterFile === true ? fileIdentity(connection) : null;
-  providerCache.set(cacheKey, { provider, lastUsed: Date.now(), singleWriterFile });
+  providerCache.set(cacheKey, { provider, lastUsed: Date.now(), singleWriterFile, configKey });
 
   // Start idle sweep if not already running
   startIdleSweep();
@@ -677,12 +726,13 @@ export async function acquireExecutionProfileProvider(
   }
 
   const cacheKey = profiledCacheKey(connection.id, profile);
+  const configKey = providerConfigKey(connection);
   const cached = profiledProviderCache.get(cacheKey);
-  if (cached && cached.provider.config.queryTimeout !== connection.queryTimeout) {
+  if (cached && cached.configKey !== configKey) {
     try {
       await cached.provider.disconnect();
     } catch (error) {
-      logger.warn(`[DB] Error disconnecting provider after query timeout change`, {
+      logger.warn(`[DB] Error disconnecting provider after a connection settings change`, {
         connectionId: connection.id,
         error: String(error),
       });
@@ -761,7 +811,7 @@ export async function acquireExecutionProfileProvider(
     throw error;
   }
 
-  profiledProviderCache.set(cacheKey, { provider, lastUsed: Date.now(), connectionId: connection.id });
+  profiledProviderCache.set(cacheKey, { provider, lastUsed: Date.now(), connectionId: connection.id, configKey });
   startIdleSweep();
 
   return provider;

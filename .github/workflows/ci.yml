@@ -52,10 +52,10 @@ jobs:
         # nothing else notices when the inventory moves on without it.
         run: bun run channels:showcase:check
 
-      - name: Localized README drift guard (#317)
+      - name: README drift guard (#317)
         # Same reasoning as the chart guard above: inside the required check so
-        # it actually gates. README_zh.md and README_ja.md restate README.md's
-        # engine table and install commands, and nothing else notices drift.
+        # it actually gates. The fork ships no translated READMEs, so this checks
+        # README.md alone: engine table, install table, plain-HTTP login warning.
         run: bun run readme:check
 
       - name: Security posture drift guard (control 3.3)

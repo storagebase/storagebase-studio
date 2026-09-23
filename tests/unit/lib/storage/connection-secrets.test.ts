@@ -43,6 +43,9 @@ function fullConnection(): DatabaseConnection {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     agentUser: "agent-ro",
     agentPassword: "CANARY-AGENT-PASSWORD",
+    sentinels: "sentinel-0:26379",
+    sentinelMasterName: "mymaster",
+    sentinelPassword: "CANARY-SENTINEL-PASSWORD",
     ssl: {
       mode: "verify-full",
       caCert: "-----BEGIN CERTIFICATE-----CA-----END CERTIFICATE-----",
@@ -71,6 +74,7 @@ const CANARIES = [
   "CANARY-SSH-PRIVATE-KEY",
   "CANARY-SSH-PASSPHRASE",
   "CANARY-AGENT-PASSWORD",
+  "CANARY-SENTINEL-PASSWORD",
 ];
 
 describe("the classification is exhaustive by construction", () => {
@@ -107,6 +111,11 @@ describe("the classification is exhaustive by construction", () => {
         "port",
         "queryTimeout",
         "seedId",
+        // Redis Sentinel: node addresses and a group name every sentinel answers to anyone,
+        // so `public`; the sentinel password is the credential and is sealed.
+        "sentinelMasterName",
+        "sentinelPassword",
+        "sentinels",
         // Whether this browser reads the catalog when the connection opens (#765). A
         // display preference: it grants nothing and unlocks nothing.
         "skipObjectScan",
@@ -119,7 +128,7 @@ describe("the classification is exhaustive by construction", () => {
     );
   });
 
-  test("exactly the seven credential-bearing fields are classified secret", () => {
+  test("exactly the eight credential-bearing fields are classified secret", () => {
     const secrets = [
       ...Object.keys(CONNECTION_FIELDS).filter((k) => CONNECTION_FIELDS[k as never] === "secret"),
       ...Object.keys(SSL_FIELDS)
@@ -135,6 +144,7 @@ describe("the classification is exhaustive by construction", () => {
         "agentPassword",
         "connectionString",
         "password",
+        "sentinelPassword",
         "ssl.clientKey",
         "sshTunnel.passphrase",
         "sshTunnel.password",
@@ -165,6 +175,7 @@ describe("encryptConnections", () => {
     expect(encrypted.password?.startsWith(prefix)).toBe(true);
     expect(encrypted.connectionString?.startsWith(prefix)).toBe(true);
     expect(encrypted.agentPassword?.startsWith(prefix)).toBe(true);
+    expect(encrypted.sentinelPassword?.startsWith(prefix)).toBe(true);
     expect(encrypted.ssl?.clientKey?.startsWith(prefix)).toBe(true);
     expect(encrypted.sshTunnel?.password?.startsWith(prefix)).toBe(true);
     expect(encrypted.sshTunnel?.privateKey?.startsWith(prefix)).toBe(true);
@@ -271,8 +282,8 @@ describe("decryptConnections", () => {
     resetStorageEncryptionKey();
     const result = decryptConnections(encrypted);
 
-    // Seven unreadable fields on one record.
-    expect(result.undecryptable).toBe(7);
+    // Eight unreadable fields on one record.
+    expect(result.undecryptable).toBe(8);
     // The record SURVIVES. Dropping it would be persisted as a deletion by the write-through
     // cache on the next sync, destroying ciphertext a restored key could still have opened.
     expect(result.connections).toHaveLength(1);
@@ -290,7 +301,7 @@ describe("decryptConnections", () => {
     process.env.JWT_SECRET = "a-different-secret-that-cannot-open-it";
     resetStorageEncryptionKey();
 
-    expect(decryptConnections(encrypted).undecryptable).toBe(14);
+    expect(decryptConnections(encrypted).undecryptable).toBe(16);
   });
 
   test("an empty list is not an error", () => {

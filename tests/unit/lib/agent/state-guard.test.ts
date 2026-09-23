@@ -346,6 +346,8 @@ describe("assertPersistableState — CREDENTIAL_KEY", () => {
         "password",
         "connectionString",
         "agentPassword",
+        // Redis Sentinel's own credential.
+        "sentinelPassword",
         "clientKey",
         "privateKey",
         "passphrase",

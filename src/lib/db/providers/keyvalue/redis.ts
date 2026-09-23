@@ -750,6 +750,48 @@ function redisApplyFailure(payload: ObjectEditStep, error: unknown, duration: nu
 }
 
 // ============================================================================
+// Sentinel
+// ============================================================================
+
+/** Sentinel's own default port, which a node listed without one takes. */
+const DEFAULT_SENTINEL_PORT = 26379;
+
+/** How many times the whole sentinel list is retried before a connect gives up. */
+const SENTINEL_RETRY_ATTEMPTS = 3;
+
+/**
+ * Bounded, unlike ioredis's default, which retries forever: `connect()` awaits the master's
+ * address, so with every sentinel unreachable an unbounded strategy never settles and the
+ * connection test hangs with no sentence at all. A bounded one rejects with ioredis's own
+ * "All sentinels are unreachable" and the last error it saw.
+ */
+function sentinelRetryStrategy(attempt: number): number | null {
+  return attempt > SENTINEL_RETRY_ATTEMPTS ? null : Math.min(attempt * 200, 1000);
+}
+
+/**
+ * The connection's sentinel list as ioredis takes it: comma-separated `host[:port]` entries,
+ * blanks dropped, a bracketed `[::1]:26379` read as an IPv6 host. A port that is not a TCP
+ * port is refused rather than defaulted, because a typo there is a sentinel nobody runs.
+ */
+function parseSentinelNodes(list: string): Array<{ host: string; port: number }> {
+  return list
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => {
+      const match = /^(?:\[([^\]]+)\]|([^:]+))(?::(.*))?$/.exec(entry);
+      const host = match?.[1] ?? match?.[2];
+      const portText = match?.[3];
+      const port = portText === undefined ? DEFAULT_SENTINEL_PORT : Number(portText);
+      if (!host || !Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new DatabaseConfigError(`Redis Sentinel node "${entry}" is not a host[:port] address`, "redis");
+      }
+      return { host, port };
+    });
+}
+
+// ============================================================================
 // Redis Provider
 // ============================================================================
 
@@ -872,9 +914,33 @@ export class RedisProvider extends BaseDatabaseProvider {
 
   public override validate(): void {
     super.validate();
+    if (this.usesSentinel()) {
+      if (parseSentinelNodes(this.config.sentinels ?? "").length === 0) {
+        throw new DatabaseConfigError("Redis Sentinel mode requires at least one sentinel node", "redis");
+      }
+      if (!this.config.sentinelMasterName?.trim()) {
+        throw new DatabaseConfigError("Redis Sentinel mode requires the master group name", "redis");
+      }
+      // The factory forwards `host:port` through a tunnel, and a Sentinel connection has
+      // neither: the master's address is only known after the sentinels answer. Refused
+      // rather than connected around the bastion the user configured.
+      if (this.config.sshTunnel?.enabled) {
+        throw new DatabaseConfigError("Redis Sentinel mode cannot run through an SSH tunnel", "redis");
+      }
+      return;
+    }
     if (!this.config.host) {
       throw new DatabaseConfigError("Redis host is required", "redis");
     }
+  }
+
+  /**
+   * Sentinel mode: the master's address is asked of the sentinels at every connect, which is
+   * what makes a failover transparent. Either Sentinel field puts the connection in it, so a
+   * half-filled Sentinel form is refused by `validate()` rather than read as a standalone node.
+   */
+  private usesSentinel(): boolean {
+    return Boolean(this.config.sentinels?.trim() || this.config.sentinelMasterName?.trim());
   }
 
   /**
@@ -926,15 +992,29 @@ export class RedisProvider extends BaseDatabaseProvider {
    */
   private redisOptions(db: number): RedisOptions {
     const tls = this.buildTLSOptions();
-    return {
-      host: this.config.host,
-      port: this.config.port || 6379,
+    const options: RedisOptions = {
       username: this.config.user || undefined,
       password: this.config.password || undefined,
       db,
       connectTimeout: this.queryTimeout,
       lazyConnect: true,
       ...(tls ? { tls } : {}),
+    };
+    if (!this.usesSentinel()) {
+      return { host: this.config.host, port: this.config.port || 6379, ...options };
+    }
+    return {
+      ...options,
+      sentinels: parseSentinelNodes(this.config.sentinels ?? ""),
+      name: this.config.sentinelMasterName?.trim(),
+      // The Redis password when none of its own is given: the common charts (Bitnami's
+      // `sentinel.enabled`) protect both with one secret, and a sentinel that requires no
+      // password accepts one anyway - ioredis logs the refused AUTH and carries on.
+      sentinelPassword: this.config.sentinelPassword || this.config.password || undefined,
+      sentinelRetryStrategy,
+      // One TLS setting covers both hops: ioredis otherwise speaks plaintext to the master
+      // it resolved and to the sentinels, whatever `tls` says.
+      ...(tls ? { enableTLSForSentinelMode: true, sentinelTLS: tls } : {}),
     };
   }
 
@@ -956,9 +1036,16 @@ export class RedisProvider extends BaseDatabaseProvider {
    */
   public async connect(): Promise<void> {
     try {
-      this.client = new Redis(this.redisOptions(this.sessionDatabase()));
+      const client = new Redis(this.redisOptions(this.sessionDatabase()));
+      this.client = client;
+      // A client that gave up for good - a Sentinel connection whose sentinels all stayed
+      // unreachable through a reconnect - never comes back by itself. Saying so is what lets
+      // the provider cache open a fresh one instead of serving the dead client.
+      client.on("end", () => {
+        if (this.client === client) this.setConnected(false);
+      });
 
-      await this.client.connect();
+      await client.connect();
       this.setConnected(true);
     } catch (error) {
       this.setError(error instanceof Error ? error : new Error(String(error)));

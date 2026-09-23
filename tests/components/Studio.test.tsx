@@ -34,6 +34,7 @@ let capturedProfilerProps: Record<string, unknown> = {};
 let capturedCodeGenProps: Record<string, unknown> = {};
 let capturedTestDataProps: Record<string, unknown> = {};
 let capturedInspectorProps: Record<string, unknown> = {};
+let capturedKafkaWorkbenchProps: Record<string, unknown> = {};
 let originalFetch: typeof globalThis.fetch;
 let originalMatchMedia: typeof window.matchMedia;
 
@@ -445,6 +446,15 @@ mock.module("@/components/resources/ResourceInspector", () => ({
   },
 }));
 
+mock.module("@/components/resources/kafka", () => ({
+  KafkaWorkbench: (props: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    capturedKafkaWorkbenchProps = props;
+    return React.createElement("div", { "data-testid": "kafka-workbench" }, "KafkaWorkbench");
+  },
+}));
+
 mock.module("@/components/SaveQueryModal", () => ({
   SaveQueryModal: (props: Record<string, unknown>) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -570,6 +580,7 @@ describe("Studio", () => {
     capturedCodeGenProps = {};
     capturedTestDataProps = {};
     capturedInspectorProps = {};
+    capturedKafkaWorkbenchProps = {};
 
     // Reset overrides
     connMgrOverride = {};
@@ -2980,8 +2991,8 @@ describe("Studio", () => {
     };
     const resConn2: ResourceConnection = {
       id: "res-2",
-      name: "events",
-      type: "kafka",
+      name: "orders",
+      type: "rabbitmq",
       createdAt: "2026-01-01T00:00:00.000Z",
     };
 
@@ -3077,6 +3088,83 @@ describe("Studio", () => {
       const closeFn = capturedInspectorProps.onClose as () => void;
       act(() => closeFn());
       expect(queryByTestId("resource-inspector")).toBeNull();
+    });
+
+    describe("Kafka workbench", () => {
+      const kafkaConn: ResourceConnection = {
+        id: "res-k",
+        name: "events",
+        type: "kafka",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        endpoint: "localhost:9092",
+      };
+
+      test("kafka connections list beside the databases, never under Resources or in the tree", () => {
+        storedResourceConnections = [kafkaConn, resConn];
+        render(<Studio />);
+        expect(capturedSidebarProps.workbenchConnections).toEqual([kafkaConn]);
+        expect(capturedSidebarProps.resourceConnections).toEqual([resConn]);
+        // The first stored connection activates on load; a Kafka one never mounts the tree.
+        expect(capturedSidebarProps.activeResourceConnection).toBeNull();
+        expect(capturedSidebarProps.activeWorkbenchConnection).toBeNull();
+      });
+
+      test("selecting a kafka connection opens the workbench over the editor; selecting a database closes it", () => {
+        storedResourceConnections = [kafkaConn];
+        const { queryByTestId } = render(<Studio />);
+        expect(queryByTestId("kafka-workbench")).toBeNull();
+
+        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(kafkaConn));
+        expect(queryByTestId("kafka-workbench")).not.toBeNull();
+        expect(capturedKafkaWorkbenchProps.connection).toEqual(kafkaConn);
+        expect(capturedSidebarProps.activeWorkbenchConnection).toEqual(kafkaConn);
+        expect(capturedSidebarProps.activeConnection).toBeNull();
+
+        act(() => (capturedSidebarProps.onSelectConnection as (c: DatabaseConnection) => void)(pgConn as never));
+        expect(queryByTestId("kafka-workbench")).toBeNull();
+      });
+
+      test("the workbench closes itself and edits its connection through the modal", () => {
+        storedResourceConnections = [kafkaConn];
+        const { queryByTestId } = render(<Studio />);
+        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(kafkaConn));
+
+        act(() => (capturedKafkaWorkbenchProps.onEditConnection as (c: ResourceConnection) => void)(kafkaConn));
+        expect(capturedConnectionModalProps.isOpen).toBe(true);
+        expect(capturedConnectionModalProps.editResourceConnection).toEqual(kafkaConn);
+
+        act(() => (capturedKafkaWorkbenchProps.onClose as () => void)());
+        expect(queryByTestId("kafka-workbench")).toBeNull();
+      });
+
+      test("saving a kafka connection opens its workbench; deleting it closes the workbench", () => {
+        const { queryByTestId } = render(<Studio />);
+        act(() => (capturedConnectionModalProps.onConnectResource as (c: ResourceConnection) => void)(kafkaConn));
+        expect(queryByTestId("kafka-workbench")).not.toBeNull();
+
+        act(() => (capturedSidebarProps.onDeleteResourceConnection as (id: string) => void)("res-k"));
+        expect(mockStorageDeleteResourceConnection).toHaveBeenCalledWith("res-k");
+        expect(queryByTestId("kafka-workbench")).toBeNull();
+      });
+
+      test("the mobile connection list carries the kafka rows, and picking one opens the workbench", () => {
+        storedResourceConnections = [kafkaConn];
+        const { queryByTestId } = render(<Studio />);
+        act(() => (capturedMobileNavProps.onTabChange as (tab: string) => void)("database"));
+        const rows = capturedConnectionsListProps.trailingItems as React.ReactElement<{
+          onSelect: (c: ResourceConnection) => void;
+          connections: ResourceConnection[];
+        }>;
+        expect(rows.props.connections).toEqual([kafkaConn]);
+        act(() => rows.props.onSelect(kafkaConn));
+        expect(queryByTestId("kafka-workbench")).not.toBeNull();
+      });
+
+      test("the mobile list carries no rows without kafka connections", () => {
+        render(<Studio />);
+        act(() => (capturedMobileNavProps.onTabChange as (tab: string) => void)("database"));
+        expect(capturedConnectionsListProps.trailingItems).toBeUndefined();
+      });
     });
   });
 });

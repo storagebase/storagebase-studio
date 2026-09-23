@@ -108,6 +108,9 @@ const WIRE_TOKENS = [
   "SemanticCheckException",
   "NumberFormatException",
   "ParserException",
+  // The plugin's generic backend fault, which the transport reads together with its
+  // wording to recognise the custom-date-format refusal the legacy engine answers.
+  "IllegalStateException",
   // The system-index exception: measured on a stock OpenSearch 3.8.0,
   // `top_queries-2026.08.18-74305` carries no dot, so the dot rule alone does not
   // catch it and the name shape is part of the wire knowledge.
@@ -188,6 +191,12 @@ const ENVELOPE_KEYS = [
   "managed",
   // OpenSearch's self-identification, whose ABSENCE is Elasticsearch's signature.
   "distribution",
+  // The legacy engine's search response: `hits.hits[]._source`, and `aggregations`
+  // beside it for an answer that is not rows. Keys rather than text tokens, because
+  // `_source` is a case-insensitive substring of every `SEARCH_SOURCE_*` constant.
+  "hits",
+  "_source",
+  "aggregations",
 ];
 
 /**

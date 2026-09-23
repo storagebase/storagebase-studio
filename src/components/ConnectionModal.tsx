@@ -214,6 +214,14 @@ export function ConnectionModal({
     setLocalDataCenter,
     authSource,
     setAuthSource,
+    connectionTopology,
+    setConnectionTopology,
+    sentinels,
+    setSentinels,
+    sentinelMasterName,
+    setSentinelMasterName,
+    sentinelPassword,
+    setSentinelPassword,
 
     // SSH Tunnel
     showSSH,
@@ -269,6 +277,10 @@ export function ConnectionModal({
   // which is why this one is relabelled rather than left to be guessed at.
   const isLibSQL = type === "libsql";
   const passwordFieldLabel = isLibSQL ? "Auth Token" : "Password";
+  // Redis Sentinel: the master's address comes from the sentinels, so host and port give
+  // way to the sentinel list and the master group name.
+  const offersSentinel = takesConnectionField(type, "sentinels");
+  const viaSentinel = offersSentinel && connectionTopology === "sentinel";
   const databaseFieldLabel = isCouchbase ? "Bucket" : isTrino ? "Catalog" : isCassandra ? "Keyspace" : "Database";
   const databaseFieldPlaceholder = isTrino ? "tpch" : isCassandra ? "probe" : "db";
   const connectionUriPlaceholder = isCouchbase
@@ -559,31 +571,99 @@ export function ConnectionModal({
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Globe strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
-                          <Label htmlFor="host" className="text-xs font-mediumr text-fg-muted">
-                            Host & Instance
-                          </Label>
+                      {offersSentinel && (
+                        <div className="flex items-center gap-2 p-1 rounded-lg bg-panel border border-hairline">
+                          {(
+                            [
+                              ["standalone", "Standalone", Server],
+                              ["sentinel", "Sentinel", ShieldCheck],
+                            ] as const
+                          ).map(([mode, label, Icon]) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              aria-pressed={connectionTopology === mode}
+                              onClick={() => setConnectionTopology(mode)}
+                              className={cn(
+                                "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all",
+                                connectionTopology === mode
+                                  ? "bg-brand-solid/20 text-brand border border-brand-tint/30"
+                                  : "text-fg-muted hover:text-fg-secondary",
+                              )}
+                            >
+                              <Icon strokeWidth={1.5} className="w-3 h-3" />
+                              {label}
+                            </button>
+                          ))}
                         </div>
+                      )}
+
+                      {viaSentinel ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          <Input
-                            id="host"
-                            value={host}
-                            onChange={(e) => setHost(e.target.value)}
-                            placeholder="localhost"
-                            autoComplete="off"
-                            className="md:col-span-3 h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs"
-                          />
-                          <Input
-                            id="port"
-                            value={port}
-                            onChange={(e) => setPort(e.target.value)}
-                            autoComplete="off"
-                            className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
-                          />
+                          <div className="space-y-2 md:col-span-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Globe strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+                              <Label htmlFor="sentinels" className="text-xs font-medium text-fg-muted">
+                                Sentinel Nodes
+                              </Label>
+                            </div>
+                            <Input
+                              id="sentinels"
+                              value={sentinels}
+                              onChange={(e) => setSentinels(e.target.value)}
+                              placeholder="sentinel-0:26379, sentinel-1:26379"
+                              autoComplete="off"
+                              className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Server strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+                              <Label htmlFor="sentinelMasterName" className="text-xs font-medium text-fg-muted">
+                                Master Name
+                              </Label>
+                            </div>
+                            <Input
+                              id="sentinelMasterName"
+                              value={sentinelMasterName}
+                              onChange={(e) => setSentinelMasterName(e.target.value)}
+                              placeholder="mymaster"
+                              autoComplete="off"
+                              className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
+                            />
+                          </div>
+                          <p className="md:col-span-4 text-xs text-fg-muted">
+                            Comma-separated host:port list; a node without a port uses 26379. The sentinels name the
+                            current master at every connect, so the connection follows a failover.
+                          </p>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Globe strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+                            <Label htmlFor="host" className="text-xs font-mediumr text-fg-muted">
+                              Host & Instance
+                            </Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <Input
+                              id="host"
+                              value={host}
+                              onChange={(e) => setHost(e.target.value)}
+                              placeholder="localhost"
+                              autoComplete="off"
+                              className="md:col-span-3 h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs"
+                            />
+                            <Input
+                              id="port"
+                              value={port}
+                              onChange={(e) => setPort(e.target.value)}
+                              autoComplete="off"
+                              className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/*
@@ -650,6 +730,26 @@ export function ConnectionModal({
                           )}
                         </div>
                       </div>
+
+                      {viaSentinel && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <ShieldCheck strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
+                            <Label htmlFor="sentinelPassword" className="text-xs font-medium text-fg-muted">
+                              Sentinel Password
+                            </Label>
+                          </div>
+                          <Input
+                            id="sentinelPassword"
+                            type="password"
+                            value={sentinelPassword}
+                            onChange={(e) => setSentinelPassword(e.target.value)}
+                            placeholder="defaults to the Redis password"
+                            autoComplete="new-password"
+                            className="h-10 bg-panel border-hairline focus:border-brand-tint/50 transition-all text-xs"
+                          />
+                        </div>
+                      )}
 
                       {/*
                     Only when the engine takes it. Druid and the two search engines address

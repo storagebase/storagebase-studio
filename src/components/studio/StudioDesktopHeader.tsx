@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { GitHubRepoLink } from "@/components/github-repo-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 interface StudioDesktopHeaderProps {
@@ -115,7 +114,6 @@ export function StudioDesktopHeader({
         )}
         {/* Renders nothing when a host (platform) owns the theme — see ThemeToggle. */}
         <ThemeToggle className="mr-1" />
-        <GitHubRepoLink className="text-fg-tertiary hover:text-fg-bright mr-2" />
         <span className="text-xs text-fg-muted font-mono">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
       </div>
     </header>

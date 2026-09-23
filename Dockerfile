@@ -50,6 +50,13 @@ ENV USER_PASSWORD=$USER_PASSWORD_BUILD
 # origin (issue #247). Explicit here: this bypasses the package.json build script.
 RUN node scripts/copy-monaco.mjs && npx next build
 
+# Resource SDKs (StorageBase fork): lazy-loaded through a computed import that
+# output file tracing cannot follow, so the standalone tree gets none of them.
+# Stage each SDK's full dependency closure, at the versions the lockfile
+# installed, for the runner stage below. Keep in sync with
+# scripts/build-standalone-payload.sh.
+RUN node scripts/stage-resource-sdks.mjs /usr/src/app/.resource-sdks
+
 # Production image - use Node.js slim for lower memory footprint
 # trixie-slim: glibc must match the stage where native modules were built (see builder).
 FROM node:26.8.2-trixie-slim AS runner
@@ -134,6 +141,10 @@ COPY --from=builder /usr/src/app/node_modules/detect-libc ./node_modules/detect-
 # unused until an operator layers a client on top; see docs/providers/oracle.md.
 # Keep in sync with scripts/build-standalone-payload.sh.
 COPY --from=builder /usr/src/app/node_modules/oracledb ./node_modules/oracledb
+
+# The staged resource SDKs (see the builder stage): laid over the traced tree,
+# which may already hold a few of the same shared packages at the same versions.
+COPY --from=builder /usr/src/app/.resource-sdks/node_modules ./node_modules
 
 # Vendored sample database templates (the SQLite employees sample). Read at
 # runtime via fs relative to process.cwd() (/app), so output file tracing

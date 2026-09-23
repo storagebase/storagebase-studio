@@ -4,6 +4,7 @@ import { createErrorResponse } from "@/lib/api/errors";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
 import { guardRoute } from "@/lib/api/require-session";
 import { readBoundParams } from "@/lib/api/bound-params";
+import { startQueryAudit } from "@/lib/api/query-audit";
 import { getExplainStrategy, type ExplainMode } from "@/lib/explain";
 import { endsOpenQueryTransactions, newQueryCallScope } from "@/lib/db/types";
 import type { ExplainFormat, OpenQueryTransactionOutcome } from "@/lib/db/types";
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
   // behalf, and the rate limiter sees the request before any work is done for it.
   const guard = await guardRoute({ route: "POST /api/db/query", bucket: "query", request: req });
   if ("response" in guard) return guard.response;
+  const queryAudit = startQueryAudit(req, guard.session);
 
   try {
     const body = await req.json();
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: explain.message }, { status: 400 });
     }
 
+    queryAudit.attempt(connection, sql, { queryId, explain: explain.explain?.mode });
     const provider = await getOrCreateProvider(connection);
 
     // The statement that actually runs. For an explain request it is the one the
@@ -140,6 +143,7 @@ export async function POST(req: NextRequest) {
     }
 
     const hasMore = result.rows.length === prepared.limit;
+    queryAudit.succeeded(result);
 
     return NextResponse.json({
       ...result,
@@ -159,6 +163,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    queryAudit.failed(error);
     return createErrorResponse(error, { route: "api/db/query" });
   }
 }

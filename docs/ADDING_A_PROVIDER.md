@@ -927,7 +927,7 @@ range) is still checked on its numeral only, deliberately, so that no numeral go
       `make -C operator bundle`**: `operator/bundle/manifests/...` is generated from it, and the
       `Verify operator bundle is up to date` step re-runs the generator and diffs, so a hand-wrapped
       YAML folded scalar fails the gate even when the text is identical to what it wants
-- [ ] `README.md` + `README_zh.md` + `README_ja.md`, `DOCKERHUB.md`, `docs/BRAND_MESSAGING.md` — the
+- [ ] `README.md`, `DOCKERHUB.md`, `docs/BRAND_MESSAGING.md` — the
       engine tables and every prose numeral. **Separate the denominators before touching a numeral**:
       type-ids the factory builds, external drivers (that set minus the embedded store), wire-compatible
       relatives, and their sum. `connectableProductCount()` is the arithmetic's one definition — derive

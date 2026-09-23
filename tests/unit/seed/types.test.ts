@@ -206,6 +206,25 @@ describe("SeedConnectionSchema: MongoDB's authSource", () => {
   });
 });
 
+describe("SeedConnectionSchema: Redis Sentinel", () => {
+  it("accepts a seeded connection that names its sentinels and master group", () => {
+    const result = SeedConnectionSchema.safeParse({
+      id: "cache",
+      name: "Cache",
+      type: "redis",
+      sentinels: "redis-node-0.redis-headless:26379,redis-node-1.redis-headless:26379",
+      sentinelMasterName: "mymaster",
+      password: "${REDIS_PASSWORD}",
+      sentinelPassword: "${REDIS_PASSWORD}",
+      roles: ["*"],
+    });
+
+    expect(result.success).toBe(true);
+    // zod strips an unknown key silently, so the round-trip is the assertion that matters.
+    expect(result.data).toMatchObject({ sentinelMasterName: "mymaster", sentinelPassword: "${REDIS_PASSWORD}" });
+  });
+});
+
 describe("SeedConnectionSchema: Cassandra's localDataCenter", () => {
   // The driver refuses to connect without it, so a seeded Cassandra connection that
   // could not carry it would be a managed connection nobody can open. It is optional

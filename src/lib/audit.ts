@@ -171,7 +171,20 @@ export type AuditReason =
   | "resource_not_found"
   | "resource_conflict"
   | "resource_unsupported"
-  | "resource_failed";
+  | "resource_failed"
+  // The editor query path (StorageBase fork), emitted on `query_execution` failures by
+  // src/lib/api/query-audit.ts. Cancelled and timed out are apart from failed because an operator
+  // reads them differently: the first is the user's own choice, the second the engine's limit.
+  | "query_failed"
+  | "query_cancelled"
+  | "query_timeout";
+
+/**
+ * What kind of statement a `query_execution` event recorded: the query limiter's own vocabulary
+ * (`ParsedQueryInfo["type"]` in src/lib/db/utils/query-limiter.ts), restated here so this module,
+ * which the admin UI imports, stays free of the database layer.
+ */
+export type AuditStatementKind = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "DDL" | "OTHER";
 
 export interface AuditEvent {
   id: string;
@@ -208,6 +221,32 @@ export interface AuditEvent {
    * emit a decision and an outcome as two records of one action (#789 Phase 3).
    */
   correlationId?: string;
+  /**
+   * The request context of the caller (StorageBase fork): the session's role beside `user`, the
+   * user agent, and - only while TRUST_PROXY_HEADERS is on - the raw X-Forwarded-For chain the
+   * resolved `ip` was picked from. All three are hints on the same terms as `ip`.
+   */
+  role?: string;
+  userAgent?: string;
+  forwardedFor?: string;
+  /**
+   * The `query_execution` fields (StorageBase fork), set by src/lib/api/query-audit.ts. `statement`
+   * is the MASKED text (src/lib/audit-sql.ts) and never the raw one; `host` is the connection's
+   * configured host field, never parsed out of a connection string, and no credential field of a
+   * connection is ever copied here. `error` is the driver's sentence with its quoted values masked.
+   */
+  connectionId?: string;
+  engine?: string;
+  host?: string;
+  database?: string;
+  statementKind?: AuditStatementKind;
+  statement?: string;
+  statementTruncated?: boolean;
+  rowsReturned?: number;
+  rowsAffected?: number;
+  error?: string;
+  /** The client's own cancellation id for the query: client-supplied, so a label, not a key. */
+  queryId?: string;
 }
 
 const MAX_EVENTS = 1000;
@@ -303,6 +342,21 @@ const AUDIT_SCHEMA = "libredb.audit.v1";
  * two independent constants with the same value today are one unnoticed edit away from drifting.
  */
 export const MAX_AUDIT_FIELD_LENGTH = 254;
+/**
+ * The one field allowed past MAX_AUDIT_FIELD_LENGTH: a masked statement (src/lib/audit-sql.ts).
+ * 254 characters is a table name and a WHERE clause; an operator asking which query ran needs the
+ * statement, so it gets its own bound, still small enough to keep every line one ordinary log line.
+ */
+export const MAX_AUDIT_STATEMENT_LENGTH = 4096;
+/** Per-field bounds that differ from MAX_AUDIT_FIELD_LENGTH, keyed by AuditEvent field name. */
+const FIELD_LENGTH_OVERRIDES: Readonly<Record<string, number>> = { statement: MAX_AUDIT_STATEMENT_LENGTH };
+/**
+ * The fields whose legitimate value is not a string, by NAME (see sanitizeAuditInput for why the
+ * name and not the runtime type decides): a number arriving anywhere else is coerced like any
+ * other non-string, and so is a string arriving here.
+ */
+const NUMBER_FIELDS = new Set(["duration", "rowsReturned", "rowsAffected"]);
+const BOOLEAN_FIELDS = new Set(["statementTruncated"]);
 /** The address derivation's "no usable signal" placeholder; never recorded as if it were one. */
 const UNKNOWN_ADDRESS = "unknown";
 /** Redaction marker for a URI's userinfo segment. Never a value real credentials could equal. */
@@ -400,8 +454,8 @@ function redactUriCredentials(value: string): string {
  * any URI-shaped credential, then bound the length. Order matters — redacting first means a value
  * long enough to be truncated never has its credential cut in half and left partially exposed.
  */
-function sanitizeAuditField(value: string): string {
-  return redactUriCredentials(value).slice(0, MAX_AUDIT_FIELD_LENGTH);
+function sanitizeAuditField(value: string, maxLength = MAX_AUDIT_FIELD_LENGTH): string {
+  return redactUriCredentials(value).slice(0, maxLength);
 }
 
 /**
@@ -479,10 +533,15 @@ export function sanitizeAuditInput(event: Omit<AuditEvent, "id" | "timestamp">):
   for (const key of Object.keys(mutable)) {
     if (DANGEROUS_KEYS.has(key)) continue;
     const value = mutable[key];
+    const maxLength = Object.hasOwn(FIELD_LENGTH_OVERRIDES, key) ? FIELD_LENGTH_OVERRIDES[key] : undefined;
     if (typeof value === "string") {
-      mutable[key] = sanitizeAuditField(value);
-    } else if (value !== undefined && !(key === "duration" && typeof value === "number")) {
-      mutable[key] = sanitizeAuditField(coerceToString(value));
+      mutable[key] = sanitizeAuditField(value, maxLength);
+    } else if (
+      value !== undefined &&
+      !(NUMBER_FIELDS.has(key) && typeof value === "number") &&
+      !(BOOLEAN_FIELDS.has(key) && typeof value === "boolean")
+    ) {
+      mutable[key] = sanitizeAuditField(coerceToString(value), maxLength);
     }
   }
   return sanitized;
@@ -507,6 +566,25 @@ interface AuditLogLine {
   duration_ms?: number;
   bucket?: string;
   correlation_id?: string;
+  role?: string;
+  user_agent?: string;
+  forwarded_for?: string;
+  connection_id?: string;
+  engine?: string;
+  host?: string;
+  database?: string;
+  statement_kind?: AuditStatementKind;
+  statement?: string;
+  statement_truncated?: boolean;
+  rows_returned?: number;
+  rows_affected?: number;
+  error?: string;
+  query_id?: string;
+}
+
+/** A count that may reach the line: finite, so the field's JSON type never flips to null. */
+function finiteNumber(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value);
 }
 
 function toAuditLine(event: AuditEvent): AuditLogLine {
@@ -524,10 +602,24 @@ function toAuditLine(event: AuditEvent): AuditLogLine {
     ...(event.connectionName ? { connection: event.connectionName } : {}),
     ...(event.bucket ? { bucket: event.bucket } : {}),
     ...(event.correlationId ? { correlation_id: event.correlationId } : {}),
+    ...(event.role ? { role: event.role } : {}),
+    ...(event.userAgent ? { user_agent: event.userAgent } : {}),
+    ...(event.forwardedFor ? { forwarded_for: event.forwardedFor } : {}),
+    ...(event.connectionId ? { connection_id: event.connectionId } : {}),
+    ...(event.engine ? { engine: event.engine } : {}),
+    ...(event.host ? { host: event.host } : {}),
+    ...(event.database ? { database: event.database } : {}),
+    ...(event.statementKind ? { statement_kind: event.statementKind } : {}),
+    ...(event.statement !== undefined ? { statement: event.statement } : {}),
+    ...(event.statementTruncated ? { statement_truncated: true } : {}),
+    ...(finiteNumber(event.rowsReturned) ? { rows_returned: event.rowsReturned } : {}),
+    ...(finiteNumber(event.rowsAffected) ? { rows_affected: event.rowsAffected } : {}),
+    ...(event.error ? { error: event.error } : {}),
+    ...(event.queryId ? { query_id: event.queryId } : {}),
     // Number.isFinite excludes NaN and +/-Infinity: JSON.stringify(NaN) silently produces `null`,
     // which would flip duration_ms from a number to null for that one line in a contract parsers
     // depend on. Omitting it entirely keeps the field's type stable instead.
-    ...(event.duration !== undefined && Number.isFinite(event.duration) ? { duration_ms: event.duration } : {}),
+    ...(finiteNumber(event.duration) ? { duration_ms: event.duration } : {}),
   };
 }
 
@@ -546,9 +638,16 @@ function toAuditLine(event: AuditEvent): AuditLogLine {
  *
  * What must never be recorded here: passwords or any credential material, JWTs, cookies or
  * Authorization values, OIDC tokens, code or code_verifier or raw claims, connection strings,
- * hosts or SSH keys, SQL text, LLM prompts or responses, request bodies, raw Error.message or
- * stack traces, and arbitrary request headers. src/lib/data-masking.ts is not reusable here: it
- * masks result-grid cell values by column-name pattern and has no bearing on log strings.
+ * SSH keys, RAW SQL text, LLM prompts or responses, request bodies, raw Error.message or stack
+ * traces, and arbitrary request headers. src/lib/data-masking.ts is not reusable here: it masks
+ * result-grid cell values by column-name pattern and has no bearing on log strings.
+ *
+ * The one narrowing of that list (StorageBase fork), on `query_execution` events only: SQL text is
+ * recorded MASKED - every literal replaced by `?` by src/lib/audit-sql.ts - so the trail can say
+ * which statement ran without carrying the values it ran with, which are the data a log pipeline
+ * must not collect. The same event names the connection's configured host and database (never a
+ * credential field, never a connection string), a driver error with its quoted values masked, and
+ * two named request headers: User-Agent, and X-Forwarded-For only while TRUST_PROXY_HEADERS is on.
  */
 export function emitAuditEvent(event: Omit<AuditEvent, "id" | "timestamp">): AuditEvent {
   const stored = getServerAuditBuffer().push(sanitizeAuditInput(event));

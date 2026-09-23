@@ -1145,6 +1145,76 @@ describe("OpenSearchProvider query", () => {
 });
 
 // ============================================================================
+// Custom-format date fields: the legacy engine fallback
+// ----------------------------------------------------------------------------
+// Measured against OpenSearch 2.7.0 on 2026-09-23 (NOT the 3.8.0 probe cluster the
+// rest of this file was captured from): over an index mapping a `date` field with
+// `"format": "uuuu-MM-dd HH:mm:ss.SSS"`, the new engine answers `SELECT *` with
+// HTTP 503 `IllegalStateException`, "Construct ExprTimestampValue from ... failed,
+// unsupported date format.", and `?format=json` routes the same statement to the
+// legacy engine, which answers a raw search response. The bodies below follow that
+// shape with generic names; the decision table and the hits -> rows mapping are
+// covered in full by `tests/unit/db/search/legacy-engine-fallback.test.ts`.
+// ============================================================================
+
+const CUSTOM_DATE_FAULT_DETAIL =
+  'Construct ExprTimestampValue from "2026-09-12 23:59:59.854" failed, unsupported date format.';
+
+const CUSTOM_DATE_FAULT: Reply = {
+  status: 503,
+  body: JSON.stringify({
+    error: {
+      reason: "There was internal problem at backend",
+      details: CUSTOM_DATE_FAULT_DETAIL,
+      type: "IllegalStateException",
+    },
+    status: 503,
+  }),
+};
+
+const LEGACY_SEARCH_BODY = JSON.stringify({
+  hits: {
+    total: { value: 1, relation: "eq" },
+    hits: [{ _index: "app-logs", _id: "1", _source: { level: "INFO", timestamp: "2026-09-12 23:59:59.854" } }],
+  },
+});
+
+describe("OpenSearchProvider over a custom-format date field", () => {
+  /** The new engine refuses every app-logs statement; the legacy engine answers `legacy`. */
+  function serveAppLogs(legacy: Reply): void {
+    replyFor = (path, body) => {
+      if (!String(body?.query).includes("app-logs")) return defaultReply(path, body);
+      return path === "/_plugins/_sql?format=json" ? legacy : CUSTOM_DATE_FAULT;
+    };
+  }
+
+  test("serves the rows from the legacy engine, with a warning naming it", async () => {
+    const provider = await connectProvider();
+    serveAppLogs(ok(LEGACY_SEARCH_BODY));
+
+    const result = await provider.query("SELECT * FROM app-logs LIMIT 50");
+
+    expect(sentPaths.slice(1)).toEqual(["/_plugins/_sql", "/_plugins/_sql?format=json"]);
+    expect(result.fields).toEqual(["level", "timestamp"]);
+    // The custom-format date is the string the document holds.
+    expect(result.rows).toEqual([{ level: "INFO", timestamp: "2026-09-12 23:59:59.854" }]);
+    expect(result.warnings?.[0]?.message).toContain("legacy SQL engine served this result");
+  });
+
+  test("raises the new engine's refusal, with a hint, when the legacy engine fails too", async () => {
+    const provider = await connectProvider();
+    serveAppLogs({ status: 500, body: "{}" });
+
+    const failure = provider.query("SELECT * FROM app-logs LIMIT 50");
+
+    await expect(failure).rejects.toBeInstanceOf(QueryError);
+    await expect(failure).rejects.toThrow(
+      `${CUSTOM_DATE_FAULT_DETAIL} This index maps a date field with a custom format, which this OpenSearch SQL engine cannot read. Select specific columns that leave the custom-format date fields out.`,
+    );
+  });
+});
+
+// ============================================================================
 // Schema
 // ============================================================================
 

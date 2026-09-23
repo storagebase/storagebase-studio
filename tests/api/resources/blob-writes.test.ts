@@ -128,6 +128,34 @@ describe("blob write routes", () => {
     expect(mockUploadBlob).not.toHaveBeenCalled();
   });
 
+  test("upload with content that is not base64 is a 400 with no audit", async () => {
+    // Buffer.from(…, "base64") never throws: it drops what it cannot decode, so
+    // without an explicit check a typo would upload silently corrupted bytes.
+    for (const contentBase64 of ["not base64!", "aGVsbG8", "aGVs=bG8="]) {
+      const req = createMockRequest("/api/resources/blob/upload", {
+        method: "POST",
+        body: { connection, bucket: "fixture-blobs", name: "new.txt", contentBase64 },
+      });
+      const res = await postUpload(req as never);
+      expect(res.status).toBe(400);
+      expect((await parseResponseJSON<{ error: string }>(res)).error).toContain("not valid base64");
+    }
+    expect(mockEmitAuditEvent).not.toHaveBeenCalled();
+    expect(mockUploadBlob).not.toHaveBeenCalled();
+  });
+
+  test("a provider failure on upload is a 502 with resource_failed in the outcome", async () => {
+    mockUploadBlob.mockRejectedValueOnce(new ResourceConnectionError("socket reset"));
+    const req = createMockRequest("/api/resources/blob/upload", {
+      method: "POST",
+      body: { connection, bucket: "fixture-blobs", name: "new.txt", contentBase64: "aGVsbG8=" },
+    });
+    const res = await postUpload(req as never);
+    expect(res.status).toBe(502);
+    const events = auditEvents();
+    expect(events[1]).toMatchObject({ result: "failure", reason: "resource_failed" });
+  });
+
   test("upload past the size cap is a 413", async () => {
     // Build the refusal from the limit itself rather than a 10MB literal —
     // the cap is what is under test, not base64 plumbing.

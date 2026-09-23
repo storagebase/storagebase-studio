@@ -314,6 +314,14 @@ describe("db-ui-config", () => {
         expect(takesConnectionField("redis", "database")).toBe(true);
       });
 
+      test("only redis takes the Sentinel fields, which is what offers the Sentinel mode", () => {
+        for (const type of ALL_TYPES) {
+          for (const field of ["sentinels", "sentinelMasterName", "sentinelPassword"] as const) {
+            expect(takesConnectionField(type, field)).toBe(type === "redis");
+          }
+        }
+      });
+
       test("agrees with the list it reads, for every type and every field", () => {
         // Derived rather than enumerated: the predicate must not develop an opinion of its
         // own about any engine.

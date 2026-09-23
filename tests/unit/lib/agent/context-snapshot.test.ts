@@ -2960,6 +2960,16 @@ describe("the identity a held inventory is filed under", () => {
     expect(repointed({ authSource: "admin" })).not.toBe(connectionIdentity(CONNECTION));
   });
 
+  test("a different Sentinel group is a different identity, because the sentinels name the server", () => {
+    // In Sentinel mode `host` and `port` are not read at all: the master is whoever the
+    // sentinels answer for the group, so either field alone re-points the connection.
+    const sentinel = repointed({ sentinels: "s1:26379", sentinelMasterName: "mymaster" });
+    expect(sentinel).not.toBe(connectionIdentity(CONNECTION));
+    expect(repointed({ sentinels: "s2:26379", sentinelMasterName: "mymaster" })).not.toBe(sentinel);
+    expect(repointed({ sentinelMasterName: "other" })).not.toBe(connectionIdentity(CONNECTION));
+    expect(repointed({ sentinels: "s1:26379" })).not.toBe(sentinel);
+  });
+
   test("a rotated password is the SAME identity, because it is not which database this is", () => {
     expect(repointed({ password: "rotated" })).toBe(connectionIdentity(CONNECTION));
   });

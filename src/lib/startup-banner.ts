@@ -13,7 +13,6 @@
  */
 
 import { getAppVersion } from "@/lib/app-version";
-import { REPO_URL } from "@/lib/community/repo";
 
 const DEFAULT_PORT = "3000";
 const DEFAULT_HOST = "127.0.0.1";
@@ -51,9 +50,7 @@ export function printStartupBanner(): void {
     const version = getAppVersion();
     const title = version ? `StorageBase Studio ${version}` : "StorageBase Studio";
 
-    console.log(
-      ["", `${title}  ->  ${resolveUrl()}`, "", "  Star the project if it helps you:", `  ${REPO_URL}`, ""].join("\n"),
-    );
+    console.log(["", `${title}  ->  ${resolveUrl()}`, ""].join("\n"));
   } catch {
     // A banner is never worth a failed boot - stay silent and carry on.
   }

@@ -14,6 +14,17 @@ export const dynamic = "force-dynamic";
 export const BLOB_UPLOAD_LIMIT = 10 * 1024 * 1024;
 
 /**
+ * Padded base64: alphabet characters, at most two trailing `=`, whole 4-character
+ * groups (the length check). A single character class keeps the match linear —
+ * a grouped pattern gives up on the multi-megabyte bodies this route accepts.
+ */
+const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
+
+function isPaddedBase64(value: string): boolean {
+  return value.length % 4 === 0 && BASE64_PATTERN.test(value);
+}
+
+/**
  * Write one object. Audited as `resource_operation` with the decision and the
  * outcome joined by one correlation id; the confirm dialog lives client-side
  * (the viewer), the trail lives here.
@@ -24,12 +35,12 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
     if (typeof body.contentBase64 !== "string" || body.contentBase64 === "") {
       throw new ResourceRouteError('"contentBase64" must be a non-empty string', 400);
     }
-    let bytes: Uint8Array;
-    try {
-      bytes = Buffer.from(body.contentBase64, "base64");
-    } catch {
+    // Buffer.from(…, "base64") never throws — it skips what it cannot decode —
+    // so the shape is checked first, or a typo would upload corrupted bytes.
+    if (!isPaddedBase64(body.contentBase64)) {
       throw new ResourceRouteError('"contentBase64" is not valid base64', 400);
     }
+    const bytes: Uint8Array = Buffer.from(body.contentBase64, "base64");
     if (bytes.length > BLOB_UPLOAD_LIMIT) {
       throw new ResourceRouteError(
         `Upload is ${bytes.length} bytes; this route accepts at most ${BLOB_UPLOAD_LIMIT}`,

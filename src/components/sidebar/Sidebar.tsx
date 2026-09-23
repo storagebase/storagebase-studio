@@ -7,12 +7,12 @@ import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
 import { Plus, Zap, Layers, LoaderCircle, CircleAlert } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ObjectTree, type ObjectSource, type TreeRowActionHandlers } from "@/components/object-tree";
-import { GitHubRepoLink } from "@/components/github-repo-link";
 import { getAppVersion } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { ConnectionsList } from "./ConnectionsList";
 import { ResourceConnectionsList } from "@/components/resources/ResourceConnectionsList";
 import { ResourceTree } from "@/components/resources/ResourceTree";
+import { WorkbenchConnectionRows } from "@/components/resources/WorkbenchConnectionRows";
 import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 
 interface SidebarProps {
@@ -90,6 +90,15 @@ interface SidebarProps {
   onResourceNodeClick?: (node: ResourceNode) => void;
   /** Bump to re-read the resource tree's answered levels (a write landed behind it). */
   resourceRefreshToken?: number;
+  /**
+   * Workbench resource connections (StorageBase fork: Kafka). They render
+   * inside the Connections list, beside the databases, and selecting one
+   * opens its workbench in the main area; edit and delete reuse the resource
+   * handlers above. Absent or empty renders nothing.
+   */
+  workbenchConnections?: ResourceConnection[];
+  activeWorkbenchConnection?: ResourceConnection | null;
+  onSelectWorkbenchConnection?: (conn: ResourceConnection) => void;
 }
 
 export function Sidebar({
@@ -122,6 +131,9 @@ export function Sidebar({
   onAddResourceConnection,
   onResourceNodeClick,
   resourceRefreshToken,
+  workbenchConnections,
+  activeWorkbenchConnection,
+  onSelectWorkbenchConnection,
 }: SidebarProps) {
   const appVersion = getAppVersion();
 
@@ -175,6 +187,17 @@ export function Sidebar({
           connectionOrder={connectionOrder}
           onReorderConnections={onReorderConnections}
           onAddConnection={onAddConnection}
+          trailingItems={
+            workbenchConnections?.length && onSelectWorkbenchConnection && onDeleteResourceConnection ? (
+              <WorkbenchConnectionRows
+                connections={workbenchConnections}
+                activeConnection={activeWorkbenchConnection ?? null}
+                onSelect={onSelectWorkbenchConnection}
+                onEdit={onEditResourceConnection}
+                onDelete={onDeleteResourceConnection}
+              />
+            ) : undefined
+          }
         />
         {resourceConnections !== undefined &&
           onSelectResourceConnection !== undefined &&
@@ -272,7 +295,6 @@ export function Sidebar({
               header - so the invitation to the repository lives here to reach
               every user rather than only the standalone ones.
             */}
-            <GitHubRepoLink className="text-muted-foreground/70 hover:text-foreground" />
             {appVersion && <span className="text-xs font-mono text-muted-foreground/70">v{appVersion}</span>}
           </div>
         </div>

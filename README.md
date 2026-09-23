@@ -1,1035 +1,282 @@
 <p align="center">
-  <img src="public/logo.svg" width="200" alt="StorageBase Studio Logo" />
+  <img src="public/logo.svg" width="160" alt="StorageBase Studio logo" />
 </p>
 
 <h1 align="center">StorageBase Studio</h1>
 
 <p align="center">
-  <strong>The database editor that deploys next to your data, not onto your laptop.</strong>
+  <strong>One web console, deployed next to your data, for your databases and the cloud resources around them.</strong>
 </p>
 
 <p align="center">
-  <b>English</b> ·
-  <a href="README_zh.md">简体中文</a> ·
-  <a href="README_ja.md">日本語</a> ·
-  <a href="README_es.md">Español</a> ·
-  <a href="README_ur.md">اردو</a> ·
-  <a href="README_hi.md">हिन्दी</a>
-</p>
-
-<p align="center">
-  Listed by the PostgreSQL project:
-  <a href="https://www.postgresql.org/about/news/libredb-studio-an-open-source-self-hosted-sql-ide-for-postgresql-in-the-browser-3368/">News</a>
-  ·
-  <a href="https://wiki.postgresql.org/wiki/PostgreSQL_Clients#LibreDB_Studio">PostgreSQL Clients</a>
-  ·
-  <a href="https://www.postgresql.org/download/products/1/">Software Catalogue</a>
-  ·
-  <a href="https://wiki.postgresql.org/wiki/Community_Guide_to_PostgreSQL_GUI_Tools#LibreDB_Studio">Community Guide to GUI Tools</a>
-</p>
-<p align="center">
-  Also listed in official
-  <a href="https://redis.io/docs/latest/develop/tools/#libredb-studio">Redis</a>,
-  <a href="https://clickhouse.com/docs/integrations/connectors/tools/gui#libredb-studio">ClickHouse</a>,
-  <a href="https://mariadb.com/docs/server/clients-and-utilities/graphical-and-enhanced-clients/libredb-studio">MariaDB</a>,
-  <a href="https://trino.io/ecosystem/client-application#libredb-studio">Trino</a>,
-  <a href="https://cloudberry.apache.org/docs/ecosystem/sql-clients/libredb-studio/">Apache Cloudberry</a>,
-  <a href="https://docs.yugabyte.com/stable/integrations/tools/libredb-studio/">YugabyteDB</a>
-  and
-  <a href="https://www.dragonflydb.io/docs/integrations/libredb-studio">DragonflyDB</a>
-  docs
-</p>
-
-<p align="center">
-  <img src="public/screenshots/hero-demo.gif" alt="Opening a table, running a join, charting the result and reading the ER diagram in StorageBase Studio" width="100%" />
-</p>
-
-<p align="center">
-  <a href="https://github.com/storagebase/storagebase-studio"><img src="https://img.shields.io/github/stars/storagebase/storagebase-studio?style=social" alt="GitHub stars"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-</p>
-
-<p align="center">
-  <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16"></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React 19"></a>
-</p>
-
-<p align="center">
-  <a href="#quick-start"><strong>Quick Start</strong></a> •
-  <a href="#live-test"><strong>Live Demo</strong></a> •
-  <a href="#getting-started"><strong>Install Options</strong></a> •
-  <a href="#one-click-deploy"><strong>Deploy Your Own</strong></a>
+  <a href="https://github.com/libredb/libredb-studio"><img src="https://img.shields.io/badge/fork%20of-LibreDB%20Studio-blue" alt="Fork of LibreDB Studio"></a>
 </p>
 
 ---
 
-## Quick Start
+## What this is
 
-Run a full Database Editor in one command, no clone, no build:
+A typical application depends on more than a database. It also has a bucket of files, a queue or
+topic that other services publish to, and a vault holding its secrets. Each of these has its own
+console, CLI and credentials, and reaching them usually means opening a port or copying keys onto a
+laptop.
 
-```bash
-# Docker (recommended)
-docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest
+StorageBase Studio runs as one service inside your network (a container or a Helm release) and
+gives the team a single browser UI for all of it. Access goes through one login and one role model,
+and every write is recorded in one audit trail.
 
-# or with Node.js 24+ (no Docker)
-npx @storagebase/studio
-```
+It is a fork of **[LibreDB Studio](https://github.com/libredb/libredb-studio)** and ships its whole
+web SQL IDE unchanged: the query editor, schema explorer, ER diagrams, schema diff, monitoring, the
+read-only database agent, OIDC single sign-on and RBAC. The fork adds a resource layer next to that
+IDE for blob storage, messaging and key vaults.
 
-Then open **http://localhost:3000**. On first run, the admin password is printed to the log (zero-config).
-
-> If the browser reaches Studio at anything other than localhost or HTTPS (`http://192.168.x.x:3000` on a LAN, for example), also set `AUTH_COOKIE_SECURE=false`. Without it the health check passes while login fails silently and sends you back to the login page.
-
-> Need Helm, Homebrew, Snap, winget, or deb/rpm? See [all install options](#getting-started).
-
----
-
-## Live Test
-
-> **Try StorageBase Studio instantly without installation!**
-
-| Test | URL | Credentials |
-|------|-----|-------------|
-| **Public Test With OIDC** | [app.libredb.org](https://app.libredb.org) | SSO |
-| **Public Test With JWT** | [trial.libredb.org](https://trial.libredb.org) | admin@libredb.org / Admin!2026  user@libredb.org / User!2026 |
-
-The test instance comes with a pre-configured PostgreSQL database via [Seed Connections](#seed-connections-pre-configured-databases). No setup required!
+> **Database features are documented upstream.** For the full description of the database IDE,
+> see the **[LibreDB Studio README](https://github.com/libredb/libredb-studio#readme)**. This README
+> covers what the fork adds, and how to build and run it.
 
 ---
 
-## Overview
+## What this fork adds
 
-You create a Postgres on a managed platform. It is ready in forty seconds. Then you want to look inside it — so you open a port to the internet, dig an SSH tunnel, or install a desktop client on every machine that needs one.
+### Resource layer: blobs, queues and key vaults
 
-StorageBase Studio goes the other way. It deploys next to the data: a container, a Helm chart, an operator, a one-click template on your PaaS, or `npm i @storagebase/studio` inside your own product. Nothing has to face outward.
-
-Sixteen engines share one interface — PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Apache Trino and Apache Cassandra — with the same explorer everywhere, and ER diagrams, schema diff and monitoring wherever the engine has something to report. Three of the sixteen are read-only because their own SQL is: Druid, Elasticsearch and OpenSearch have no `UPDATE` and no `CREATE TABLE` in the grammar at all, so those controls are reported as unsupported instead of failing when used. Cassandra is the newest, and the one that reports the least on purpose: it publishes no row count and no size that is true, so the object browser shows neither rather than showing a number that is wrong — the estimate it does publish counts partitions from flushed files, and it read 143 for a 500-row table. Trino is the other odd one: it is a query engine rather than a database, so it declares no keys and no indexes and reports the bytes as belonging to the systems behind its connectors.
-
-And nothing is held back. Single sign-on, ER diagrams, the AI features and the NoSQL engines all ship in the MIT build. MIT is not generosity here, it is a requirement of the architecture: you cannot place a per-seat licensed, feature-gated tool into every environment you own.
-
-### Why StorageBase Studio?
-- **Deploys next to the data**: container, Helm chart, Rancher, OpenShift operator, one-click PaaS template, or embedded via npm.
-- **Sixteen engines, one interface**: PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Redis, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino, Cassandra.
-- **Ten more resource types beyond databases**: blob storage (S3, Azure Blob), messaging (Kafka, RabbitMQ, SQS) and key vaults (HashiCorp Vault, OpenBao, Azure Key Vault, AWS Secrets Manager, AWS KMS) — same connection dialog, sidebar tree and audit trail. See [Beyond Databases](#beyond-databases--blob-storage-messaging--key-vaults).
-- **Runs where you are**: browser, phone, Windows, MacOS, Linux desktop.
-- **A read-only agent, with your own model**: state a question, and the run drafts SQL, reads the results, and writes a report whose claims cite them. Gemini, OpenAI, or a local Ollama with open-source models.
-- **Nothing behind a wall**: RBAC, OIDC single sign-on, query audit trail, and ER diagrams all ship under MIT.
-
-<p align="center">
-  <img src="public/screenshots/connection-modal.png" alt="Multi-Database Connection Manager" width="100%" />
-  <br/><em>Connect to PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, Couchbase, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino, Cassandra, Redis, SQLite, DuckDB, or libSQL with SSL/TLS and SSH Tunnel support.</em>
-</p>
-
----
-
-## Key Features
-
-### Professional SQL IDE
-- **Monaco Engine**: Powered by the same core as VS Code.
-- **Smart Autocomplete**: Schema-aware suggestions for tables, columns, and SQL keywords.
-- **Command Palette**: Quick access to tables, connections, saved queries, and actions with `Cmd/Ctrl+K`.
-- **Multi-Tab Workspace**: Handle parallel tasks with independent execution states.
-- **Saved Query Backups**: Export the complete saved-query library as JSON. Import validates the file, preserves query metadata and merges new entries, reporting duplicate IDs while keeping existing queries intact.
-- **Duplicate Connections**: Open an independent `(copy)` of an editable saved connection in the connection editor, adjust its settings and save. Cancelling leaves the saved connections unchanged; administrator-managed connections cannot be duplicated.
-- **Visual EXPLAIN**: Graphical execution plans to identify performance bottlenecks.
-- **Interactive ER Diagrams**: Visual schema graph with real foreign key edges, cardinality labels, MiniMap navigation, table search/filter, compact mode, and PNG/SVG export. Automatic hierarchical layout powered by ELK.js.
-- **Schema Diff & Migration**: Compare schema snapshots or cross-connection schemas side-by-side. Color-coded diff view (added/removed/modified) with automatic migration SQL generation for PostgreSQL, MySQL, SQLite, Oracle, and SQL Server, plus ClickHouse column modifications.
-- **Snapshot Timeline**: Visual horizontal timeline of schema snapshots. Click any two points to instantly compare and track schema evolution over time.
-
-<p align="center">
-  <img src="public/screenshots/erd-diagram.png" alt="Interactive ER Diagram" width="100%" />
-  <br/><em>Visual schema explorer with interactive ER diagrams powered by ReactFlow.</em>
-</p>
-
-### The Database Agent
-
-Studio's main AI surface is an **agent rail** beside the editor; the model-backed helpers listed
-below it are the others. You state an objective: *"which department has the most employees?"*, *"why
-is this query slow?"*; and press Start. The run drafts SQL against the connected database, reads
-what comes back, and finishes by composing a report whose every claim cites the result it came from.
-
-- **Read-only, enforced by the database rather than by a parser.** Every statement the agent runs
-  goes through the agent's own audited pipeline — a policy decision, an audit event and budget
-  accounting before the driver is touched (`executeAuditedOperation`, `src/lib/db/operations/execution.ts:129`)
-  — under a read-only execution profile: a read-only transaction on PostgreSQL, `PRAGMA query_only`
-  re-asserted per statement on SQLite, and a `READ_ONLY` engine handle on DuckDB paired with an
-  SQL-level guard, because that flag alone still lets `COPY … TO`, `EXPORT DATABASE` and the
-  local-file table functions through. Writes and DDL are refused before the database is reached,
-  and `EXPLAIN ANALYZE` is default-denied because it would run the statement. This pipeline is the
-  agent's alone: statements you run yourself in the editor call the provider directly
-  (`src/app/api/db/query/route.ts:44`) and are neither policy-checked nor audited this way.
-- **Agent mode reads PostgreSQL, SQLite and DuckDB only.** The read-only profile is database-native,
-  so it exists only where a provider implements it — `queryReadOnly` on `postgres.ts:915`,
-  `sqlite.ts:537` and `duckdb/index.ts:525`, and nowhere else. On any other engine, an Agent-mode run ends `engine-unsupported`
-  (`src/lib/agent/runtime.ts:199`). **Plan** mode opens on every connection — the model there is
-  toolless, runs no statement of yours, writes nothing, and drafts a statement for you to run
-  yourself. Its GROUNDING reaches every engine: on PostgreSQL and SQLite the server composes catalog
-  statements itself, and on every other connection it asks that connection's own provider to describe its
-  schema — the reading the sidebar already performs — which needs no read-only statement path. So the
-  two limits are separate: agent mode is those three engines, grounding is all of them, and a run whose
-  reading fails says so plainly rather than inventing tables.
-- **Three workflows**: **Investigate** (answer a question), **Optimize** (compare estimated plans,
-  propose an index or a rewrite), **Assess** (profile tables — counts only, never values).
-- **Nothing runs itself.** The agent never starts a run for you, never writes to the editor, and
-  never executes what it recommends. Applying a statement is your click.
-- **Evidence or nothing.** A claim with no citation cannot be composed, and the run states its own
-  verdict — *"Run answered"* or *"Run did not answer"* — beside how it ended.
-- **Bounded, and the meter is on screen**: 18 to 45 statements and a 360 s to 900 s run deadline
-  depending on workflow, 200 rows per read. See [docs/AGENT.md](docs/AGENT.md) for the exact figures
-  per workflow.
-- **Your own model.** Gemini (the default), OpenAI, Ollama, or any OpenAI-compatible endpoint.
-  **Agent** mode needs a model that can call tools — on Ollama, a live probe, not the vendor's page,
-  is what establishes that, and the guide says how to run one. **Plan** mode needs no tools and is
-  never probed (`src/lib/agent/capability-gate.ts:74`), so a model refused for Agent mode can still
-  be used in Plan mode, which is what the rail offers you.
-- **No model configured, no AI.** With no `LLM_*` settings at all, the rail does not render, and
-  nothing leaves your network. Note that a key is not the switch: Ollama and a custom endpoint count
-  as a configured model without one, and then the AI is on. What the agent sends is
-  [`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md).
-
-Standalone application only: the embedded `@storagebase/studio` package carries no agent surface.
-**Guide:** [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) · **What leaves the machine:**
-[`docs/AGENT_DATA_FLOW.md`](docs/AGENT_DATA_FLOW.md) · **Behaviour and limits:**
-[`docs/AGENT.md`](docs/AGENT.md) · **Which local model to run:**
-[`docs/llms/`](docs/llms/README.md)
-
-### Model-backed helpers
-- **Universal LLM Support**: Defaults to Gemini and serves OpenAI, Ollama, and any OpenAI-compatible endpoint (LM Studio, LiteLLM, vLLM).
-- **Query Safety Analysis**: AI-powered pre-execution risk assessment for destructive queries (DELETE, DROP, TRUNCATE). With no provider configured, the confirmation remains available with a plain query warning. Setting `LLM_PROVIDER` without its credentials is an unfinished setup, so that error stays visible, as do other configuration and service errors.
-- **AI Query Explainer**: EXPLAIN plans translated into plain language with optimization suggestions.
-- **Schema Awareness**: the connected database's schema is sent as context, so an explanation names your own tables and columns.
-- **Data Profiler summary**: the profiler's per-column statistics written up in prose. That context carries each column's `min` and `max`, which are real values from your data; see [Agent Data Flow](docs/AGENT_DATA_FLOW.md).
-
-### Pro Data Management
-- **Universal Data Grid**: Virtualized rendering (TanStack) for millions of rows.
-- **Inline Editing**: Double-click to update values directly in the grid, on engines whose SQL has a single-table row update (the control is hidden elsewhere).
-- **Column Filtering**: Per-column text filters on query results for instant data exploration.
-- **Interactive Pivot Table**: Client-side pivoting with 5 aggregation functions (COUNT, SUM, AVG, MIN, MAX) and SQL generation.
-- **Expert Exporter**: Instant CSV and JSON exports for reporting. CSV import and result export offer comma (default), semicolon and tab separators. Every format the Export menu writes to a file it also copies straight to the clipboard.
-
-### Advanced Data Visualization
-- **8 Chart Types**: Bar, Line, Pie, Area, Scatter, Histogram, Stacked Bar, and Stacked Area charts powered by Recharts.
-- **Data Aggregation**: Group-by with SUM, AVG, COUNT, MIN, MAX aggregation functions. Date grouping by hour, day, week, month, or year.
-- **Chart Persistence**: Save chart configurations and reload them instantly. Manage a library of saved charts.
-- **Chart Dashboard**: Grid view of all saved charts for at-a-glance data overview directly in the bottom panel.
-
-### Display Masking (Preview)
-- **Client-Side Display Layer**: Masks sensitive values in the browser UI — useful for screen sharing, demos, and reducing accidental on-screen exposure. **Not server-enforced**; query API responses still contain full values for authenticated users.
-- **Column-Name Pattern Matching**: 10 built-in patterns (email, phone, credit card, SSN, password, IP, date, financial, and more) match **result column headers** by regex. Works when the output name matches (e.g., `SELECT salary`). Aliases (`salary AS x`) and aggregates (`SUM(salary)`) are not masked today.
-- **Configurable Rules**: Admin panel to add, edit, enable/disable masking patterns. Email, phone, credit card and SSN presets prefill the Add Pattern form so column patterns can be adapted before saving. Custom patterns support regex. Settings stored per-browser in localStorage.
-- **RBAC UI Controls**: User role cannot toggle or reveal masked cells in the UI. Admin role can toggle masking and temporarily reveal individual cells (10s auto-hide).
-- **Export & Clipboard**: CSV, JSON, and SQL INSERT exports, whether saved as a file or copied to the clipboard, use masked display values when masking is active in the UI. This does not prevent access to raw data via the API, browser DevTools, or admin reveal.
-- **UI Coverage**: Grid, mobile card/table views, row detail sheet, and clipboard copy respect the active display mask.
-
-### Analyst & Developer Tools
-- **AI Data Profiler**: One-click table profiling with column statistics (null %, cardinality, min/max, sample values) and AI-powered narrative summaries.
-- **ORM Code Generator**: Generate TypeScript interfaces, Zod schemas, Prisma models, Go structs, Python dataclasses, and Java POJOs from live table schemas.
-- **Test Data Generator**: Schema-aware fake data generation with 30+ semantic column inferences (email, phone, name, address, etc.). Produces INSERT statements or MongoDB insertMany JSON.
-- **Database Documentation**: Auto-generated searchable data dictionary from live schema with AI-powered documentation and Markdown export.
-
-<p align="center">
-  <img src="public/screenshots/data-profiler.png" alt="AI Data Profiler" width="80%" />
-  <br/><em>One-click column profiling: null %, cardinality, min/max, and sample values for 300K+ rows.</em>
-</p>
-
-<p align="center">
-  <img src="public/screenshots/code-generator.png" alt="ORM Code Generator" width="80%" />
-  <br/><em>Generate TypeScript interfaces, Prisma models, Go structs, and more from live schemas.</em>
-</p>
-
-### Authentication & SSO
-- **Dual Auth Modes**: Local email/password login or OpenID Connect (OIDC) Single Sign-On; switchable via environment variable.
-- **Vendor-Agnostic OIDC**: Works with any OIDC-compliant provider — Auth0, Keycloak, Okta, Azure AD, Zitadel, Google, and more.
-- **PKCE Security**: Authorization Code Flow with Proof Key for Code Exchange (S256) for secure authentication.
-- **Auto Role Mapping**: Configurable claim-based role mapping with dot-notation for nested claims (e.g., `realm_access.roles`).
-- **Provider Logout**: Logout clears both the local JWT session and identity provider session.
-
-### DBA Maintenance Toolkit (Admin Only)
-- **Live Monitoring Dashboard**: 7-tab monitoring with Overview, Performance, Queries, Sessions, Tables, Storage, and Connection Pool views.
-- **Time-Series Trend Charts**: Real-time metric trends (connections, cache hit ratio, buffer pool, deadlocks) with auto-refreshing ring buffer history.
-- **Configurable Auto-Refresh**: Polling intervals from 5s to 60s with play/pause control.
-- **Threshold Alerting**: Color-coded health indicators (healthy/warning/critical) for cache hit ratio, connection usage, deadlocks, and buffer pool utilization.
-- **Connection Pool Stats**: Live total/active/idle/waiting pool metrics with utilization progress bars.
-- **One-Click Maintenance**: Trigger `VACUUM`, `ANALYZE`, `REINDEX`, `UPDATE STATISTICS`, `DBCC CHECKDB`, and `ALTER INDEX REBUILD` per database engine.
-- **Audit Trail**: Full history of every query executed across the organization. The admin Audit tab exports loaded operations and query history as CSV or JSON, respecting the current filters.
-
----
-
-## Supported Databases
-
-| Database | Driver | Features |
-| :--- | :--- | :--- |
-| **PostgreSQL** | `pg` | Full SQL IDE, EXPLAIN plans, transactions, query cancellation (`pg_cancel_backend`) |
-| **MySQL** | `mysql2` | Full SQL IDE, EXPLAIN plans, transactions, query cancellation (`KILL QUERY`) |
-| **Oracle** | `oracledb` (Thin mode) | Full SQL IDE, `FETCH FIRST N ROWS` pagination, `V$` monitoring views, `ANALYZE TABLE`, `ALTER INDEX REBUILD`, transactions |
-| **SQL Server** | `mssql` (tedious) | Full SQL IDE, `TOP N` / `OFFSET FETCH` pagination, `sys.dm_*` DMVs, `UPDATE STATISTICS`, `DBCC CHECKDB`, transactions, Azure SQL auto-detect |
-| **SQLite** | `bun:sqlite` / `node:sqlite` (runtime-selected) | Full SQL IDE, file-based or in-memory databases (server-local file) |
-| **libSQL** | none — HTTP (the Hrana protocol, `POST /v2/pipeline`, port 8080) | Full SQL IDE against a libSQL server or Turso Cloud — the same SQLite dialect as the row above, reached across a network instead of on disk. `EXPLAIN QUERY PLAN`, `sqlite_master` and `pragma_*` introspection, and real per-table bytes from `dbstat`, which the file-based driver above cannot read. The credential is an auth token rather than a password. Two maintenance operations only, `REINDEX` and `PRAGMA integrity_check`: the server refuses `VACUUM`, `ANALYZE`, `PRAGMA optimize` and `PRAGMA wal_checkpoint` outright, so no control is offered for them |
-| **DuckDB** | `@duckdb/node-api` (a native N-API addon, ~68 MB of platform bindings) | Full SQL IDE against a local DuckDB file or `:memory:`, on the server the app runs on. `EXPLAIN (FORMAT JSON)` physical plan trees, `duckdb_*` catalog introspection, real per-table bytes from `pragma_storage_info` block allocation, and query cancellation through the driver's own `interrupt()`. Three maintenance operations, `VACUUM`, `ANALYZE` and `CHECKPOINT`: `REINDEX` is a parser error here and neither `PRAGMA integrity_check` nor `PRAGMA optimize` exists, so no control is offered for them. No slow-query log and no session list — DuckDB publishes neither, so those panels say so rather than showing a zero. The file admits exactly ONE operating-system process, refused in read-only mode too, so a second Studio instance cannot open a database this one holds |
-| **MongoDB** | `mongodb` | JSON query editor, collection operations (find, aggregate, insert, update, delete) |
-| **Couchbase** | none — HTTP (Query + management REST) | Full SQL++ IDE, EXPLAIN plans, bucket/scope/collection explorer, `INFER` column inference, read-your-writes consistency, `UPDATE STATISTICS` / `BUILD INDEX` / request kill |
-| **ClickHouse** | none — HTTP (SQL interface, port 8123) | Full SQL IDE, JSON EXPLAIN plan trees, system-table schema introspection, `OPTIMIZE TABLE` / table statistics / query kill maintenance |
-| **Apache Druid** | none — HTTP (`POST /druid/v2/sql`, Router port 8888 or Broker 8082) | Read-only SQL IDE, native-query EXPLAIN plan trees, `INFORMATION_SCHEMA` datasource introspection, `sys.*` monitoring (segments, servers, ingestion tasks). Druid SQL has no `UPDATE`, no `DELETE` and no `CREATE TABLE`, and nothing it can do counts as a maintenance operation — a datasource changes through ingestion, not from the editor |
-| **Elasticsearch** | none — HTTP (`POST /_sql?format=json`, port 9200) | Read-only SQL IDE, mapping-driven index/field explorer, cluster health plus per-index document counts and store sizes. No EXPLAIN, no maintenance operation, no slow-query or session panel: those live in log files and stats APIs the SQL surface does not reach. Elasticsearch SQL also has no `OFFSET`, so a second page of results cannot be requested — narrow the statement or raise the limit instead |
-| **OpenSearch** | none — HTTP (`POST /_plugins/_sql`, port 9200) | The same read-only SQL IDE and explorer, from the same provider module. `LIMIT n OFFSET m` does work here, so paging does |
-| **Apache Trino** | none — HTTP (the client protocol, `POST /v1/statement`, port 8080) | Full SQL IDE across every configured catalog, `EXPLAIN (FORMAT JSON)` plan trees, `information_schema` schema tree for the catalog the connection pins, `system.runtime` + `jmx` monitoring, real `SHOW STATS` row counts, query cancellation and `kill_query` maintenance. Trino is a query engine and stores nothing, so it declares no primary keys, no foreign keys and no indexes anywhere — the ER diagram draws boxes and no edges, inline row editing is switched off, and the size panels name the catalogs rather than inventing a footprint. A failed statement arrives as HTTP 200, and a password is refused over plain HTTP even on a cluster with authentication disabled |
-| **Apache Cassandra** | `cassandra-driver` (pure JS, no native module) | CQL IDE over the native protocol (port 9042), keyspace browser marking partition and clustering keys, `system_views` overview, uptime and running statements. No EXPLAIN (the keyword is not in CQL), no cancellation (the protocol has none), no maintenance (every operation is a `nodetool` action), and **no row counts or sizes**: the only figures Cassandra publishes are partition estimates from flushed files and whole mebibytes, so neither is shown rather than shown wrong |
-| **Redis** | `ioredis` | Command editor, key browser, INFO-based monitoring |
-
-> **Twenty-six more engines have no driver of their own.** The sixteen above are the drivers this build ships. Twenty-six further engines speak one of those wire protocols and connect through an existing driver unchanged, so sixteen drivers reach forty-two named engines in all. They are MariaDB, Percona Server for MySQL, TiDB, Vitess, StarRocks, Apache Doris, OceanBase, SingleStore, Databend, Citus, Percona Distribution for PostgreSQL, ParadeDB, OrioleDB, TimescaleDB, YugabyteDB, AlloyDB Omni, Apache Cloudberry (incubating), CockroachDB, Materialize and RisingWave (as PostgreSQL or MySQL), Valkey, DragonflyDB, KeyDB and Garnet (as Redis), FerretDB (as MongoDB), and ScyllaDB (as Cassandra). Each was measured against a live instance, and how much of the product works differs per engine. MariaDB, both Percona distributions, TiDB, Vitess, AlloyDB Omni, Citus, TimescaleDB, YugabyteDB, ParadeDB, OrioleDB, Valkey, DragonflyDB, KeyDB and FerretDB behave as their driver's own engine, though three of them report statistics you should not trust: a Citus distributed table and a TimescaleDB hypertable report row counts and sizes that are wrong rather than missing, and YugabyteDB reports 0 until you run `ANALYZE`. Vitess is not one of those three, its row counts and sizes being exact to the byte, but a running query cannot be cancelled there: vtgate refuses `KILL QUERY` and the statement runs to completion. AlloyDB Omni is not one of them either, reporting 2000 rows for 2000 and 270336 bytes for 270336, but two things there surprise: `version()` names AlloyDB nowhere, so the version panel cannot be told apart from a stock PostgreSQL 17, and eight of AlloyDB's own `google_ml` tables list in the object browser, which any role that can connect at all may also read. StarRocks reports itself as MySQL 5.1 and loses its overview, health and session panels, its monitoring dashboard rendering six panels with the session one carrying the engine's own refusal; Apache Doris - the engine StarRocks is a fork of - loses only the overview and health panels, to one statement form its grammar rejects, and is the more trustworthy of the two where it counts: it reports 2000 rows and 10187 bytes for a table holding exactly that, where StarRocks reads zero at first too - its own background statistics collector is slower, measured 4.5 minutes against 3.3.22 where Doris's is about a minute - and, until a 2026-09-16 fix, read zero forever afterward for sizes specifically, because StarRocks' `INDEX_LENGTH` is NULL rather than Doris's real 0 and poisoned the sum the provider computed in SQL; no index is ever reported, and a foreign key is accepted, listed by `SHOW CONSTRAINTS`, invisible to the ER diagram and unenforced; Cloudberry loses the monitoring dashboard and its table and index statistics, all three to one MPP planner restriction, and reads a foreign key back as though it were enforced when it is not, though its row counts are correct; CockroachDB loses the object browser and the size panels; OceanBase answers fourteen of the fifteen surfaces but only twelve of them usefully, health failing outright because its tenant has no `performance_schema` database at all and every size reading 0 B, though its row counts are correct once `ANALYZE TABLE` has run; SingleStore lost five surfaces to a cause that was ours rather than its own - the provider sent every statement through the prepared-statement protocol, which SingleStore refuses for the `SHOW` and `EXPLAIN` statements four panels need - and four of those five are now recovered, its Explain panel being the one that is not, because there the grammar wants `EXPLAIN JSON` and the statement fails on either protocol; its numbers are still missing rather than wrong, a 2000-row table reading 0 rows and 0 B with no `ANALYZE` able to change it; ScyllaDB loses five surfaces and Test Connection with them, all six to one absent keyspace - the overview, health, performance-metrics, active-session and monitoring panels read Cassandra's `system_views` virtual tables and ScyllaDB has no `system_views` keyspace at all - those five now degrade to empty rather than throwing, so Test Connection passes and the dialog saves the connection, which it could not do at all until that change - while the editor and the object browser work in full, every one of 18 CQL types reading back byte-identically to the Cassandra 5.0.9 probed in the same pass; ParadeDB and OrioleDB are both full and their costs are opposites: ParadeDB's nine extensions put 41 objects in the object browser for 2 user tables and break agent plan mode on a stock install, while OrioleDB's browser is clean and its own storage is invisible to PostgreSQL's size functions, so every index reads 0 bytes and the cache hit ratio reads N/A. Materialize, RisingWave and Databend are query-editor-only, and Databend is the one of those three whose catalogs answer perfectly well when asked directly - the object browser is empty because our parameterised reads use a prepared protocol it does not implement. Garnet behaves as Redis and is one of three relatives here (with Valkey and DragonflyDB) whose own version `INFO` carries beside the Redis compat level and the overview now labels ahead of it - `Garnet 2.1.5 (Redis 7.4.3)` - and two of its readings are absences wearing a value, every size showing 0 B because it publishes no `used_memory` and the cache hit ratio showing 100% because it publishes no keyspace counters. The per-engine detail, with the exact version probed, is in [`docs/providers/README.md`](docs/providers/README.md#wire-compatible-engines) — we publish a name only after connecting to it, so a name absent there is untested rather than unsupported.
-
-> **Transport security is cross-cutting, not per engine.** The SSH tunnel is opened before the provider connects and the connection is rewritten to the local endpoint, so it is provider-independent: it applies to any connection configured with a host and a port. A connection entered as a connection string instead (an option for MongoDB, Couchbase, ClickHouse and libSQL) carries neither, so it is not tunnelled; SQLite and DuckDB have neither either. The SSL/TLS panel is honoured by every engine that shows it — which is every engine except the three file-based ones, SQLite, DuckDB and the embedded LibreDB, where no transport exists to secure and no panel is offered. On Trino it is load-bearing rather than optional, because the coordinator refuses a password over plain HTTP. Oracle is the one engine whose mapping carries a caveat worth stating up front: its Thin driver always verifies the certificate chain, so `require` needs the server's CA supplied when that certificate is self-signed, and a connect string pasted whole keeps whatever protocol it names.
-
-> All SQL databases share: schema explorer, ER diagrams, schema diff & migration, display masking (preview), monitoring dashboard, and connection string import. Druid, Elasticsearch, OpenSearch and Trino are each the exception twice over: their HTTP SQL APIs have no URI convention this build can parse, so they are configured by host and port only, and a generated migration names the limitation instead of emitting column-modification DDL against an engine whose SQL contains none — as it also does for Couchbase's schemaless collections. An ER diagram over a search cluster draws boxes and no edges: an index declares no foreign keys and the engine's model has none to declare, which the provider states as `declaresForeignKeys: false` rather than leaving to be guessed from an empty list.
-
-> **Provider reference docs:** each database has an in-depth reference (design, connection, query format, monitoring, limitations) under [`docs/providers/`](docs/providers/README.md). For the provider architecture see [`docs/DATABASE_PROVIDERS.md`](docs/DATABASE_PROVIDERS.md), and to add a new database see [`docs/ADDING_A_PROVIDER.md`](docs/ADDING_A_PROVIDER.md).
-
-## Beyond Databases — Blob Storage, Messaging & Key Vaults
-
-Beyond the sixteen engines above, StorageBase Studio connects ten resource types in three families — the fork's own surface, verified live against MinIO, Azurite, Kafka, RabbitMQ, LocalStack, Vault and OpenBao fixtures (`resources-compose.yml`):
+The resource layer covers ten resource types in three families. They share the database side's
+connection dialog, sidebar tree and audit trail. When a service cannot do something, the UI
+says so up front instead of letting the request fail.
 
 | Family | Types | What you can do |
 | :--- | :--- | :--- |
-| **Blob Storage** | Amazon S3 (plus MinIO, R2, Spaces through the S3 endpoint override), Azure Blob Storage | Browse buckets and containers, preview text and images, download, upload, delete |
-| **Messaging** | Apache Kafka, RabbitMQ, Amazon SQS | Browse topics and queues, peek messages, publish, purge queues |
-| **Key Vaults** | HashiCorp Vault, OpenBao, Azure Key Vault, AWS Secrets Manager, AWS KMS | Read secrets masked until revealed, write, delete — every access audited |
+| Blob storage | Azure Blob Storage, Amazon S3, and S3-compatible endpoints (MinIO, Cloudflare R2, DigitalOcean Spaces) | Browse containers and buckets by prefix; preview text and images (range reads capped at 64 KiB); download, upload and delete objects |
+| Messaging | Apache Kafka, RabbitMQ, Amazon SQS | List topics, exchanges and queues; peek messages; publish messages with key, routing key or attributes; purge queues on RabbitMQ and SQS (Kafka has no purge, so the UI does not offer one) |
+| Key vaults | Azure Key Vault, AWS Secrets Manager, AWS KMS, HashiCorp Vault, OpenBao | List secrets; read values (masked until you reveal them); write and delete secrets. On AWS KMS, reads return key metadata only, because KMS never exposes key material |
 
-The same connection dialog (per-type tabs), sidebar tree and audit trail serve both worlds. Where a service cannot do something, the product says so instead of failing: Kafka has no purge operation and refuses it outright, SQS peeks receive with visibility zero (messages reappear immediately), and KMS key material — unreadable by design — reads as key metadata. Per-type design, connection, operations and limitation docs live under [`docs/resources/`](docs/resources/README.md).
+A few service behaviours are worth knowing before you use them:
+
+- **Peeking has a cost on some services.** RabbitMQ requeues every message it peeks, so each one is
+  redelivered once. SQS has no non-destructive read, so a peek receives messages with visibility
+  timeout 0. Both viewers state this next to the message list.
+- **Deletes follow each service's own rules.** Azure Key Vault secrets are deleted and then purged.
+  AWS Secrets Manager keeps the default 30-day recovery window. KMS keys are scheduled for deletion
+  with the minimum 7-day window. Vault and OpenBao deletes remove every version.
+- **Every write is audited.** Uploads, deletes, publishes, purges and secret writes all go to the
+  audit trail. Vault and OpenBao secret reads are audited as well.
+
+Each resource type has a doc covering connection fields, browse surface, operations and known
+limitations: **[docs/resources/](docs/resources/README.md)**. The local fixture stack (MinIO,
+Azurite, Kafka, RabbitMQ, LocalStack, Vault, OpenBao) is `resources-compose.yml`, described in
+[docs/resources/compose.md](docs/resources/compose.md).
+
+### In progress on this branch
+
+These features are being built for the next release. They are not finished yet.
+
+- **Kafka workbench.** A Kafka connection gets its own entry in the Connections list, with:
+  - the cluster and its brokers
+  - topics, with partitions and configuration
+  - creating and deleting topics
+  - browsing messages by partition, offset or timestamp, with key, headers and a JSON view
+  - producing messages
+  - consumer groups, with lag and offset reset
+- **Redis Sentinel connections.** A Redis connection can point at Sentinel and will follow the
+  master when a failover happens.
+- **Detailed query audit trail.** Each query records:
+  - who ran it, and when
+  - the SQL, masked, with literals replaced
+  - the client IP (taken from `X-Forwarded-For` when proxy trust is enabled)
+  - duration, row count and result
+
+### Roadmap
+
+- **Resource groups mapped to Microsoft Entra ID app roles.** Admins decide which roles can see
+  which connections. No group ids are hardcoded.
+- **Microsoft Entra ID single sign-on** as an integration you can switch on. It sits beside the
+  existing local and generic OIDC providers ([docs/OIDC.md](docs/OIDC.md)).
 
 ---
 
-## Tech Stack
+## Database engines (inherited)
 
-| Component | Technology | Target |
-| :--- | :--- | :--- |
-| **Framework** | Next.js 16 (App Router), React 19 | Web, Mobile |
-| **UI Engine** | Tailwind CSS 4, Radix UI, [shadcn/ui](https://ui.shadcn.com/) | Web, Mobile |
-| **Theming** | CSS Variables + `@theme inline` ([Guide](docs/ui/theming.md)) | Web, Mobile |
-| **Editor** | Monaco Editor (VS Code Engine) | Web |
-| **AI** | Multi-Model (Gemini, OpenAI, Ollama, Custom) | Web, Mobile |
-| **Auth** | JWT (`jose`) + OIDC (`openid-client`), PKCE, Role Mapping | Web, Mobile |
-| **Database** | PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino, Apache Cassandra, Redis | Web, Mobile |
-| **Charts** | Recharts (Bar, Line, Pie, Area, Scatter, Histogram, Stacked) | Web, Mobile |
-| **ERD** | React Flow, ELK.js (auto-layout) | Web |
-| **State/Grid** | TanStack Table & Virtual | Web, Mobile |
-| **Deployment** | Docker, Kubernetes | Web |
+The database side comes from upstream and is kept in step with it through regular merges. This fork
+does not change its behaviour ([docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md)). Supported engines:
+
+| Engine | Notes |
+| :--- | :--- |
+| **PostgreSQL** | Full SQL IDE, EXPLAIN plans, transactions, query cancellation |
+| **MySQL** | Full SQL IDE, EXPLAIN plans, transactions, query cancellation |
+| **Oracle** | Full SQL IDE over the Thin driver, `V$` monitoring views |
+| **SQL Server** | Full SQL IDE, `sys.dm_*` DMVs, Azure SQL auto-detect |
+| **SQLite** | Server-local file or in-memory database |
+| **libSQL** | libSQL server or Turso Cloud over HTTP |
+| **DuckDB** | Local DuckDB file or `:memory:` on the server |
+| **MongoDB** | JSON query editor and collection operations |
+| **Couchbase** | SQL++ IDE with a bucket, scope and collection explorer |
+| **ClickHouse** | SQL IDE over the HTTP interface |
+| **Apache Druid** | Read-only SQL IDE |
+| **Elasticsearch** | Read-only SQL IDE, mapping-driven index explorer |
+| **OpenSearch** | Read-only SQL IDE, same module as Elasticsearch |
+| **Apache Trino** | Federated SQL across configured catalogs |
+| **Apache Cassandra** | CQL IDE, keyspace browser |
+| **Redis** | Command editor, key browser, INFO-based monitoring |
+
+There is also an embedded store. Many more engines connect through one of these drivers because they
+speak the same wire protocol, for example MariaDB, CockroachDB, Valkey and ScyllaDB. Each engine's
+reference, and every wire-compatible engine that has been measured, is listed in
+[docs/providers/](docs/providers/README.md).
 
 ---
 
-## Getting Started
+## Getting started
 
-  ### Install
+No images or packages are published for this fork. You build the image yourself from this
+repository.
 
-  | Channel | Command | Notes |
-  | :--- | :--- | :--- |
-  | **Docker** | `docker run -p 3000:3000 ghcr.io/storagebase/storagebase-studio:latest` | Zero-config: the admin password is printed to the log on first run |
-  | **Helm (Kubernetes)** | `helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio` | Zero-config: first-run admin credentials are printed to the pod log |
-  | **npx** | `npx @storagebase/studio` | Linux/macOS/Windows, Node 24+ (24 LTS is the reference runtime); downloads the release server archive |
-  | **Homebrew** | `brew trust storagebase/tap && brew install storagebase/tap/storagebase-studio` | `brew trust` is required once (Homebrew 6+; run `brew update` if unknown) |
-  | **deb / rpm** | `sudo dpkg -i storagebase-studio_<version>_amd64.deb` | Attached to each GitHub release; systemd service included |
-  | **Snap** | `sudo snap install storagebase-studio` | Zero-config: the admin password is printed to `sudo snap logs storagebase-studio` on first run — [Snap Store listing](https://snapcraft.io/storagebase-studio) |
-  | **winget (Windows)** | `winget install StorageBase.Studio` | Portable zip with a bundled Node.js runtime; run `storagebase-studio` — [listed in the winget community repository](https://github.com/microsoft/winget-pkgs/tree/master/manifests/l/StorageBase/Studio) |
-  | **Chocolatey (Windows)** | `choco install storagebase-studio` | Same standalone zip — [listed in the Chocolatey community repository](https://community.chocolatey.org/packages/storagebase-studio); the first push (0.9.59) cleared moderation on 2026-08-24, and every release publishes automatically since ([#114](https://github.com/storagebase/storagebase-studio/issues/114)) |
-  | **Portable zip (Windows)** | `.\storagebase-studio.exe` | Download from [GitHub Releases](https://github.com/storagebase/storagebase-studio/releases); bundled Node runtime, no package manager needed |
-  | **Desktop app (Linux, AppImage)** | `chmod +x storagebase-studio-desktop-<version>-linux-x64.AppImage && ./storagebase-studio-desktop-<version>-linux-x64.AppImage` | Native window, no browser tab and no login prompt; the server runs as a local sidecar. For a sandboxed build, use the Flatpak row below ([#232](https://github.com/storagebase/storagebase-studio/issues/232)) |
-  | **Desktop app (Debian/Ubuntu)** | `sudo apt install ./storagebase-studio-desktop-<version>_amd64.deb` | Same desktop app, installed into the menu; needs no FUSE and takes WebKitGTK from the distribution. Not the server package — that one is `storagebase-studio_<version>_<arch>.deb` |
-  | **Desktop app (Flatpak)** | `flatpak --user remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo`<br>`flatpak --user install flatpark org.storagebase.Studio` | Sandboxed desktop app from the [FlatPark](https://flatpark.org/) remote — no filesystem access at all; databases are reached over TCP. Developer-approved listing ([#241](https://github.com/storagebase/storagebase-studio/issues/241)) |
+| Method | Command |
+| :--- | :--- |
+| **Docker** | `docker build -t storagebase-studio .` then `docker run -p 3000:3000 storagebase-studio` |
+| **From source** | `bun install && bun dev` |
+| **Kubernetes** | `helm dependency build charts/storagebase-studio` then `helm install` with your image (below) |
 
-  > Homebrew, deb/rpm, Snap, the Windows portable zip, winget/Chocolatey, the desktop AppImage and Debian package, and the npx launcher consume standalone artifacts attached to each GitHub release. Full per-channel guide — commands, configuration, systemd usage, and the Docker image tag model — in [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md). Channel coverage scorecard (live / pending, by platform and category) — [`docs/CHANNELS.md`](docs/CHANNELS.md).
-
-  ### Quick Start (Docker)
-
-  Run StorageBase Studio with a single command — no clone, no install, no build:
+### Docker
 
 ```bash
-docker run \
-  --name storagebase-studio \
+docker build -t storagebase-studio .
+
+docker run -d --name storagebase-studio \
   -p 3000:3000 \
-  -e ADMIN_EMAIL=admin@storagebase.org \
-  -e ADMIN_PASSWORD=StorageBase.2026 \
-  -e USER_EMAIL=user@storagebase.org \
-  -e USER_PASSWORD=StorageBase.2026 \
-  -e JWT_SECRET=change-me-to-a-random-32-char-string \
-  ghcr.io/storagebase/storagebase-studio:latest
+  -v storagebase-data:/app/data \
+  -e STORAGE_PROVIDER=sqlite \
+  -e STORAGE_SQLITE_PATH=/app/data/storagebase-storage.db \
+  storagebase-studio
 ```
 
-  > **Registry**: `ghcr.io/storagebase/storagebase-studio` is the primary image (no pull rate limits — preferred for Kubernetes/CI). The same image is also mirrored to Docker Hub as [`storagebase/storagebase-studio`](https://hub.docker.com/r/storagebase/storagebase-studio?tag=latest) for convenience.
+Open <http://localhost:3000>. The command above uses the zero-config first run: if `JWT_SECRET`
+and `ADMIN_PASSWORD` are not set, the server generates them on first start and stores them in
+`<data dir>/auth-bootstrap.json` (file mode 0600). It prints the admin password to the log once
+(`docker logs storagebase-studio`). The admin email defaults to `admin@storagebase.org`.
 
-  > **IPv6**: the container picks its own bind address at startup and prefers `::`, which serves IPv4 and IPv6 through one socket — so an IPv6-only host needs no flags. It falls back to `0.0.0.0` where the namespace has no usable IPv6, and logs which it chose. Add `-e HOSTNAME=0.0.0.0` to pin it to IPv4 — details, and the Kubernetes equivalent, in [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md#network-exposure-bind-address).
+> If the browser reaches Studio at anything other than localhost or HTTPS (`http://192.168.x.x:3000` on a LAN, for example), also set `AUTH_COOKIE_SECURE=false`. Without it the health check passes while login fails silently and sends you back to the login page.
 
-  Open [http://localhost:3000](http://localhost:3000) and login with `admin@storagebase.org` / `StorageBase.2026`.
-
-  > **Auth env vars (local provider):** `ADMIN_PASSWORD` and `JWT_SECRET` are only required when `AUTH_BOOTSTRAP=off`; otherwise both are generated on first start (see [Zero-config first run](#zero-config-first-run) below). `USER_EMAIL` / `USER_PASSWORD` are optional; omit them to run admin-only (no default user password is ever assumed). `ADMIN_EMAIL` defaults to `admin@storagebase.org`. Using OIDC (`NEXT_PUBLIC_AUTH_PROVIDER=oidc`)? None of these are needed.
-
-  > **Tip**: Add `-e LLM_PROVIDER=gemini -e LLM_API_KEY=your_key -e LLM_MODEL=gemini-2.5-flash` to enable AI features.
-
-  ### Zero-config first run
-
-  Starting the server without `JWT_SECRET` / `ADMIN_PASSWORD` works out of the box:
-  the missing values are generated on first start, stored in `<data dir>/auth-bootstrap.json`
-  (file mode 0600), and the admin password is printed once to the server log. Explicitly
-  set environment variables always take precedence. Set `AUTH_BOOTSTRAP=off` to require
-  explicit configuration instead (recommended for production deployments).
-
-  A `JWT_SECRET` you set yourself must be at least 32 characters. A shorter one is a
-  hard error at startup: the server prints what is wrong and exits with code 1, instead
-  of booting into a state where the health check reports healthy but every login returns
-  503. Unset the variable to let the first run generate a strong secret for you.
-
-  ### Linux packages (.deb / .rpm)
-
-  Native packages for Debian/Ubuntu and RHEL/Fedora (amd64 and arm64) are attached to every
-  [GitHub release](https://github.com/storagebase/storagebase-studio/releases). They bundle the standalone
-  server together with a private Node.js runtime (nothing else to install) and register a systemd service:
+For a production deployment, set the credentials yourself and turn off generation:
 
 ```bash
-# Debian / Ubuntu
-sudo dpkg -i storagebase-studio_<version>_amd64.deb
-
-# RHEL / Fedora / Rocky
-sudo rpm -i storagebase-studio-<version>.x86_64.rpm
-
-# Start the service (first run prints the generated admin password to the journal)
-sudo systemctl enable --now storagebase-studio
-journalctl -u storagebase-studio
+docker run -d --name storagebase-studio \
+  -p 3000:3000 \
+  -v storagebase-data:/app/data \
+  -e AUTH_BOOTSTRAP=off \
+  -e JWT_SECRET="$(openssl rand -base64 32)" \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e ADMIN_PASSWORD='change-me' \
+  -e STORAGE_PROVIDER=sqlite \
+  -e STORAGE_SQLITE_PATH=/app/data/storagebase-storage.db \
+  storagebase-studio
 ```
 
-  Configuration lives in `/etc/storagebase-studio/env` (loaded by the unit; see the commented template
-  installed there), state (SQLite storage and generated credentials) in `/var/lib/storagebase-studio`.
-  The `storagebase-studio` command can also be run directly without systemd. Full details for this and
-  every other channel: [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md).
+Notes:
 
-  ### Prerequisites
-  - [Bun](https://bun.sh/) (Recommended) or Node.js 24+
-  - A target database to query (PostgreSQL, MySQL, Oracle, SQL Server, SQLite, libSQL, DuckDB, MongoDB, Couchbase, ClickHouse, Apache Druid, Elasticsearch, OpenSearch, Apache Trino, Apache Cassandra, or Redis)
+- `JWT_SECRET` must be at least 32 characters. A shorter value makes the server exit at startup.
+- `USER_EMAIL` and `USER_PASSWORD` are optional. If you leave them out, the lower-privilege user
+  account is not created.
+- With `NEXT_PUBLIC_AUTH_PROVIDER=oidc`, the local credentials are not used. See [docs/OIDC.md](docs/OIDC.md).
+- `STORAGE_PROVIDER` can be `local` (browser only), `sqlite` or `postgres`. Choose `sqlite` or
+  `postgres` to keep connections on the server, which the agent needs
+  ([docs/STORAGE.md](docs/STORAGE.md)).
+- Every variable, with an example, is in [`.env.example`](.env.example). To enable the AI features,
+  set `LLM_PROVIDER`, `LLM_API_KEY` and `LLM_MODEL`.
 
-  ### Quick Start (Local)
-  1. **Clone & Install**
-     ```bash
-     git clone https://github.com/storagebase/storagebase-studio.git
-     cd storagebase-studio
-     bun install
-     ```
+### From source
 
-    2. **Configure Environment**
-       Create a `.env.local` file:
-       ```env
-       # Authentication (email/password)
-       ADMIN_EMAIL=admin@storagebase.org
-       ADMIN_PASSWORD=your_admin_password
-       USER_EMAIL=user@storagebase.org
-       USER_PASSWORD=your_user_password
-       JWT_SECRET=your_32_character_random_string
-
-       # Optional: OIDC Single Sign-On (Auth0, Keycloak, Okta, Azure AD, etc.)
-       # NEXT_PUBLIC_AUTH_PROVIDER=oidc
-       # OIDC_ISSUER=https://your-provider.com
-       # OIDC_CLIENT_ID=your_client_id
-       # OIDC_CLIENT_SECRET=your_client_secret
-
-       # LLM Configuration
-       LLM_PROVIDER=gemini # options: gemini, openai, ollama, custom
-       LLM_API_KEY=your_api_key
-       LLM_MODEL=gemini-2.5-flash
-       LLM_API_URL=http://localhost:11434/v1 # optional for local LLMs (Ollama)
-       ```
-
-3. **Launch**
-   ```bash
-   bun dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000)
-
-  ### Embedding in your own app (`@storagebase/studio`)
-
-  Studio is published as an npm package as well as a server, so the editor can live inside your own
-  product:
-
-  ```bash
-  npm i @storagebase/studio
-  ```
-
-  **Adopt Studio's security headers from your own Next.js config.** The `@storagebase/studio/security`
-  subpath publishes the header policy as pure data — `securityHeaders()` returns a plain
-  `Record<string, string>`, and the module it comes from imports nothing, so it is safe to load from
-  a `next.config.ts` where no path alias and no Studio runtime exist yet:
-
-  ```ts
-  // next.config.ts
-  import { securityHeaders } from "@storagebase/studio/security";
-
-  export default {
-    async headers() {
-      return [
-        {
-          source: "/:path*",
-          headers: Object.entries(securityHeaders()).map(([key, value]) => ({ key, value })),
-        },
-      ];
-    },
-  };
-  ```
-
-  Options: `reportOnly` emits `Content-Security-Policy-Report-Only` instead of the enforcing header;
-  `hsts: false` disables HSTS (or an object customises it); `allowEval` adds `'unsafe-eval'`, which
-  React's *development* build needs; `monacoVsPath` adds the origin serving Monaco's bundle when it
-  is not same-origin; and `extra` merges your own sources per directive. `studioCspDirectives()` and
-  `HSTS_MAX_AGE_SECONDS` are exported too, for a config that needs to compose the policy rather than
-  send it.
-
-  Read the policy before you inherit it: the CSP permits inline scripts, because every document
-  route is statically prerendered with nonce-less hydration scripts, so what it contains is where an
-  injected script could *send* data, not whether one can run. That trade-off, and the two delivery
-  paths a Next.js app has for these headers, are argued in
-  [`docs/SECURITY.md`](docs/SECURITY.md).
-
----
-
-## Development Databases
-
-Need databases to test with? We provide ready-to-use containers for all supported engines:
+Requires [Bun](https://bun.sh/) (the repo pins its version in `package.json`) and Node.js 24+.
 
 ```bash
-# Start every default-profile database (PostgreSQL, MySQL, MongoDB, SQL Server, Oracle, ...)
-docker compose -f database-compose.yml up -d
-
-# Or start a specific database
-docker compose -f database-compose.yml up -d postgres
-docker compose -f database-compose.yml up -d mssql
-docker compose -f database-compose.yml up -d oracle
-
-# Apache Druid: profile-gated, so a bare `up -d` does NOT start it. Druid is a distributed
-# system with no single-container mode - five Druid processes plus ZooKeeper plus its own
-# metadata database is the minimum that can answer a SQL query, so all seven services carry
-# `profiles: [druid]` rather than doubling the default stack. Connect to the Router on 8888
-# (or the Broker on 8082 - the same endpoint, no different configuration).
-docker compose -f database-compose.yml --profile druid up -d
-
-# Start PostgreSQL with sample e-commerce data
-docker compose -f docker/postgres.yml up -d
-
-# Stop (keeps data)
-docker compose -f database-compose.yml down
-
-# Stop and remove all data
-docker compose -f database-compose.yml down -v
-
-# The Druid containers need the profile flag here too - without it `down` leaves them running
-docker compose -f database-compose.yml --profile druid down -v
+git clone https://github.com/storagebase/storagebase-studio.git
+cd storagebase-studio
+bun install
+cp .env.example .env.local   # edit as needed; zero-config also works here
+bun dev                      # http://localhost:3000
 ```
 
-### Connection Details
+For local test backends, `database-compose.yml` starts the database engines and
+`resources-compose.yml` starts the blob, messaging and vault fixtures.
 
-| Database | Host | Port | User | Password | Database/Service |
-|----------|------|------|------|----------|-----------------|
-| **PostgreSQL** | localhost | 5432 | postgres | postgres | postgres |
-| **MySQL** | localhost | 3306 | root | root | mysql |
-| **SQL Server** | localhost | 1433 | sa | Password123! | master |
-| **Oracle** | localhost | 1521 | system | Password123! | freepdb1 |
-| **MongoDB** | localhost | 27017 | admin | admin | — |
-| **Apache Druid** | localhost | 8888 (Router) or 8082 (Broker) | — | — | — (one catalog, always `druid`) |
-| **Apache Trino** | localhost | 8080 | — | — | `tpch` (a *catalog*; `tpcds`, `memory`, `system` and `jmx` are configured too) |
+### Kubernetes (Helm)
 
-### PostgreSQL Sample Data
-
-The `docker/postgres.yml` setup includes a pre-loaded e-commerce schema:
-
-| Feature | Description |
-|---------|-------------|
-| **PostgreSQL 18** | Official image with `pg_stat_statements` |
-| **pg_stat_statements** | Pre-enabled for query monitoring |
-| **Sample Schema** | E-commerce database (app schema) |
-| **Sample Data** | 25 customers, 30 products, 100 orders |
-| **Views** | Order summary, product sales, customer LTV |
-
-Sample tables: `app.customers`, `app.products`, `app.orders`, `app.order_items`, `app.product_reviews`, `app.categories`, `app.coupons`, `app.audit_log`
-
-> This setup is ideal for testing the **Monitoring Dashboard** features with real `pg_stat_statements` data.
-
----
-
-## Testing
-
-StorageBase Studio has a comprehensive test suite: 549 test files and 17,692 tests across seven layers, plus 79 browser tests, with **100% line coverage** enforced by CI (`bun run coverage:check`).
-
-### Quick Commands
+The chart is in this repository at [`charts/storagebase-studio`](charts/storagebase-studio/README.md).
+Build the image, push it to your own registry, and point the chart at it:
 
 ```bash
-# Every test file, each in its own bun process
-bun run test
+# Build and push (any registry). On Azure, you can build directly in ACR instead:
+#   az acr build --registry <your-registry> --image storagebase-studio:<tag> .
+docker build -t <registry>/storagebase-studio:<tag> .
+docker push <registry>/storagebase-studio:<tag>
 
-# Run by layer
-bun run test:unit          # Pure function tests (328 files)
-bun run test:api           # API route handler tests (35 files)
-bun run test:integration   # Database provider tests (24 files)
-bun run test:hooks         # React hook tests (21 files)
-bun run test:security      # Security posture tests (21 files)
-bun run test:evals         # LLM prompt evaluation tests (13 files)
-bun run test:components    # Component tests (107 files: tests/components and tests/isolated)
+helm dependency build charts/storagebase-studio
+helm install storagebase charts/storagebase-studio \
+  --set image.repository=<registry>/storagebase-studio \
+  --set image.tag=<tag> \
+  -f my-values.yaml
 
-# Any subset, and what the runner would run
-bun tests/run-tests.ts tests/integration/db/duckdb-provider.test.ts
-bun tests/run-tests.ts --list
-bun tests/run-tests.ts --jobs=4          # bound the concurrency
-
-# E2E tests (requires build)
-bun run test:e2e           # Playwright browser tests (79 cases across chromium and webkit)
-
-# Coverage report (lcov)
-bun run test:coverage
-```
-
-### Test Architecture
-
-| Layer | Directory | Files | Tests | What it covers |
-|-------|-----------|-------|-------|----------------|
-| **Unit** | `tests/unit/` | 328 | 9,645 | Pure functions: SQL parser, connection strings, data masking, query limiter, schema diff, error classes, DB icons, showcase queries, and the packaging and chart manifests |
-| **API** | `tests/api/` | 35 | 602 | Route handlers: auth, query, transaction, maintenance, AI endpoints, middleware |
-| **Integration** | `tests/integration/` | 24 | 2,768 | Database providers: PG, MySQL, SQLite, MongoDB, Couchbase, Redis, Oracle, MSSQL, ClickHouse, Druid, Elasticsearch, OpenSearch, Trino |
-| **Hooks** | `tests/hooks/` | 21 | 566 | React hooks: auth, connections, tabs, query execution, transactions, inline editing, monitoring |
-| **Security** | `tests/security/` | 21 | 322 | The posture `docs/SECURITY.md` claims: route exposure, headers, audit channels, credential handling |
-| **Evals** | `tests/evals/` | 13 | 198 | LLM prompt behaviour against recorded models |
-| **Components** | `tests/components/`, `tests/isolated/` | 107 | 3,376 | UI components with `happy-dom`: Studio, Sidebar, QueryEditor, ResultsGrid, Admin Dashboard, Charts, ERD |
-| **E2E** | `e2e/` | 18 | 79 | Full browser flows: login, connections, query execution, tabs, export, admin |
-
-The Files column was counted on 2026-09-15 with `bun tests/run-tests.ts --list` for the first seven rows and `playwright test --list` for the last.
-The Tests column comes from an earlier full run the same day, over the 542 files the tree held then, so the per-layer numbers are a little below the 17,692 above: they do not yet count the seven test files this branch and the merge from main add under `tests/unit/`, nor the cases this branch adds to the runner's own test files.
-The nineteenth spec in `e2e/`, `base-path.spec.ts`, is not in that 18: it needs its own server configuration and runs as `bun run test:e2e:base-path`.
-
-### Key Details
-
-- **Test runner**: [`tests/run-tests.ts`](tests/run-tests.ts) over `bun:test`. It discovers every `*.test.ts` and `*.test.tsx` file under `tests/` except `tests/live/`, so a new test file runs the moment it is added, and it runs each file in its own bun process, several at a time (one per CPU by default, `--jobs=N` to change it).
-- **Why a process per file**: bun's `mock.module()` is process-wide with no undo, and whole-module mocks are the standard pattern in `tests/api/`, so files that share a process contaminate each other. On Linux with 20 cores and bun 1.4.2, the suite took 211 seconds one file at a time, 61 seconds 4 at a time and 36 seconds 20 at a time, measured on 2026-09-15 over the 538 files the tree held then; `docs/BACKLOG.md` D86 carries the same three timings and the same basis.
-- **One command everywhere**: the runner is TypeScript rather than shell so that the command a contributor is told to run works on Linux, macOS and Windows from the platform's own shell. The bash scripts it replaced did not: one used `mapfile`, a bash 4 builtin that macOS's bash 3.2 does not have.
-- **E2E**: Playwright runs the full suite on Chromium and the `security-headers` spec on WebKit (`webkit-security`), against a production build (`bun run build && bun start`)
-- **CI**: GitHub Actions runs lint + typecheck + build, the required `Unit & Integration Tests` job (`bun run test:coverage` then `bun run coverage:check`) on ubuntu, a non-required `Cross-platform Tests` job running `bun run test` on windows-latest and macos-latest, E2E tests, and SonarCloud analysis
-- **Coverage**: `bun run test:coverage` is the same runner with `--coverage`, which writes one lcov per test file; `scripts/merge-lcov.mjs` merges them into `coverage/lcov.info` for the gate and for SonarCloud
-
-> **Important**: Always use `bun run test`, never bare `bun test` over a directory. `bun test tests/api` puts every file in one process, where one file's module mock becomes every file's. To run a single file, name it to the runner: `bun tests/run-tests.ts tests/api/proxy.test.ts`.
-
----
-
-## One-Click Deploy
-
-Deploy your own instance of StorageBase Studio with a single click on DigitalOcean, Koyeb, Render, Railway, Sealos, CapRover, or Dokploy:
-
- [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=storagebase-studio&type=docker&image=ghcr.io%2Fstoragebase%2Fstoragebase-studio%3Alatest&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900&env%5BADMIN_EMAIL%5D=admin%40storagebase.org&env%5BADMIN_PASSWORD%5D=StorageBase.2026&env%5BJWT_SECRET%5D=replace_with_openssl_rand_base64_32&env%5BLLM_API_KEY%5D=your_GEMINI_API_KEY&env%5BLLM_MODEL%5D=gemini-2.5-flash&env%5BLLM_PROVIDER%5D=gemini&env%5BNEXT_PUBLIC_AUTH_PROVIDER%5D=local&env%5BSTORAGE_PROVIDER%5D=local&env%5BUSER_EMAIL%5D=user%40storagebase.org&env%5BUSER_PASSWORD%5D=StorageBase.2026&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)  
- [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/storagebase/storagebase-studio)  
- [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/storagebase-studio?referralCode=storagebase&utm_medium=integration&utm_source=template&utm_campaign=generic)  
- [![Deploy on Sealos](https://sealos.io/Deploy-on-Sealos.svg)](https://sealos.io/products/app-store/storagebase-studio)  
- [![Deploy on DigitalOcean](https://img.shields.io/badge/Deploy%20on-DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white)](https://marketplace.digitalocean.com/apps/storagebase-studio)  
- [![Deploy on CapRover](https://img.shields.io/badge/Deploy%20on-CapRover-2474ed?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/storagebase-studio.yml)  
- [![Deploy on Fly.io](https://img.shields.io/badge/Deploy%20on-Fly.io-24175B?style=for-the-badge&logo=flydotio&logoColor=white)](docs/FLY.md)  
- [![Deploy on Dokploy](https://img.shields.io/badge/Deploy%20on-Dokploy-1F2937?style=for-the-badge&logo=docker&logoColor=white)](https://templates.dokploy.com)  
-
-> **DigitalOcean:** the [Marketplace listing](https://marketplace.digitalocean.com/apps/storagebase-studio) creates a preconfigured Droplet. Unique admin credentials are generated on first boot; the welcome message (MOTD) tells you where to find them.
->
-> **CapRover:** open your CapRover dashboard → **Apps → One-Click Apps/Databases**, search for **StorageBase Studio**, and deploy.
->
-> **Koyeb:** set a strong `JWT_SECRET` (at least 32 characters — `openssl rand -base64 32`) and credentials before deploying (Koyeb cannot auto-generate secrets); the prefilled values are placeholders, and a secret under 32 characters makes the app exit at startup. The button uses `STORAGE_PROVIDER=local` — connection metadata lives in the browser, which suits Koyeb's ephemeral filesystem. For persistence across redeploys, switch to `STORAGE_PROVIDER=postgres` and point `STORAGE_POSTGRES_URL` at a Koyeb managed Postgres or Neon database. The button also fills in `LLM_PROVIDER`/`LLM_MODEL`/`LLM_API_KEY`, but Agent mode needs a server-held connection, so its Start button stays disabled until `STORAGE_PROVIDER` is `sqlite` or `postgres` (see [docs/AGENT.md](docs/AGENT.md#turning-it-on)). See [`deploy/koyeb/`](deploy/koyeb/).
->
-> **Fly.io:** the repo ships a ready [`fly.toml`](fly.toml) — full steps (app name, volume, secrets) in [`docs/FLY.md`](docs/FLY.md).
->
-> **Cosmos:** install in one click from the [Cosmos](https://cosmos-cloud.io) Marketplace — search for **StorageBase Studio**. Cosmos auto-generates secrets, provisions a persistent SQLite volume, and serves the app behind its SmartShield reverse proxy. See [`deploy/cosmos/`](deploy/cosmos/).
->
-> **Dokploy:** install in one click from the [Dokploy template catalog](https://templates.dokploy.com) — in your Dokploy dashboard, **Create Service → Template**, search for **StorageBase Studio**, and deploy. Dokploy auto-generates `ADMIN_PASSWORD`, `USER_PASSWORD`, and `JWT_SECRET`, and persists connections on a SQLite volume behind Traefik. See [`deploy/dokploy/`](deploy/dokploy/).
-
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ADMIN_EMAIL` | ❌ | Admin email (default: `admin@storagebase.org`) |
-| `ADMIN_PASSWORD` | ✅(autogenerated) | Admin password; auto-generated on first run unless `AUTH_BOOTSTRAP=off` |
-| `USER_EMAIL` | ❌ | Optional user account email (default: `user@storagebase.org`) |
-| `USER_PASSWORD` | ❌ | Optional; the lower-privilege user account exists only when set |
-| `JWT_SECRET` | ✅(autogenerated) | JWT secret (min 32 chars); auto-generated on first run unless `AUTH_BOOTSTRAP=off`. A shorter value is fatal: the server refuses to start rather than serve a deployment where every login fails |
-| `AUTH_BOOTSTRAP` | ❌ | `off` disables zero-config generation (strict mode; recommended for production) |
-| `AUTH_COOKIE_SECURE` | ❌ | `false` drops the `Secure` flag from auth cookies — needed only when the browser reaches the app over plain HTTP (LAN/home server); not for TLS terminated at an ingress |
-| `NEXT_PUBLIC_AUTH_PROVIDER` | ❌ | `local` (default) or `oidc` for SSO |
-| `OIDC_ISSUER` | ❌ | OIDC issuer URL (required when `oidc`) |
-| `OIDC_CLIENT_ID` | ❌ | OIDC client ID (required when `oidc`) |
-| `OIDC_CLIENT_SECRET` | ❌ | OIDC client secret (required when `oidc`) |
-| `OIDC_ADMIN_ROLES` | ❌ | Comma-separated admin role values (default: `admin`) |
-| `OIDC_ROLE_CLAIM` | ❌ | Claim path for role (e.g. `realm_access.roles`) |
-| `OIDC_SCOPE` | ❌ | OIDC scope (default: `openid profile email`) |
-| `LLM_PROVIDER` | ❌ | AI: `gemini`, `openai`, `ollama`, `custom` (self-hosted OpenAI-compatible endpoint) |
-| `LLM_API_KEY` | ❌ | API key for AI features |
-| `LLM_MODEL` | ❌ | Model name (e.g., `gemini-2.5-flash`) |
-| `LLM_API_URL` | ❌ | API URL for `ollama` and `custom`; required for `custom`, defaults to `http://localhost:11434/v1` for `ollama` |
-| `STORAGE_PROVIDER` | ❌ | Storage provider: `local` (default), `sqlite`, or `postgres` |
-| `STORAGE_SQLITE_PATH` | ❌ | SQLite file path (e.g. `/app/data/storagebase-storage.db`) |
-| `STORAGE_POSTGRES_URL` | ❌ | PostgreSQL connection URL (required when `STORAGE_PROVIDER=postgres`) |
-| `SEED_CONFIG_PATH` | ❌ | Path to seed connections YAML config (see [Seed Connections](#seed-connections-pre-configured-databases)) |
-| `SEED_CACHE_TTL_MS` | ❌ | Seed config cache TTL in ms (default: `60000`) |
-
-> **Tip**: Copy `.env.example` to `.env.local` for local development.
-
----
-
-## Deployment (DevOps)
-
-For a reverse-proxy path such as `/tools/storagebase`, build with `BASE_PATH` and follow the
-[subpath deployment guide](docs/SUBPATH.md). Prebuilt images use the root path.
-
-> Maintainers: every distribution channel is inventoried in
-> [`distribution/channels.yaml`](distribution/channels.yaml); `bun run distribution:check`
-> reports version drift across all of them (see
-> [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md#channel-inventory-and-drift-check)).
-
-### Koyeb
-
-1. Use the **Deploy to Koyeb** button under [One-Click Deploy](#one-click-deploy) to run the prebuilt `ghcr.io/storagebase/storagebase-studio:latest` image.
-2. Set a strong `JWT_SECRET` (32+ characters) and real `ADMIN_PASSWORD` / `USER_PASSWORD` in the deploy form before launching. Koyeb cannot auto-generate secrets; the prefilled values are placeholders.
-3. For connections to survive redeploys, set `STORAGE_PROVIDER=postgres` and `STORAGE_POSTGRES_URL` to a Koyeb managed Postgres or Neon connection string. The button defaults to `STORAGE_PROVIDER=local`, which keeps connection metadata in the browser.
-
-See [`deploy/koyeb/`](deploy/koyeb/) for the complete setup and storage options.
-
-### Railway
-
-StorageBase Studio is available as a one-click [Railway](https://railway.com) template.
-See [`deploy/railway/`](deploy/railway/) for the template definition, install
-instructions, and the publish checklist. The template runs the prebuilt
-`ghcr.io/storagebase/storagebase-studio` image with SQLite persistence on a Railway
-volume. Note: Docker-image templates require a manual version bump on each
-release (same as CapRover).
-
-### CapRover
-
-StorageBase Studio is published in the official [CapRover One-Click Apps](https://github.com/caprover/one-click-apps/blob/master/public/v4/apps/storagebase-studio.yml) catalog:
-
-1. **Open your CapRover dashboard** → **Apps → One-Click Apps/Databases**
-2. **Search** for **StorageBase Studio**
-3. **Fill in the variables** (admin/user credentials, `JWT_SECRET`, optional AI/storage settings)
-4. **Deploy!**
-
-The app runs the prebuilt `ghcr.io/storagebase/storagebase-studio` image. As with Railway, Docker-image templates require a manual version bump on each release.
-
-### Kubero
-
-StorageBase Studio is listed in the official
-[Kubero template catalog](https://www.kubero.dev/templates) (a self-hosted
-"Heroku alternative for Kubernetes"). From your Kubero dashboard, browse
-**Templates**, search **StorageBase Studio**, fill in the credentials / `JWT_SECRET`,
-and deploy. The template runs the prebuilt `ghcr.io/storagebase/storagebase-studio` image
-with SQLite persistence on a 5Gi volume at `/app/data`. See
-[`deploy/kubero/`](deploy/kubero/) for install and post-install details. As with
-Railway and CapRover, Docker-image templates require a manual version bump on
-each release.
-
-### Cosmos
-
-StorageBase Studio is listed in the official
-[Cosmos servapp marketplace](https://github.com/azukaar/cosmos-servapps-official)
-([Cosmos](https://cosmos-cloud.io) is a self-hosted server manager and secure
-reverse proxy). From your Cosmos dashboard, open **Marketplace**, search
-**StorageBase Studio**, and install. Cosmos auto-generates the credentials and
-`JWT_SECRET`, provisions a persistent SQLite volume at `/app/data`, and serves
-the app behind a SmartShield-protected route. See
-[`deploy/cosmos/`](deploy/cosmos/) for install and post-install details. As with
-Railway, CapRover, and Kubero, Docker-image templates require a manual version
-bump on each release.
-
-### Render (Recommended for cloud deployment)
-
-StorageBase Studio includes a `render.yaml` Blueprint for one-click deployment:
-
-1. **Fork this repository**
-2. **Connect to Render**: [dashboard.render.com](https://dashboard.render.com) → New → Blueprint
-3. **Select your forked repo** and Render will auto-detect `render.yaml`
-4. **Set Environment Variables** in Render Dashboard:
-5. **Deploy!**
-
-### Docker Compose (Self-Hosted)
-
-Use the ready-to-use [`docker-compose.example.yml`](docker-compose.example.yml) — it pulls the published image (`ghcr.io/storagebase/storagebase-studio:latest`), so no source build is needed. It documents every supported environment variable (auth, OIDC, storage, LLM, seed connections), with the less-common ones commented out.
-
-```bash
-# 1. Copy the ready-to-use compose file
-cp docker-compose.example.yml docker-compose.yml
-
-# 2. Create your .env (set at least JWT_SECRET / ADMIN_PASSWORD / USER_PASSWORD)
-cp .env.example .env
-
-# 3. Start
-docker compose up -d   # → http://localhost:3000
-```
-
-This file is platform-neutral and works with PaaS tools that consume a plain `docker-compose.yml` (Dokploy, Coolify, Portainer, etc.) — point them at the file and set the secrets as environment variables.
-
-> The repository's default `docker-compose.yml` builds the image from source (`build: .`) and is intended for local development.
-
-### Kubernetes (Helm Chart)
-
-```bash
-helm repo add storagebase https://storagebase.org/storagebase-studio/
-helm install storagebase storagebase/storagebase-studio
-
-# Retrieve the generated admin credentials from the pod log
+# First-run admin credentials, when you did not supply secrets
 kubectl logs deployment/storagebase-storagebase-studio | grep -A 4 "generated admin credentials"
 ```
 
-Or via OCI registry:
-```bash
-helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio
-```
+For production, put the secrets in `my-values.yaml` (`secrets.jwtSecret`, `secrets.adminPassword`)
+or point `secrets.existingSecret` at a Secret you manage. The chart also covers Ingress/TLS, a
+PostgreSQL subchart, HPA, PDB, NetworkPolicy and seed connections. See the
+[chart README](charts/storagebase-studio/README.md) for values, and
+[docs/HELM_CHART.md](docs/HELM_CHART.md) for the reasoning behind the design.
 
-For production, provide your own secrets instead of relying on generated ones:
-```bash
-helm install storagebase storagebase/storagebase-studio \
-  --set secrets.jwtSecret=$(openssl rand -base64 32) \
-  --set secrets.adminPassword=MyAdmin123
-```
+---
 
-Features: PostgreSQL subchart, Ingress/TLS, HPA, PDB, NetworkPolicy, ExternalSecrets support. See [charts/storagebase-studio/README.md](charts/storagebase-studio/README.md) for full documentation.
+## Documentation
 
-### Seed Connections (Pre-Configured Databases)
+| Topic | Where |
+| :--- | :--- |
+| Resource types (blob, messaging, vault) | [docs/resources/](docs/resources/README.md) |
+| Database providers | [docs/providers/](docs/providers/README.md) |
+| Architecture and data flow | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Server-side storage | [docs/STORAGE.md](docs/STORAGE.md) |
+| OIDC single sign-on | [docs/OIDC.md](docs/OIDC.md) |
+| Security posture | [docs/SECURITY.md](docs/SECURITY.md) |
+| Database agent user guide | [docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md) |
+| Helm chart design | [docs/HELM_CHART.md](docs/HELM_CHART.md) |
+| Syncing from upstream | [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md) |
+| Fork conventions (read before contributing) | [STORAGEBASE.md](STORAGEBASE.md) |
+| Upstream database feature documentation | [LibreDB Studio README](https://github.com/libredb/libredb-studio#readme) |
 
-Pre-configure database connections via a YAML config file so users see them immediately after login. Ideal for Platform/SaaS deployments where admins provision databases for teams.
+---
 
-**Features:**
-- Role-based access control (`admin`, `user`, `*` wildcard)
-- Hybrid model: `managed: true` (read-only, admin-controlled) or `managed: false` (editable copy for user)
-- Credentials injected via `${ENV_VAR}` syntax — never stored in config file
-- Hot-reload: config changes apply within 60s without restart
-- Works with Docker, docker-compose, and Kubernetes (Helm)
+## Development
 
-**1. Create a config file** (`seed-connections.yaml`):
-
-```yaml
-version: "1"
-
-defaults:
-  managed: true
-  environment: production
-
-connections:
-  - id: "prod-analytics"
-    name: "Production Analytics"
-    type: postgres
-    host: analytics-db.internal
-    port: 5432
-    database: analytics
-    user: "readonly_user"
-    password: "${ANALYTICS_DB_PASSWORD}"
-    roles: ["admin"]
-    color: "#10B981"
-
-  - id: "dev-sandbox"
-    name: "Dev Sandbox"
-    type: mysql
-    host: dev-mysql.internal
-    port: 3306
-    database: sandbox
-    user: "dev_user"
-    password: "${DEV_DB_PASSWORD}"
-    roles: ["*"]
-    managed: false
-```
-
-**2. Mount and configure:**
-
-<details>
-<summary><strong>Docker</strong></summary>
+The fork has one structural rule: resource code lives in its own layer (`src/lib/resources/**`,
+`src/app/api/resources/**`, `src/components/resources/**`) and never requires edits under
+`src/lib/db/**`. This keeps upstream merges clean. [STORAGEBASE.md](STORAGEBASE.md) explains the
+rule, and [CLAUDE.md](CLAUDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md) cover the rest.
 
 ```bash
-docker run -v ./seed-connections.yaml:/app/config/seed-connections.yaml:ro \
-  -e SEED_CONFIG_PATH=/app/config/seed-connections.yaml \
-  -e ANALYTICS_DB_PASSWORD=secret \
-  -e DEV_DB_PASSWORD=devsecret \
-  ghcr.io/storagebase/storagebase-studio:latest
+bun run test                                   # every test file, each in its own bun process
+bun tests/run-tests.ts tests/unit/x.test.ts    # a single file
+bun run test:coverage && bun run coverage:check  # 100% line coverage is a hard gate
+bun run format && bun run lint && bun run typecheck
 ```
-</details>
 
-<details>
-<summary><strong>Docker Compose</strong></summary>
+Always use `bun run test`, not a bare `bun test` over a directory. Module mocks in bun are
+process-wide, so running files together in one process breaks them.
 
-```yaml
-services:
-  app:
-    image: ghcr.io/storagebase/storagebase-studio:latest
-    volumes:
-      - ./seed-connections.yaml:/app/config/seed-connections.yaml:ro
-    environment:
-      SEED_CONFIG_PATH: /app/config/seed-connections.yaml
-      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD}
-      DEV_DB_PASSWORD: ${DEV_DB_PASSWORD}
+Before you open a pull request, run the same gate CI runs:
+
+```bash
+bun run format && bun run lint && bun run typecheck && bun run knip \
+  && bun run chart:check && bun run channels:showcase:check \
+  && bun run readme:check && bun run security:check \
+  && bun run test && bun run build
 ```
-</details>
-
-<details>
-<summary><strong>Kubernetes (Helm)</strong></summary>
-
-```yaml
-# values.yaml
-seedConnections:
-  enabled: true
-  config:
-    version: "1"
-    connections:
-      - id: "prod-analytics"
-        name: "Production Analytics"
-        type: postgres
-        host: analytics-db.internal
-        password: "${ANALYTICS_DB_PASSWORD}"
-        roles: ["admin"]
-
-# Credentials via K8s Secret:
-extraEnvFrom:
-  - secretRef:
-      name: seed-db-credentials
-```
-</details>
-
-**Config Reference:**
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `version` | Yes | Must be `"1"` |
-| `defaults` | No | Default values merged into all connections |
-| `connections[].id` | Yes | Unique slug (`[a-z0-9-]+`, max 64 chars) |
-| `connections[].name` | Yes | Display name in UI |
-| `connections[].type` | Yes | `postgres`, `mysql`, `sqlite`, `mongodb`, `redis`, `oracle`, `mssql`, `storagebase`, `couchbase`, `clickhouse`, `druid`, `elasticsearch`, `opensearch`, `trino` |
-| `connections[].roles` | Yes | `["*"]` (everyone), `["admin"]`, `["user"]`, or `["admin", "user"]` |
-| `connections[].managed` | No | `true` = read-only (default), `false` = editable copy for user |
-| `connections[].password` | No | Use `${ENV_VAR}` syntax for secrets |
-| `connections[].environment` | No | `production`, `staging`, `development`, `local`, `other` |
-| `connections[].group` | No | Group label in sidebar |
-| `connections[].color` | No | Hex color for badge (e.g., `#10B981`) |
-
-**Environment Variables:**
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SEED_CONFIG_PATH` | `/app/config/seed-connections.yaml` | Path to config file |
-| `SEED_CACHE_TTL_MS` | `60000` | Cache TTL in ms (hot-reload interval) |
-
----
-
-## Roadmap
-
-- [x] **Phase 1**: Monaco SQL IDE & Multi-Tab Support.
-- [x] **Phase 2**: Multi-Model AI (Gemini, OpenAI, Ollama, Custom) Integration.
-- [x] **Phase 3**: Pro Data Grid & Virtualization.
-- [x] **Phase 4**: Multi-Database Support (PostgreSQL, MySQL, SQLite, MongoDB, Redis).
-- [x] **Phase 5**: Interactive ER Diagrams (Visual Schema Graph).
-- [x] **Phase 6**: Enterprise Foundation (Connection Testing, SSL/TLS, SSH Tunnel, Transaction Control, Query Cancellation).
-- [x] **Phase 7**: AI Intelligence (Query Safety Analysis, AI Query Explainer, AI-generated schema descriptions).
-- [x] **Phase 8**: Analyst & Developer Tools (Data Profiler, Code Generator, Test Data Generator, Pivot Table, Column Filtering, Database Docs).
-- [x] **Phase 9**: Display Masking — Preview (column-name pattern matching, configurable rules, RBAC UI controls, client-side export/clipboard masking).
-- [x] **Phase 10**: Advanced ERD (Real FK Edges, ELK.js Auto-Layout, MiniMap, PNG/SVG Export, Compact Mode, Table Search).
-- [x] **Phase 11**: Schema Diff & Migration (Snapshot Timeline, Cross-Connection Diff, Migration SQL Generation for PostgreSQL, MySQL, SQLite, Oracle, and SQL Server, plus ClickHouse column modifications).
-- [x] **Phase 12**: Advanced Charting (Scatter, Histogram, Stacked Charts, Aggregation, Date Grouping, Chart Save/Load, Chart Dashboard).
-- [x] **Phase 13**: Monitoring Enhancement (Time-Series Trends, Threshold Alerting, Connection Pool Stats, Configurable Polling).
-- [x] **Phase 14**: Enterprise Database Support (Oracle Database via oracledb Thin mode, Microsoft SQL Server via mssql/tedious).
-- [x] **Phase 15**: SSO Integration — Vendor-agnostic OIDC authentication (Auth0, Keycloak, Okta, Azure AD, Zitadel) with PKCE, role mapping, and provider logout.
-- [ ] **Phase 16**: DBA & Monitoring (Lock Dependency Graph, Vacuum Scheduler, Prometheus Export).
-- [ ] **Phase 17**: Enterprise Collaboration (User Identity, Shared Workspaces, SAML 2.0).
-- [ ] **Phase 18**: Server-Enforced Data Masking (SQL output-lineage, deployment-global policy, fail-closed API masking, alias/aggregate coverage).
-- [x] **Phase 19**: Driver-Free Providers — Couchbase (SQL++ over the Query REST API), the first provider that adds no runtime dependency. Pattern documented in [Adding a Provider](docs/ADDING_A_PROVIDER.md).
-- [x] **Phase 20**: Analytics Databases — ClickHouse ([#264](https://github.com/storagebase/storagebase-studio/issues/264)) and Apache Druid ([#265](https://github.com/storagebase/storagebase-studio/issues/265)), both driver-free over HTTP. Druid is read-only by nature — no `UPDATE`, no `DELETE`, no `CREATE TABLE` — so it also demonstrates a provider that reports absent capabilities honestly instead of offering controls that can only fail.
-- [x] **Phase 21**: Federated Query — Apache Trino ([#424](https://github.com/storagebase/storagebase-studio/issues/424), Phase 2), driver-free over Trino's own client protocol. The product question that held it up is answered: a connection pins **one catalog**, exactly as a PostgreSQL connection pins one database, and the tree stays two levels — fanning `information_schema` across every catalog is unbounded, since `jmx.current` alone publishes one table per MBean. Cross-catalog queries still work in the editor by qualifying names in full. PrestoDB is a separate future type-id; the transport already builds its headers from a dialect prefix so that is a descriptor, not a rewrite.
-
----
-
-## Community & Quality
-
-| Resource | Description |
-|----------|-------------|
-| [API Docs](docs/API_DOCS.md) | Complete REST API reference |
-| [Agent Guide](docs/AGENT_GUIDE.md) | Using the agent: a run, the three workflows, what "answered" means, the budget meter, and the Ollama path |
-| [Agent Data Flow](docs/AGENT_DATA_FLOW.md) | What leaves the machine, when, and to which model provider — written from call sites |
-| [Local models](docs/llms/README.md) | Which local model can actually drive an agent run, measured across three workflows, one page per model |
-| [Agent Runtime](docs/AGENT.md) | Agent behaviour, bounds, deployment and known limitations |
-| [OIDC SSO](docs/OIDC.md) | SSO setup (Auth0, Keycloak, Okta, Azure AD, Zitadel, Google) + subsystem internals & security model |
-| [Two-Factor Auth](docs/MFA.md) | TOTP on the local provider — generating a secret, enrolling an app, Docker/Helm wiring, and what it does not cover |
-| [Theming Guide](docs/ui/theming.md) | CSS theming, dark mode, and styling customization |
-| [Login Page](docs/ui/login-page.md) | Login page layout, OIDC/local modes, and design system |
-| [Editor Docs](docs/editor/) | SQL editor internals — completion, performance, query optimization |
-| [Architecture](docs/ARCHITECTURE.md) | System architecture and design patterns |
-| [Adding a Provider](docs/ADDING_A_PROVIDER.md) | Step-by-step guide to adding a database, and how to tell whether it needs a driver at all |
-| [Backlog](docs/BACKLOG.md) | Known defects and deferred work that is not yet filed as an issue |
-
-### Cross-browser testing
-
-The product is a browser application, so a browser bug is a product bug. CI runs the full Playwright
-suite on desktop Chromium and the `security-headers` spec on WebKit (`webkit-security`). Beyond that
-one WebKit spec, Safari and older WebKit regressions, mobile layout, and the WebKitGTK engine behind
-the Linux desktop build need real devices. This project is tested with BrowserStack.
-
----
-
-## Support
-
-storagebase-studio is free and open source. If it helps you or your team, consider
-[sponsoring the project](https://github.com/sponsors/storagebase) — your support
-funds maintenance, bug fixes, new database providers, and the ongoing
-development of the open-source edition.
-
-[![Sponsor](https://img.shields.io/badge/Sponsor-storagebase-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/storagebase)
-
----
-
-## Sponsors
-
-<!-- sponsors-start -->
-_Be the first to sponsor storagebase-studio!_
-<!-- sponsors-end -->
-
----
-
-## Supporters
-
-Distinct from the sponsors above: these are open-source programmes that cover a
-running cost of the project. A place here cannot be bought, and nothing here is
-an endorsement of storagebase-studio by the company named. The full list, what each
-one covers and what attribution is owed in return are at
-[storagebase.org/supporters](https://storagebase.org/supporters/).
-
-- **[Docker](https://www.docker.com/community/open-source/)** — the
-  Docker-Sponsored Open Source programme behind the `storagebase` namespace on
-  Docker Hub, which removes pull rate limits for everyone pulling the public
-  image. The canonical image is still GHCR; this is what keeps the Hub mirror
-  usable without an account. Since 2026-09-01.
-
-- **[BrowserStack](https://www.browserstack.com/opensource)** — the BrowserStack
-  Open Source programme behind the cross-browser testing that runs the full Playwright
-  suite on desktop Chromium and the `security-headers` spec on WebKit (`webkit-security`).
-  Beyond that one WebKit spec, Safari and older WebKit regressions, mobile layout, and the
-  WebKitGTK engine behind the Linux desktop build need real devices. Since 2026-08-31.
-
-- **[Tailscale](https://tailscale.com/opensource)** — the Community on GitHub
-  plan behind the private network maintainers use to reach the database probe
-  hosts, so testing against real engines does not mean exposing database ports
-  to the internet. Since 2026-08-30.
-
----
-
-## Contributing
-
-We welcome contributions from the community! Whether it's a bug fix, a new feature, or documentation improvements:
-1. Fork the Project.
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the Branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
-
-Every change here lands with its tests in the same pull request, under a hard 100% line-coverage
-gate. Clearing that bar is worth something, so the people who have are named in
-[`CONTRIBUTORS.md`](CONTRIBUTORS.md) with a link to the change they made. Nothing on that page is
-counted — no merge totals, no line counts — and
-[`CONTRIBUTING.md`](CONTRIBUTING.md#the-contributor-ladder) says why. Start with a
-[`good first issue`](https://github.com/storagebase/storagebase-studio/labels/good%20first%20issue): each one
-states what "done" looks like as a command you can run yourself.
 
 ---
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information. One direct dependency,
-`elkjs`, is under the reciprocal EPL-2.0; see [`docs/THIRD_PARTY_LICENSES.md`](docs/THIRD_PARTY_LICENSES.md).
-
----
-
-<p align="center">
-  Built for DBAs and Developers.
-</p>
+MIT, see [LICENSE](LICENSE). StorageBase Studio is a fork of
+[LibreDB Studio](https://github.com/libredb/libredb-studio) (Copyright (c) 2025 LibreDB), and the
+upstream copyright and license are kept unchanged. One direct dependency, `elkjs`, is under
+EPL-2.0. See [docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md).

@@ -293,7 +293,7 @@ export function useResourceConnectionForm({
       const response = await appFetch("/api/resources/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(conn),
+        body: JSON.stringify({ connection: conn }),
       });
 
       return (await response.json()) as TestOutcome;

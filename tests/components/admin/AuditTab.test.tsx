@@ -162,7 +162,7 @@ describe("AuditTab", () => {
     const user = userEvent.setup();
     const view = render(<AuditTab />);
     await waitFor(() => expect(view.queryByText("KILL")).not.toBeNull());
-    fireEvent.keyDown(view.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Event type" }), { key: "ArrowDown" });
     fireEvent.keyDown(view.getByRole("option", { name: "Maintenance" }), { key: "Enter" });
     await waitFor(() => expect(view.queryByText("orders")).not.toBeNull());
     fireEvent.change(view.getByPlaceholderText("Search..."), { target: { value: "archive" } });
@@ -176,7 +176,7 @@ describe("AuditTab", () => {
     } else {
       expect(mime).toBe("text/csv");
       expect(content).toBe(
-        'Timestamp,Type,Action,Target,Connection,User,Result,Duration (ms),Details,IP,Reason,Bucket,Correlation ID,ID\n2026-09-09T10:00:00.000Z,maintenance,VACUUM,"users,""archive""\n2026","团队,DB","\'=admin",success,0,"completed ""safely""",192.0.2.1,origin_mismatch,login_client,op-1,audit-export',
+        'Timestamp,Type,Action,Target,Connection,User,Result,Duration (ms),Details,IP,Reason,Bucket,Correlation ID,Role,User Agent,Forwarded For,Connection ID,Engine,Host,Database,Statement Kind,Statement,Statement Truncated,Rows Returned,Rows Affected,Error,Query ID,ID\n2026-09-09T10:00:00.000Z,maintenance,VACUUM,"users,""archive""\n2026","团队,DB","\'=admin",success,0,"completed ""safely""",192.0.2.1,origin_mismatch,login_client,op-1,,,,,,,,,,,,,,,audit-export',
       );
     }
   });
@@ -662,5 +662,185 @@ describe("AuditTab", () => {
 
     expect(selectTrigger.textContent).toContain("Kill Session");
     expect(rowActions()).toEqual(["KILL"]);
+  });
+});
+
+// =============================================================================
+// query_execution events (StorageBase fork): the columns, the detail panel, the
+// user / IP / result / free-text filters and the complete CSV export.
+// =============================================================================
+
+describe("AuditTab — query_execution events", () => {
+  const queryEvent = {
+    id: "q1",
+    timestamp: "2026-09-20T08:00:00.000Z",
+    type: "query_execution",
+    action: "executed",
+    target: "POST /api/db/query",
+    connectionName: "Orders DB",
+    user: "alice",
+    role: "user",
+    result: "success",
+    duration: 12,
+    ip: "203.0.113.9",
+    forwardedFor: "203.0.113.9, 10.0.0.1",
+    userAgent: "Mozilla/5.0",
+    connectionId: "conn-1",
+    engine: "postgres",
+    host: "db.internal:5432",
+    database: "orders",
+    statementKind: "UPDATE",
+    statement: "UPDATE orders SET paid = ? WHERE id = ?",
+    statementTruncated: true,
+    rowsReturned: 0,
+    rowsAffected: 3,
+    queryId: "qid-1",
+  };
+  const failedEvent = {
+    id: "q2",
+    timestamp: "2026-09-20T08:01:00.000Z",
+    type: "query_execution",
+    action: "failed",
+    target: "POST /api/db/query",
+    connectionName: "Orders DB",
+    user: "bob",
+    result: "failure",
+    reason: "query_failed",
+    ip: "198.51.100.7",
+    statementKind: "SELECT",
+    statement: "SELECT * FROM nope",
+    rowsReturned: 5,
+    error: "QueryError: relation ? does not exist",
+  };
+  const loginEvent = {
+    id: "l1",
+    timestamp: "2026-09-20T08:02:00.000Z",
+    type: "login_success",
+    action: "login",
+    target: "POST /api/auth/login",
+    user: "carol",
+    result: "success",
+  };
+
+  let fetchMock: ReturnType<typeof mockGlobalFetch>;
+
+  beforeEach(() => {
+    mockDownloadText.mockClear();
+    fetchMock = mockGlobalFetch({
+      "/api/admin/audit": { json: { events: [queryEvent, failedEvent, loginEvent] } },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    restoreGlobalFetch();
+  });
+
+  /** The User cell of every rendered event row. */
+  function rowUsers(container: HTMLElement): string[] {
+    return Array.from(container.querySelectorAll("tbody tr td:nth-child(6)")).map((c) => c.textContent ?? "");
+  }
+
+  async function renderLoaded() {
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("executed")).not.toBeNull());
+    return view;
+  }
+
+  test("asks for the whole server buffer so the filters search all of it", async () => {
+    await renderLoaded();
+    expect(auditCalls(fetchMock)[0]).toContain("limit=1000");
+  });
+
+  test("shows the IP, statement kind and rows columns, preferring affected over returned rows", async () => {
+    const view = await renderLoaded();
+    expect(view.queryByText("203.0.113.9")).not.toBeNull();
+    expect(view.queryByText("UPDATE")).not.toBeNull();
+    const rows = Array.from(view.container.querySelectorAll("tbody tr td:nth-child(9)")).map((c) => c.textContent);
+    expect(rows).toEqual(["3", "5", "-"]);
+  });
+
+  test("expands a row into its detail panel with the masked statement, and collapses it again", async () => {
+    const user = userEvent.setup();
+    const view = await renderLoaded();
+    const [firstToggle] = view.getAllByRole("button", { name: "Show details" });
+    await user.click(firstToggle);
+
+    const detail = view.getByTestId("audit-event-detail");
+    expect(detail.textContent).toContain("alice (user)");
+    expect(detail.textContent).toContain("203.0.113.9, 10.0.0.1");
+    expect(detail.textContent).toContain("Mozilla/5.0");
+    expect(detail.textContent).toContain("db.internal:5432");
+    expect(detail.textContent).toContain("Statement (literals masked) — truncated");
+    expect(detail.querySelector("pre")?.textContent).toBe("UPDATE orders SET paid = ? WHERE id = ?");
+
+    await user.click(view.getByRole("button", { name: "Hide details" }));
+    expect(view.queryByTestId("audit-event-detail") === null).toBe(true);
+  });
+
+  test("a failure's detail names its reason and error; an event with no statement shows no statement block", async () => {
+    const user = userEvent.setup();
+    const view = await renderLoaded();
+    const toggles = view.getAllByRole("button", { name: "Show details" });
+    await user.click(toggles[1]);
+    await user.click(toggles[2]);
+
+    const [failed, login] = view.getAllByTestId("audit-event-detail");
+    expect(failed.textContent).toContain("failure (query_failed)");
+    expect(failed.textContent).toContain("QueryError: relation ? does not exist");
+    expect(failed.textContent).toContain("Statement (literals masked)");
+    expect(failed.textContent).not.toContain("truncated");
+    expect(login.querySelector("pre") === null).toBe(true);
+    expect(login.textContent).toContain("carol");
+  });
+
+  test("filters by result", async () => {
+    const view = await renderLoaded();
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Result" }), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("option", { name: "Failure" }), { key: "Enter" });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["bob"]));
+  });
+
+  test("filters by user", async () => {
+    const view = await renderLoaded();
+    fireEvent.change(view.getByPlaceholderText("User..."), { target: { value: "ALI" } });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["alice"]));
+  });
+
+  test("filters by IP, matching the forwarded chain too", async () => {
+    const view = await renderLoaded();
+    fireEvent.change(view.getByPlaceholderText("IP..."), { target: { value: "10.0.0.1" } });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["alice"]));
+    fireEvent.change(view.getByPlaceholderText("IP..."), { target: { value: "198.51" } });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["bob"]));
+  });
+
+  test("the free-text search reads the statement and the error", async () => {
+    const view = await renderLoaded();
+    fireEvent.change(view.getByPlaceholderText("Search..."), { target: { value: "set paid" } });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["alice"]));
+    fireEvent.change(view.getByPlaceholderText("Search..."), { target: { value: "does not exist" } });
+    await waitFor(() => expect(rowUsers(view.container)).toEqual(["bob"]));
+  });
+
+  test("offers the query_execution type in the type filter", async () => {
+    const view = await renderLoaded();
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Event type" }), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("option", { name: "Query Execution" }), { key: "Enter" });
+    await waitFor(() => expect(auditCalls(fetchMock).at(-1)).toContain("type=query_execution"));
+  });
+
+  test("the CSV export carries every query_execution field", async () => {
+    const user = userEvent.setup();
+    const view = await renderLoaded();
+    fireEvent.change(view.getByPlaceholderText("User..."), { target: { value: "alice" } });
+    await user.click(view.getByRole("button", { name: "Export" }));
+    await user.click(view.getByRole("menuitem", { name: "Export as CSV" }));
+    const [content] = mockDownloadText.mock.calls.at(-1)!;
+    expect(content.split("\n")[1]).toBe(
+      "2026-09-20T08:00:00.000Z,query_execution,executed,POST /api/db/query,Orders DB,alice,success,12,,203.0.113.9,,,," +
+        'user,Mozilla/5.0,"203.0.113.9, 10.0.0.1",conn-1,postgres,db.internal:5432,orders,UPDATE,' +
+        "UPDATE orders SET paid = ? WHERE id = ?,true,0,3,,qid-1,q1",
+    );
   });
 });

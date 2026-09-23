@@ -77,6 +77,22 @@ describe("credential-resolver", () => {
     expect(resolved[1].id).toBe("also-good");
   });
 
+  it("resolves ${VAR} in the Redis Sentinel nodes and password", () => {
+    process.env.MY_SENTINELS = "sentinel-0:26379";
+    process.env.MY_SENTINEL_PASSWORD = "sentinel-secret";
+    try {
+      const conn = { ...baseConn, sentinels: "${MY_SENTINELS}", sentinelPassword: "${MY_SENTINEL_PASSWORD}" };
+      const resolved = resolveConnectionCredentials(conn);
+      expect(resolved.sentinels).toBe("sentinel-0:26379");
+      expect(resolved.sentinelPassword).toBe("sentinel-secret");
+      // A plaintext sentinel password is accepted like a plaintext password: warned, not refused.
+      expect(resolveConnectionCredentials({ ...baseConn, sentinelPassword: "plain" }).sentinelPassword).toBe("plain");
+    } finally {
+      delete process.env.MY_SENTINELS;
+      delete process.env.MY_SENTINEL_PASSWORD;
+    }
+  });
+
   it("does not throw for plaintext passwords, just warns", () => {
     const conn = { ...baseConn, id: "plain", password: "hardcoded_secret" };
     const resolved = resolveConnectionCredentials(conn);

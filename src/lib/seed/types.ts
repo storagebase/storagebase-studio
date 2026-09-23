@@ -84,6 +84,11 @@ export const SeedConnectionSchema = z.object({
   // deployment). Optional because the driver falls back to the database being opened,
   // which is right only when the two are the same.
   authSource: z.string().optional(),
+  // Redis Sentinel. A seeded connection that sets them follows its master through a
+  // failover, which is the deployment a fixed host cannot describe.
+  sentinels: z.string().optional(),
+  sentinelMasterName: z.string().optional(),
+  sentinelPassword: z.string().optional(),
   schema: z.string().optional(),
   // Read no catalog when this connection opens (#765). Declarable in the seed file
   // because the deployment that ships a 40,000-object owner is the one that knows, and

@@ -154,6 +154,47 @@ describe("sanitizeAuditInput's duration exemption is keyed on the field name", (
 });
 
 /**
+ * The same rule for the fields the StorageBase fork added: the row counts keep their numbers and
+ * the truncation flag its boolean, by NAME - so the client-supplied POST /api/admin/audit body
+ * cannot put a raw number or boolean into a field whose schema promises a string, and cannot put a
+ * string into the ones that promise a number.
+ */
+describe("sanitizeAuditInput's number and boolean exemptions are keyed on the field name", () => {
+  test("keeps genuine row counts and the truncation flag", () => {
+    const result = sanitizeAuditInput({
+      type: "query_execution",
+      action: "executed",
+      target: "POST /api/db/query",
+      user: "alice",
+      result: "success",
+      rowsReturned: 3,
+      rowsAffected: 0,
+      statementTruncated: true,
+    });
+
+    expect(result.rowsReturned).toBe(3);
+    expect(result.rowsAffected).toBe(0);
+    expect(result.statementTruncated).toBe(true);
+  });
+
+  test("coerces a boolean or a number that arrives in another field, and the wrong type in these", () => {
+    const result = sanitizeAuditInput({
+      type: "query_execution",
+      action: "executed",
+      target: true as unknown as string,
+      user: "alice",
+      result: "success",
+      rowsReturned: "3" as unknown as number,
+      statementTruncated: 1 as unknown as boolean,
+    });
+
+    expect(result.target).toBe("true");
+    expect(result.rowsReturned).toBe("3" as unknown as number);
+    expect(result.statementTruncated).toBe("1" as unknown as boolean);
+  });
+});
+
+/**
  * Threat: CodeQL's js/remote-property-injection (alerts #113/#114) - `sanitizeAuditInput` writes
  * through `mutable[key]` where `key` is enumerated from an object built by spreading
  * `POST /api/admin/audit`'s client-supplied JSON body (see src/app/api/admin/audit/route.ts). This

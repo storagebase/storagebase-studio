@@ -95,6 +95,21 @@ describe("POST /api/resources/test", () => {
     expect(event).not.toHaveProperty("reason");
   });
 
+  test("the audit event carries the caller's forwarded address and user agent", async () => {
+    const req = createMockRequest("/api/resources/test", {
+      method: "POST",
+      body: { connection },
+      headers: { "x-forwarded-for": "198.51.100.4", "user-agent": "StorageBase-Test/1.0" },
+    });
+    await POST(req as never);
+    const event = mockEmitAuditEvent.mock.calls[0]?.[0] ?? {};
+    expect(event).toMatchObject({
+      ip: "198.51.100.4",
+      forwardedFor: "198.51.100.4",
+      userAgent: "StorageBase-Test/1.0",
+    });
+  });
+
   test("a refused test answers failure with resource_unreachable in the audit", async () => {
     mockTestResourceConnection.mockResolvedValueOnce({ success: false, degraded: false, message: "socket refused" });
     const req = createMockRequest("/api/resources/test", { method: "POST", body: { connection } });

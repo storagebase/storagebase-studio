@@ -1348,6 +1348,12 @@ Returns audit events. Optional query params: `type` (filter by event type), `lim
 
 Events of type `agent_operation` come from the agent execution path (#328) and additionally carry `correlationId` — the id joining one execution's policy-decision event to its execution-outcome event (a refused operation emits the decision event only, with an `agent_*` reason code). It is opaque and per execution: it identifies neither a user nor a session. On the authoritative stdout line the same value appears as `correlation_id`, and it is omitted entirely from every event that does not set it.
 
+Events of type `query_execution` (StorageBase fork) come from `POST /api/db/query`: one per statement the route tried to run, success or failure, and none for a request refused with a 400 before anything ran. `action` is `executed`, `explained`, `failed`, `cancelled` or `timed_out`; a failure carries `reason` `query_failed`, `query_cancelled` or `query_timeout`. Beside `user`, `connectionName` and `duration` (wall-clock ms, connect included) they carry `role`, `ip`, `forwardedFor`, `userAgent`, `connectionId`, `engine`, `host` (the connection's configured `host:port`, never parsed out of a connection string), `database`, `statementKind` (`SELECT`/`INSERT`/`UPDATE`/`DELETE`/`DDL`/`OTHER`, the query limiter's classifier), `statement`, `statementTruncated`, `rowsReturned`, `rowsAffected` (writes only), `error` and `queryId`. On the stdout line they are the snake_case keys `role`, `ip`, `forwarded_for`, `user_agent`, `connection_id`, `engine`, `host`, `database`, `statement_kind`, `statement`, `statement_truncated`, `rows_returned`, `rows_affected`, `error`, `query_id`, each omitted when the event does not set it; the schema stays `libredb.audit.v1`, because the additions are optional keys and no existing key changed.
+
+`statement` is **never the raw text**. Every literal is replaced with `?` by `src/lib/audit-sql.ts`: string literals of every quoting form the SQL span reader knows (single quotes with doubled or backslash-escaped quotes, PostgreSQL dollar quotes, Oracle `q'…'`, with an `E`/`N`/`X`/`B` prefix), numeric literals (decimal, exponent, hex, binary), and comments; identifiers, quoted identifiers and placeholders (`$1`, `?`, `:1`) are kept. `SELECT * FROM users WHERE email = 'a@b.com' AND age > 30 -- note` is recorded as `SELECT * FROM users WHERE email = ? AND age > ?`. A MongoDB document keeps `collection`, `operation` and every key and masks every value (`{"collection":"users","operation":"find","filter":{"email":"?"}}`); a Redis command keeps its name only, and the key is masked with the values because keys carry identities (`SET session:alice s3cr3t EX 60` → `SET ? ? ? ?`). The masked text is bounded at 4096 characters (`statementTruncated: true` past that); every other text field at 254. The driver's error sentence is recorded with its quoted values, key-detail value lists and numbers masked, since drivers echo the offending value back. Known gap: MySQL's default `sql_mode` reads `"…"` as a string, while the span reader treats it as a quoted identifier, so a MySQL literal written in double quotes is kept.
+
+`ip` is the rate limiter's own client derivation (`src/lib/api/client-address.ts`): the X-Forwarded-For entry picked by `TRUSTED_PROXY_HOPS` (0 = leftmost; set it to the number of proxies in front of Studio, e.g. `1` behind one ingress), else X-Real-IP. `forwardedFor` is the raw chain it was picked from, recorded only while `TRUST_PROXY_HEADERS` is on (the default; `false` ignores forwarded headers and records neither). Both are hints, never identities.
+
 #### POST /api/admin/fleet-health
 
 Body `{ "connections": [...] }`; returns per-connection health `{ "results": [{ connectionId, status, latencyMs, ... }] }`. `400` if `connections` is missing. `401` with no session, `403` with a session that is not an admin — see the note above.
@@ -1366,7 +1372,8 @@ The object is one shape on the wire. Fields the server reads from a request body
 change how a connection is opened — are the coordinates and credentials (`id`, `name`, `type`,
 `host`, `port`, `user`, `password`, `database`, `schema`, `connectionString`), plus `ssl`,
 `sshTunnel`, `serviceName` (Oracle), `instanceName` (MSSQL), `localDataCenter` (Cassandra),
-`authSource` (MongoDB), `queryTimeout`, `agentUser`, and `agentPassword`. `color`, `environment`, `group`,
+`authSource` (MongoDB), `sentinels`, `sentinelMasterName` and `sentinelPassword` (Redis Sentinel),
+`queryTimeout`, `agentUser`, and `agentPassword`. `color`, `environment`, `group`,
 `managed`, `seedId`, and `createdAt` are client-side bookkeeping that travel in the same object.
 
 ```typescript
@@ -1392,6 +1399,9 @@ interface DatabaseConnection {
   instanceName?: string;   // MSSQL: named instance (e.g. SQLEXPRESS)
   localDataCenter?: string; // Cassandra only, and REQUIRED there: the driver refuses to connect without it (`datacenter1` on a stock single node)
   authSource?: string; // MongoDB only: the database the credentials live in (`?authSource=admin`). Not the database being opened - without it the driver checks the user against that one, which fails as a credentials error
+  sentinels?: string; // Redis only: comma-separated `host[:port]` Sentinel nodes (port defaults to 26379). Setting it, or sentinelMasterName, is Sentinel mode: host/port are not read, the sentinels name the master
+  sentinelMasterName?: string; // Redis Sentinel: the master group name (`mymaster`); required in Sentinel mode
+  sentinelPassword?: string; // Redis Sentinel: the sentinels' AUTH password; empty uses `password`. Secret-classified, sealed at rest
   skipObjectScan?: boolean; // read no catalog when this connection opens: zero reads on connect, so the editor is usable immediately and the object tree offers a load action instead of scanning (#765, an Oracle owner with 43,512 tables froze the browser on connect)
   managed?: boolean;       // true = admin-controlled, read-only in UI
   seedId?: string;         // stable reference to seed config ID

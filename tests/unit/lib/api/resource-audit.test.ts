@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { beginResourceWrite, endResourceWrite } from "@/lib/api/resource-audit";
 import {
+  ResourceConflictError,
   ResourceNotFoundError,
   ResourceOperationUnsupportedError,
   ResourceConnectionError,
@@ -22,6 +23,7 @@ describe("resource audit helper", () => {
     const cases = [
       [new ResourceOperationUnsupportedError("x"), "resource_unsupported"],
       [new ResourceNotFoundError("x"), "resource_not_found"],
+      [new ResourceConflictError("x"), "resource_conflict"],
       [new ResourceConnectionError("x"), "resource_failed"],
       [new Error("x"), "resource_failed"],
     ] as const;
@@ -62,6 +64,32 @@ describe("resource audit helper", () => {
     });
     const correlationId = beginResourceWrite("admin", "message.purge", "kafka:t");
     expect(() => endResourceWrite("admin", "message.purge", "kafka:t", correlationId, null)).not.toThrow();
+  });
+
+  test("a caller that passes its request gets the address and user agent on both events", () => {
+    const request = {
+      headers: new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1", "user-agent": "curl/8.7.1" }),
+    };
+    const correlationId = beginResourceWrite("admin", "blob.delete", "s3:b/k", request);
+    endResourceWrite("admin", "blob.delete", "s3:b/k", correlationId, null, request);
+
+    for (const call of mockEmitAuditEvent.mock.calls) {
+      expect(call[0]).toMatchObject({
+        ip: "203.0.113.7",
+        forwardedFor: "203.0.113.7, 10.0.0.1",
+        userAgent: "curl/8.7.1",
+      });
+    }
+  });
+
+  test("a caller that passes no request records no request context", () => {
+    const correlationId = beginResourceWrite("admin", "blob.delete", "s3:b/k");
+    endResourceWrite("admin", "blob.delete", "s3:b/k", correlationId, null);
+
+    for (const call of mockEmitAuditEvent.mock.calls) {
+      expect(call[0]).not.toHaveProperty("ip");
+      expect(call[0]).not.toHaveProperty("userAgent");
+    }
   });
 
   test("a broken sink on the decision still returns an id", () => {

@@ -43,6 +43,11 @@ export const CONNECTION_FIELDS: Record<keyof DatabaseConnection, FieldClass> = {
   // A DATABASE NAME (`admin`), not a credential. The password that authenticates
   // against it is the secret, and it is classified above.
   authSource: "public",
+  // Addresses and a group NAME, which every sentinel answers to anyone who asks
+  // (`SENTINEL MASTERS`). The sentinel password below is the credential.
+  sentinels: "public",
+  sentinelMasterName: "public",
+  sentinelPassword: "secret",
   schema: "public",
   queryTimeout: "public",
   // A display preference: whether this browser reads the catalog when the connection

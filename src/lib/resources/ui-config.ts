@@ -175,3 +175,16 @@ export function getResourceIcon(type: ResourceType): ComponentType<{ className?:
 export function hasSelectableResourceTypes(): boolean {
   return RESOURCE_TYPE_ORDER.some((type) => isResourceTypeRegistered(type));
 }
+
+/**
+ * Resource types that open a full workbench in the main area instead of the
+ * sidebar tree + inspector dialog (StorageBase fork, Kafka first). Their
+ * connections list beside the database connections, not under "Resources".
+ * A set, not a config field: it is a fact about the shell's routing, and the
+ * exhaustive table above stays about the type itself.
+ */
+const WORKBENCH_RESOURCE_TYPES: ReadonlySet<ResourceType> = new Set<ResourceType>(["kafka"]);
+
+export function opensWorkbench(type: ResourceType): boolean {
+  return WORKBENCH_RESOURCE_TYPES.has(type);
+}

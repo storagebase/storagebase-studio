@@ -1,7 +1,7 @@
 "use client";
 
 import { appFetch } from "@/lib/config/base-path";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ import {
   Clock,
   Activity,
   Download,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import type { AuditEvent } from "@/lib/audit";
 import { storage } from "@/lib/storage";
@@ -102,6 +104,88 @@ export function AuditTab() {
   );
 }
 
+/** The event types the filter offers, in the order it lists them. */
+const EVENT_TYPE_OPTIONS: ReadonlyArray<readonly [string, string]> = [
+  ["query_execution", "Query Execution"],
+  ["maintenance", "Maintenance"],
+  ["kill_session", "Kill Session"],
+  ["masking_config", "Masking"],
+  ["threshold_config", "Thresholds"],
+  ["connection_test", "Connection Test"],
+  ["managed_connection", "Managed Connection"],
+  ["agent_operation", "Agent Operation"],
+  ["object_edit", "Object Edit"],
+  ["resource_connection_test", "Resource Test"],
+  ["resource_operation", "Resource Operation"],
+  ["login_success", "Login Success"],
+  ["login_failure", "Login Failure"],
+  ["logout", "Logout"],
+  ["permission_denied", "Permission Denied"],
+  ["rate_limit_exceeded", "Rate Limited"],
+];
+
+/** The text a free-text search reads: everything an operator could be looking for by content. */
+function searchableText(event: AuditEvent): string {
+  return [event.action, event.target, event.connectionName, event.statement, event.error, event.details, event.engine]
+    .filter((part): part is string => typeof part === "string")
+    .join("\n")
+    .toLowerCase();
+}
+
+/** The label/value pairs of an event's detail panel, only for the fields it carries. */
+function detailRows(event: AuditEvent): Array<[string, string]> {
+  const rows: Array<[string, string | number | undefined]> = [
+    ["Type", event.type],
+    ["Timestamp", event.timestamp],
+    ["Result", event.reason ? `${event.result} (${event.reason})` : event.result],
+    ["User", event.role ? `${event.user} (${event.role})` : event.user],
+    ["IP", event.ip],
+    ["Forwarded For", event.forwardedFor],
+    ["User Agent", event.userAgent],
+    ["Connection", event.connectionName],
+    ["Connection ID", event.connectionId],
+    ["Engine", event.engine],
+    ["Host", event.host],
+    ["Database", event.database],
+    ["Statement Kind", event.statementKind],
+    ["Rows Returned", event.rowsReturned],
+    ["Rows Affected", event.rowsAffected],
+    ["Duration", event.duration === undefined ? undefined : `${event.duration}ms`],
+    ["Error", event.error],
+    ["Details", event.details],
+    ["Query ID", event.queryId],
+    ["Correlation ID", event.correlationId],
+  ];
+  return rows
+    .filter((row): row is [string, string | number] => row[1] !== undefined && row[1] !== "")
+    .map(([label, value]) => [label, String(value)]);
+}
+
+function AuditEventDetail({ event }: { event: AuditEvent }) {
+  return (
+    <div className="space-y-3 py-2" data-testid="audit-event-detail">
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs">
+        {detailRows(event).map(([label, value]) => (
+          <Fragment key={label}>
+            <dt className="text-fg-muted">{label}</dt>
+            <dd className="text-fg-secondary break-all">{value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      {event.statement !== undefined && (
+        <div>
+          <div className="text-xs text-fg-muted mb-1">
+            Statement (literals masked){event.statementTruncated ? " — truncated" : ""}
+          </div>
+          <pre className="font-mono text-xs text-fg-tertiary bg-overlay rounded-md p-2 whitespace-pre-wrap break-all max-h-64 overflow-auto">
+            {event.statement}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * The audit read, kept free of state writes so the Effect below can stay in the
  * shape react.dev prescribes for fetching. A failed request reads as "no events"
@@ -109,7 +193,9 @@ export function AuditTab() {
  */
 async function loadAuditEvents(type: string): Promise<AuditEvent[]> {
   try {
-    const params = new URLSearchParams({ limit: "200" });
+    // The whole server buffer (1000 events), so the filters below search all of it rather than
+    // the most recent slice.
+    const params = new URLSearchParams({ limit: "1000" });
     if (type !== "all") params.set("type", type);
     const res = await appFetch(`/api/admin/audit?${params}`);
     const data = await res.json();
@@ -125,6 +211,19 @@ function OperationsAudit() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [refreshCount, setRefreshCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [resultFilter, setResultFilter] = useState<string>("all");
+  const [userQuery, setUserQuery] = useState("");
+  const [ipQuery, setIpQuery] = useState("");
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // The descriptor bundles which events to ask for with which request this is, so the
   // Effect below stays the ONLY writer of `events`. A refresh that fetched on its own
@@ -166,15 +265,17 @@ function OperationsAudit() {
   };
 
   const filteredEvents = useMemo(() => {
-    if (!searchQuery) return events;
     const q = searchQuery.toLowerCase();
+    const userNeedle = userQuery.toLowerCase();
+    const ipNeedle = ipQuery.toLowerCase();
     return events.filter(
       (e) =>
-        e.action.toLowerCase().includes(q) ||
-        e.target.toLowerCase().includes(q) ||
-        (e.connectionName || "").toLowerCase().includes(q),
+        (resultFilter === "all" || e.result === resultFilter) &&
+        (!userNeedle || e.user.toLowerCase().includes(userNeedle)) &&
+        (!ipNeedle || `${e.ip ?? ""}\n${e.forwardedFor ?? ""}`.toLowerCase().includes(ipNeedle)) &&
+        (!q || searchableText(e).includes(q)),
     );
-  }, [events, searchQuery]);
+  }, [events, searchQuery, resultFilter, userQuery, ipQuery]);
 
   const exportEvents = (format: "csv" | "json") => {
     let content: string;
@@ -193,6 +294,20 @@ function OperationsAudit() {
         "Reason",
         "Bucket",
         "Correlation ID",
+        "Role",
+        "User Agent",
+        "Forwarded For",
+        "Connection ID",
+        "Engine",
+        "Host",
+        "Database",
+        "Statement Kind",
+        "Statement",
+        "Statement Truncated",
+        "Rows Returned",
+        "Rows Affected",
+        "Error",
+        "Query ID",
         "ID",
       ];
       const rows = filteredEvents.map((event) =>
@@ -210,6 +325,20 @@ function OperationsAudit() {
           event.reason,
           event.bucket,
           event.correlationId,
+          event.role,
+          event.userAgent,
+          event.forwardedFor,
+          event.connectionId,
+          event.engine,
+          event.host,
+          event.database,
+          event.statementKind,
+          event.statement,
+          event.statementTruncated,
+          event.rowsReturned,
+          event.rowsAffected,
+          event.error,
+          event.queryId,
           event.id,
         ]),
       );
@@ -232,27 +361,48 @@ function OperationsAudit() {
       {/* Filter Bar */}
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={typeFilter} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-panel border-hairline-strong">
+          <SelectTrigger aria-label="Event type" className="w-[160px] h-8 text-xs bg-panel border-hairline-strong">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="maintenance">Maintenance</SelectItem>
-            <SelectItem value="kill_session">Kill Session</SelectItem>
-            <SelectItem value="masking_config">Masking</SelectItem>
-            <SelectItem value="threshold_config">Thresholds</SelectItem>
-            <SelectItem value="login_success">Login Success</SelectItem>
-            <SelectItem value="login_failure">Login Failure</SelectItem>
-            <SelectItem value="logout">Logout</SelectItem>
-            <SelectItem value="permission_denied">Permission Denied</SelectItem>
-            <SelectItem value="rate_limit_exceeded">Rate Limited</SelectItem>
+            {EVENT_TYPE_OPTIONS.map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={resultFilter} onValueChange={setResultFilter}>
+          <SelectTrigger aria-label="Result" className="w-[120px] h-8 text-xs bg-panel border-hairline-strong">
+            <SelectValue placeholder="Result" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Results</SelectItem>
+            <SelectItem value="success">Success</SelectItem>
+            <SelectItem value="failure">Failure</SelectItem>
           </SelectContent>
         </Select>
         <Input
           placeholder="Search..."
+          aria-label="Search action, target, connection or statement"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-[180px] h-8 text-xs bg-panel border-hairline-strong"
+        />
+        <Input
+          placeholder="User..."
+          aria-label="Filter by user"
+          value={userQuery}
+          onChange={(e) => setUserQuery(e.target.value)}
+          className="w-[120px] h-8 text-xs bg-panel border-hairline-strong"
+        />
+        <Input
+          placeholder="IP..."
+          aria-label="Filter by IP"
+          value={ipQuery}
+          onChange={(e) => setIpQuery(e.target.value)}
+          className="w-[120px] h-8 text-xs bg-panel border-hairline-strong"
         />
         <Button
           variant="ghost"
@@ -303,43 +453,79 @@ function OperationsAudit() {
                   Connection
                 </TableHead>
                 <TableHead className="text-xs text-fg-muted font-bold uppercase hidden lg:table-cell">User</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase hidden lg:table-cell">IP</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase hidden md:table-cell">Kind</TableHead>
+                <TableHead className="text-right text-xs text-fg-muted font-bold uppercase hidden sm:table-cell">
+                  Rows
+                </TableHead>
                 <TableHead className="text-right text-xs text-fg-muted font-bold uppercase">Duration</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEvents.map((event) => (
-                <TableRow key={event.id} className="border-hairline hover:bg-fill">
-                  <TableCell className="py-2">
-                    {event.result === "success" ? (
-                      <CircleCheck className="w-3.5 h-3.5 text-success" />
-                    ) : (
-                      <CircleX className="w-3.5 h-3.5 text-danger" />
-                    )}
-                  </TableCell>
-                  <TableCell className="py-2 font-mono text-xs text-fg-muted">
-                    {new Date(event.timestamp).toLocaleString([], {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <Badge variant="outline" className="text-[0.625rem] font-bold border-hairline-strong">
-                      {event.action}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-2 font-mono text-xs text-fg-tertiary truncate max-w-[120px]">
-                    {event.target}
-                  </TableCell>
-                  <TableCell className="py-2 text-xs text-fg-muted hidden md:table-cell truncate max-w-[100px]">
-                    {event.connectionName || "-"}
-                  </TableCell>
-                  <TableCell className="py-2 text-xs text-fg-muted hidden lg:table-cell">{event.user}</TableCell>
-                  <TableCell className="py-2 text-right font-mono text-xs text-fg-muted">
-                    {event.duration ? `${event.duration}ms` : "-"}
-                  </TableCell>
-                </TableRow>
+                <Fragment key={event.id}>
+                  <TableRow className="border-hairline hover:bg-fill">
+                    <TableCell className="py-2">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1"
+                        aria-expanded={expanded.has(event.id)}
+                        aria-label={expanded.has(event.id) ? "Hide details" : "Show details"}
+                        onClick={() => toggleExpanded(event.id)}
+                      >
+                        {expanded.has(event.id) ? (
+                          <ChevronDown className="w-3 h-3 text-fg-muted" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 text-fg-muted" />
+                        )}
+                        {event.result === "success" ? (
+                          <CircleCheck className="w-3.5 h-3.5 text-success" />
+                        ) : (
+                          <CircleX className="w-3.5 h-3.5 text-danger" />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell className="py-2 font-mono text-xs text-fg-muted">
+                      {new Date(event.timestamp).toLocaleString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <Badge variant="outline" className="text-[0.625rem] font-bold border-hairline-strong">
+                        {event.action}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-2 font-mono text-xs text-fg-tertiary truncate max-w-[120px]">
+                      {event.target}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs text-fg-muted hidden md:table-cell truncate max-w-[100px]">
+                      {event.connectionName || "-"}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs text-fg-muted hidden lg:table-cell">{event.user}</TableCell>
+                    <TableCell className="py-2 font-mono text-xs text-fg-muted hidden lg:table-cell">
+                      {event.ip || "-"}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs text-fg-muted hidden md:table-cell">
+                      {event.statementKind || "-"}
+                    </TableCell>
+                    <TableCell className="py-2 text-right font-mono text-xs text-fg-muted hidden sm:table-cell">
+                      {event.rowsAffected ?? event.rowsReturned ?? "-"}
+                    </TableCell>
+                    <TableCell className="py-2 text-right font-mono text-xs text-fg-muted">
+                      {event.duration ? `${event.duration}ms` : "-"}
+                    </TableCell>
+                  </TableRow>
+                  {expanded.has(event.id) && (
+                    <TableRow className="border-hairline bg-fill hover:bg-fill">
+                      <TableCell colSpan={10} className="py-2">
+                        <AuditEventDetail event={event} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
               ))}
             </TableBody>
           </Table>

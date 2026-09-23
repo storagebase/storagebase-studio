@@ -400,18 +400,15 @@ describe("Sidebar", () => {
   });
 
   /**
-   * The sidebar is the only chrome BOTH modes render: the embedded workspace
-   * supplies its own header, so a link mounted only in the studio headers would
-   * never reach a platform tenant.
+   * StorageBase Studio ships no social links. The sidebar is the only chrome BOTH
+   * modes render, so it is where one would reappear in the embedded workspace too.
    */
-  test("footer links to the repository, in both standalone and embedded chrome", () => {
+  test("footer has no repository link, in both standalone and embedded chrome", () => {
     const props = createDefaultProps();
     const { container } = render(<Sidebar {...props} />);
     const link = container.querySelector('a[aria-label="StorageBase Studio on GitHub"]');
 
-    expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("https://github.com/storagebase/storagebase-studio");
-    expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link).toBeNull();
   });
 
   test("footer shows connected status", () => {

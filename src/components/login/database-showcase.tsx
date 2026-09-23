@@ -13,7 +13,7 @@ interface DatabaseShowcaseProps {
  * `DatabaseType` three providers ago, so adding a provider must be enough to publish it.
  *
  * The two variants need two different token families and this is one of the two easiest
- * places in the page to ship invisible text (`community-section.tsx` records the other):
+ * places in the page to ship invisible text:
  * the desktop block sits inside the hero's left column, which is pinned dark by a nested
  * `dark` class and therefore re-declares fill/hairline/fg for that subtree only, while the
  * mobile block lives in the right panel and follows the viewer's theme through

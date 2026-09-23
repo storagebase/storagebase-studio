@@ -23,14 +23,6 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           >
             Try Again
           </button>
-          <a
-            href="https://github.com/storagebase/storagebase-studio/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-5 py-2.5 border border-edge hover:border-edge-hover text-fg-secondary rounded-lg text-sm font-medium transition-colors"
-          >
-            Report Issue
-          </a>
         </div>
       </div>
     </div>

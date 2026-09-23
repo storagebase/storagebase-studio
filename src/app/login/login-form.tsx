@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { ExternalLink, KeyRound, Lock, Mail, ShieldCheck, Shield } from "lucide-react";
 import { toast } from "sonner";
 import LibreDBLogo from "@/components/libredb-logo";
-import { CommunitySection } from "@/components/community-section";
 import { ConnectionSignature } from "@/components/login/connection-signature";
 import { DatabaseShowcase } from "@/components/login/database-showcase";
 import { HeroProof, HERO_CLAIMS } from "@/components/login/hero-proof";
@@ -154,19 +153,14 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
         {/* Content */}
         <div className="relative z-10 flex flex-col p-12 w-full overflow-y-auto">
           {/* Top: Logo */}
-          <a
-            href="https://github.com/storagebase/storagebase-studio"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 group w-fit"
-          >
+          <div className="flex items-center gap-3 group w-fit">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-fill-strong border border-hairline-strong group-hover:bg-fill-strong group-hover:border-hairline-strong transition-all duration-200">
               <LibreDBLogo className="h-9 w-9 text-brand" />
             </div>
             <span className="text-xl font-semibold text-white tracking-tight group-hover:text-brand transition-colors duration-200">
               StorageBase Studio
             </span>
-          </a>
+          </div>
 
           {/*
             Thesis, then evidence, then the proof numbers - three tiers of weight instead of
@@ -219,10 +213,6 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
 
             <HeroProof />
           </div>
-
-          <div className="mt-8">
-            <CommunitySection variant="desktop" />
-          </div>
         </div>
       </div>
 
@@ -230,13 +220,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
       <div className="flex w-full lg:w-1/2 xl:w-[45%] items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile branding (visible only on mobile) */}
-          <a
-            href="https://github.com/storagebase/storagebase-studio"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="StorageBase Studio website"
-            className="flex flex-col items-center gap-4 lg:hidden group"
-          >
+          <div className="flex flex-col items-center gap-4 lg:hidden group">
             <div className="relative">
               <div className="absolute -inset-2 rounded-full bg-brand-tint/20 blur-lg" />
               <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-raised border border-hairline-strong shadow-lg shadow-blue-500/10 group-hover:border-brand-tint/20 transition-all duration-200">
@@ -249,7 +233,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
               </h2>
               <p className="text-sm text-muted-foreground">Open-source SQL IDE for cloud-native teams</p>
             </div>
-          </a>
+          </div>
 
           <Card className="border-muted-foreground/10 shadow-2xl transition-all duration-300 hover:shadow-primary/5">
             {/* Desktop header inside card */}
@@ -431,7 +415,6 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             >
               {HERO_CLAIMS.map((claim) => `${claim.value} ${claim.unit}`).join(" · ")} — {agentClaimDetail}
             </p>
-            <CommunitySection variant="mobile" />
           </div>
         </div>
       </div>

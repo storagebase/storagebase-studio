@@ -115,6 +115,7 @@ import {
   type ProviderOptions,
   type QueryPrepareOptions,
   type QueryResult,
+  type QueryWarning,
   type SlowQueryStats,
   type StorageStats,
   type TableStats,
@@ -126,7 +127,9 @@ import { isSystemIndex, toColumns } from "./introspect";
 import {
   type SearchClusterHealth,
   type SearchDialectId,
+  type SearchEngineFallback,
   type SearchErrorCategory,
+  type SearchFallbackReason,
   type SearchIndexInfo,
   type SearchObjectDefinition,
   type SearchObjectInfo,
@@ -560,8 +563,9 @@ function searchObjectDetail(path: readonly string[], columns: ColumnSchema[]): O
  * transport upholds the seam's uniqueness invariant, so a duplicated output name
  * reaches the grid as `c` and `c (2)` rather than overwriting.
  */
-function toQueryResult(result: SearchQueryResult, executionTime: number): QueryResult {
+function toQueryResult(result: SearchQueryResult, executionTime: number, label: string): QueryResult {
   const columnTypes = result.columnTypes ?? {};
+  const fallback = result.engineFallback;
 
   return {
     rows: result.rows,
@@ -575,7 +579,28 @@ function toQueryResult(result: SearchQueryResult, executionTime: number): QueryR
     // field, so the grid and the sidebar speak one vocabulary. An empty map means
     // the answer declared no types, and stays absent rather than shipping a `{}`.
     ...(Object.keys(columnTypes).length > 0 ? { columnTypes } : {}),
+    // The ONE warning this provider raises, and it is earned: rows a second engine
+    // served look like any other rows, while their columns may be named and typed
+    // differently from what the same statement answers on an index without the fault.
+    ...(fallback === undefined ? {} : { warnings: [fallbackWarning(fallback, label)] }),
   };
+}
+
+/**
+ * The notice owed for each reason the transport may answer from a secondary engine.
+ *
+ * A `Record` over the seam's union rather than a string, so a second reason fails the
+ * typecheck here until someone writes the sentence a user reads for it.
+ */
+const FALLBACK_NOTICES: Readonly<Record<SearchFallbackReason, (label: string) => string>> = {
+  "custom-date-format": (label) =>
+    `${label}'s SQL engine cannot read a date field with a custom format in this index, so the legacy SQL engine ` +
+    "served this result. Columns are the documents' own fields in first-seen order, with no types, and column " +
+    "aliases and computed expressions are not applied.",
+};
+
+function fallbackWarning(fallback: SearchEngineFallback, label: string): QueryWarning {
+  return { message: `${FALLBACK_NOTICES[fallback.reason](label)} Engine message: ${fallback.primaryMessage}` };
 }
 
 /**
@@ -963,7 +988,7 @@ abstract class SearchProvider extends SQLBaseProvider {
         }
       });
 
-      return toQueryResult(result, executionTime);
+      return toQueryResult(result, executionTime, this.product.label);
     });
   }
 
