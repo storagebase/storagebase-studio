@@ -432,4 +432,25 @@ describe("Sidebar", () => {
 
     expect(onShowDiagram).toHaveBeenCalledTimes(1);
   });
+
+  test("the ERD button is a toggle: while the diagram is open it hides it", () => {
+    const onShowDiagram = mock(() => {});
+    const onHideDiagram = mock(() => {});
+    const props = createDefaultProps({
+      activeConnection: mockPostgresConnection,
+      onShowDiagram,
+      onHideDiagram,
+      isDiagramOpen: true,
+    });
+    const { container } = render(<Sidebar {...props} />);
+
+    expect(container.querySelector('[title="Show ERD Diagram"]')).toBeNull();
+    const erdButton = container.querySelector('[title="Hide ERD Diagram"]');
+    expect(erdButton).not.toBeNull();
+    expect(erdButton!.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(erdButton!);
+
+    expect(onHideDiagram).toHaveBeenCalledTimes(1);
+    expect(onShowDiagram).not.toHaveBeenCalled();
+  });
 });

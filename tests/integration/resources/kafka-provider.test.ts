@@ -64,6 +64,15 @@ const adminCalls: Record<string, unknown[]> = {};
 /** Per-method failures to inject: the value is thrown by that admin method. */
 const adminFailures: Record<string, unknown> = {};
 
+/**
+ * Per-topic offset-read failures: the value is thrown by fetchTopicOffsets for
+ * that topic only — how one broken topic among many is reproduced.
+ */
+const offsetFailures: Record<string, unknown> = {};
+
+/** Per-topic leader overrides for the metadata answer (-1: leaderless). */
+const leaders: Record<string, number> = {};
+
 /** What createTopics answers (kafkajs: false when every topic already existed). */
 let createTopicsAnswer = true;
 
@@ -86,6 +95,7 @@ class FakeAdmin {
   }
   async fetchTopicOffsets(topic: string) {
     record("fetchTopicOffsets", topic);
+    if (topic in offsetFailures) throw offsetFailures[topic];
     const partitions = store[topic];
     if (!partitions) {
       if (topic === "__consumer_offsets") return [{ partition: 0, high: "0", low: "0" }];
@@ -115,7 +125,7 @@ class FakeAdmin {
         partitions: (store[name] ?? [[]]).map((_, partitionId) => ({
           partitionErrorCode: 0,
           partitionId,
-          leader: 1,
+          leader: leaders[name] ?? 1,
           replicas: name === "__consumer_offsets" ? [1] : [1, 2],
           // Partition 1 of a multi-partition topic is under-replicated.
           isr: partitionId === 1 ? [1] : name === "__consumer_offsets" ? [1] : [1, 2],
@@ -360,6 +370,8 @@ function seed() {
   for (const key of Object.keys(configs)) delete configs[key];
   for (const key of Object.keys(adminCalls)) delete adminCalls[key];
   for (const key of Object.keys(adminFailures)) delete adminFailures[key];
+  for (const key of Object.keys(offsetFailures)) delete offsetFailures[key];
+  for (const key of Object.keys(leaders)) delete leaders[key];
   createTopicsAnswer = true;
   FakeConsumer.seeks = [];
   FakeConsumer.silent = false;
@@ -544,6 +556,7 @@ describe("KafkaProvider workbench", () => {
       replicationFactor: 2,
       underReplicatedPartitions: 1,
       messageCount: 3,
+      countError: null,
     });
   });
 
@@ -628,11 +641,15 @@ describe("KafkaProvider workbench", () => {
     const originalOffsets = FakeAdmin.prototype.fetchTopicOffsets;
     FakeAdmin.prototype.fetchTopicMetadata = async () => ({ topics: [] });
     try {
-      expect((await provider.describeTopic("fixture-events")).partitions).toEqual([]);
+      const empty = await provider.describeTopic("fixture-events");
+      expect(empty.partitions).toEqual([]);
+      // No partition metadata: the offsets are not asked for at all.
+      expect(empty.offsetsError).toContain("no partition metadata");
       FakeAdmin.prototype.fetchTopicMetadata = original;
       FakeAdmin.prototype.fetchTopicOffsets = async () => [];
       const detail = await provider.describeTopic("fixture-events");
-      expect(detail.partitions[0]).toMatchObject({ earliestOffset: "0", latestOffset: "0" });
+      expect(detail.partitions[0]).toMatchObject({ earliestOffset: null, latestOffset: null });
+      expect(detail.offsetsError).toBeNull();
     } finally {
       FakeAdmin.prototype.fetchTopicMetadata = original;
       FakeAdmin.prototype.fetchTopicOffsets = originalOffsets;
@@ -1070,6 +1087,7 @@ describe("KafkaProvider workbench", () => {
           protocol: "",
           members: 0,
           totalLag: 3,
+          lagError: null,
           internal: false,
         },
         {
@@ -1079,6 +1097,7 @@ describe("KafkaProvider workbench", () => {
           protocol: "range",
           members: 3,
           totalLag: 2,
+          lagError: null,
           internal: false,
         },
         {
@@ -1088,6 +1107,7 @@ describe("KafkaProvider workbench", () => {
           protocol: "",
           members: 0,
           totalLag: null,
+          lagError: null,
           internal: true,
         },
       ]);
@@ -1115,6 +1135,7 @@ describe("KafkaProvider workbench", () => {
         expect(listing.lagTruncated).toBe(true);
         expect(listing.groups.at(-1)).toMatchObject({
           totalLag: null,
+          lagError: null,
           state: "Unknown",
           members: 0,
           protocol: "",
@@ -1146,9 +1167,16 @@ describe("KafkaProvider workbench", () => {
         { memberId: "m-3", clientId: "c-3", clientHost: "/10.0.0.3", assignments: [] },
       ]);
       expect(detail.offsets).toEqual([
-        { topic: "fixture-events", partition: 0, committedOffset: "1", endOffset: "1", lag: 0 },
-        { topic: "fixture-events", partition: 1, committedOffset: null, endOffset: "2", lag: null },
-        { topic: "other", partition: 0, committedOffset: "0", endOffset: "2", lag: 2 },
+        { topic: "fixture-events", partition: 0, committedOffset: "1", endOffset: "1", lag: 0, endOffsetError: null },
+        {
+          topic: "fixture-events",
+          partition: 1,
+          committedOffset: null,
+          endOffset: "2",
+          lag: null,
+          endOffsetError: null,
+        },
+        { topic: "other", partition: 0, committedOffset: "0", endOffset: "2", lag: 2, endOffsetError: null },
       ]);
     });
 
@@ -1180,6 +1208,7 @@ describe("KafkaProvider workbench", () => {
         committedOffset: "3",
         endOffset: "0",
         lag: 0,
+        endOffsetError: null,
       });
     });
 
@@ -1209,8 +1238,8 @@ describe("KafkaProvider workbench", () => {
         reset: { mode: "latest" },
       });
       expect(latest).toEqual([
-        { topic: "fixture-events", partition: 0, committedOffset: "1", endOffset: "1", lag: 0 },
-        { topic: "fixture-events", partition: 1, committedOffset: "2", endOffset: "2", lag: 0 },
+        { topic: "fixture-events", partition: 0, committedOffset: "1", endOffset: "1", lag: 0, endOffsetError: null },
+        { topic: "fixture-events", partition: 1, committedOffset: "2", endOffset: "2", lag: 0, endOffsetError: null },
       ]);
 
       const offset = await provider.resetConsumerGroupOffsets({
@@ -1220,7 +1249,9 @@ describe("KafkaProvider workbench", () => {
         partitions: [1],
       });
       // Clamped to the log start of partition 1.
-      expect(offset).toEqual([{ topic: "fixture-events", partition: 1, committedOffset: "1", endOffset: "2", lag: 1 }]);
+      expect(offset).toEqual([
+        { topic: "fixture-events", partition: 1, committedOffset: "1", endOffset: "2", lag: 1, endOffsetError: null },
+      ]);
 
       const byTime = await provider.resetConsumerGroupOffsets({
         groupId: "archiver",
@@ -1290,5 +1321,151 @@ describe("KafkaProvider workbench", () => {
         ResourceConflictError,
       );
     });
+  });
+});
+
+/**
+ * Regression: on a live cluster the topic listing failed as a whole with
+ * kafkajs' own TypeError from inside its offset fetch, raised for ONE topic
+ * whose ListOffsets response came back short. Offsets are best effort per
+ * topic; only the listing and metadata calls may fail a read.
+ */
+describe("KafkaProvider offset reads are best effort per topic", () => {
+  const shortResponse = () =>
+    new TypeError("Cannot destructure property 'partitions' of 'high.pop(...)' as it is undefined.");
+
+  beforeEach(() => {
+    seed();
+    store["topic-a"] = [[{ key: null, value: "a" }]];
+    store["topic-broken"] = [[{ key: null, value: "b" }], []];
+    store["topic-c"] = [
+      [
+        { key: null, value: "c1" },
+        { key: null, value: "c2" },
+      ],
+    ];
+    offsetFailures["topic-broken"] = shortResponse();
+  });
+
+  test("one unreadable topic answers null with its reason; every other topic is counted", async () => {
+    const provider = new KafkaProvider(connection);
+    const listing = await provider.listTopicSummaries();
+    const byName = Object.fromEntries(listing.topics.map((topic) => [topic.name, topic]));
+    expect(listing.topics).toHaveLength(5);
+    expect(byName["topic-broken"]).toMatchObject({ partitions: 2, messageCount: null });
+    expect(byName["topic-broken"].countError).toContain("Cannot destructure property 'partitions'");
+    expect(byName["topic-a"]).toMatchObject({ messageCount: 1, countError: null });
+    expect(byName["topic-c"]).toMatchObject({ messageCount: 2, countError: null });
+    expect(byName["fixture-events"]).toMatchObject({ messageCount: 3, countError: null });
+  });
+
+  test("a leaderless topic is not asked for offsets at all", async () => {
+    leaders["topic-c"] = -1;
+    const provider = new KafkaProvider(connection);
+    const listing = await provider.listTopicSummaries();
+    const leaderless = listing.topics.find((topic) => topic.name === "topic-c");
+    expect(leaderless).toMatchObject({ messageCount: null, countError: "partition 0 has no leader" });
+    expect(adminCalls.fetchTopicOffsets).not.toContain("topic-c");
+  });
+
+  test("topic detail keeps partitions and configs when the offsets cannot be read", async () => {
+    configs["topic-broken"] = [
+      {
+        configName: "retention.ms",
+        configValue: "1",
+        isDefault: false,
+        configSource: 1,
+        isSensitive: false,
+        readOnly: false,
+      },
+    ];
+    const provider = new KafkaProvider(connection);
+    const detail = await provider.describeTopic("topic-broken");
+    expect(detail.partitions).toHaveLength(2);
+    expect(detail.partitions[0]).toMatchObject({ leader: 1, earliestOffset: null, latestOffset: null });
+    expect(detail.offsetsError).toContain("Cannot destructure property 'partitions'");
+    expect(detail.configs.map((entry) => entry.name)).toEqual(["retention.ms"]);
+  });
+
+  test("a group committed on an unreadable topic loses its lag, not the listing", async () => {
+    groups["group-mixed"] = {
+      state: "Empty",
+      protocolType: "consumer",
+      protocol: "",
+      members: [],
+      offsets: { "topic-a": { 0: "0" }, "topic-broken": { 0: "0" } },
+    };
+    groups["group-also-broken"] = {
+      state: "Empty",
+      protocolType: "consumer",
+      protocol: "",
+      members: [],
+      offsets: { "topic-broken": { 1: "0" } },
+    };
+    groups["group-healthy"] = {
+      state: "Empty",
+      protocolType: "consumer",
+      protocol: "",
+      members: [],
+      offsets: { "topic-c": { 0: "1" } },
+    };
+    const provider = new KafkaProvider(connection);
+    const listing = await provider.listConsumerGroups();
+    const byId = Object.fromEntries(listing.groups.map((group) => [group.groupId, group]));
+    expect(byId["group-healthy"]).toMatchObject({ totalLag: 1, lagError: null });
+    expect(byId["group-mixed"].totalLag).toBeNull();
+    expect(byId["group-mixed"].lagError).toContain("topic-broken: Cannot destructure");
+    expect(byId["group-also-broken"].totalLag).toBeNull();
+    // The failure is cached like a success: two groups, one attempt.
+    expect((adminCalls.fetchTopicOffsets as string[]).filter((topic) => topic === "topic-broken")).toHaveLength(1);
+  });
+
+  test("a group whose committed offsets cannot be fetched answers its reason, the listing still answers", async () => {
+    groups["group-x"] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
+    groups["group-y"] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
+    const original = FakeAdmin.prototype.fetchOffsets;
+    FakeAdmin.prototype.fetchOffsets = async function (options: { groupId: string }) {
+      if (options.groupId === "group-x") throw shortResponse();
+      return original.call(this, options);
+    };
+    try {
+      const provider = new KafkaProvider(connection);
+      const listing = await provider.listConsumerGroups();
+      expect(listing.groups.find((group) => group.groupId === "group-x")).toMatchObject({ totalLag: null });
+      expect(listing.groups.find((group) => group.groupId === "group-x")?.lagError).toContain("Cannot destructure");
+      expect(listing.groups.find((group) => group.groupId === "group-y")).toMatchObject({
+        totalLag: 0,
+        lagError: null,
+      });
+    } finally {
+      FakeAdmin.prototype.fetchOffsets = original;
+    }
+  });
+
+  test("group detail answers the readable rows and marks the unreadable ones", async () => {
+    groups["group-mixed"] = {
+      state: "Empty",
+      protocolType: "consumer",
+      protocol: "",
+      members: [],
+      offsets: { "topic-a": { 0: "0" }, "topic-broken": { 0: "0" } },
+    };
+    const provider = new KafkaProvider(connection);
+    const detail = await provider.describeConsumerGroup("group-mixed");
+    expect(detail.offsets[0]).toEqual({
+      topic: "topic-a",
+      partition: 0,
+      committedOffset: "0",
+      endOffset: "1",
+      lag: 1,
+      endOffsetError: null,
+    });
+    expect(detail.offsets[1]).toMatchObject({
+      topic: "topic-broken",
+      committedOffset: "0",
+      endOffset: null,
+      lag: null,
+    });
+    expect(detail.offsets[1].endOffsetError).toContain("Cannot destructure");
   });
 });

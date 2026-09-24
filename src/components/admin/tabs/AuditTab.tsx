@@ -1,7 +1,7 @@
 "use client";
 
 import { appFetch } from "@/lib/config/base-path";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,22 +187,125 @@ function AuditEventDetail({ event }: { event: AuditEvent }) {
 }
 
 /**
+ * The resource actions the action filter offers (StorageBase fork): every read and write the
+ * resource routes record as `resource_operation`, in the order an operator scans for them.
+ */
+const RESOURCE_ACTION_OPTIONS: readonly string[] = [
+  "tree.list",
+  "resource.health",
+  "resource.meta",
+  "blob.preview",
+  "blob.download",
+  "blob.meta",
+  "blob.upload",
+  "blob.delete",
+  "message.browse",
+  "message.publish",
+  "message.purge",
+  "secret.read",
+  "secret.write",
+  "secret.delete",
+  "kafka.cluster.read",
+  "kafka.topics.list",
+  "kafka.topic.read",
+  "kafka.messages.read",
+  "kafka.groups.list",
+  "kafka.group.read",
+  "kafka.topic.create",
+  "kafka.topic.delete",
+  "kafka.topic.config",
+  "kafka.topic.partitions",
+  "kafka.produce",
+  "kafka.group.delete",
+  "kafka.group.reset-offsets",
+];
+
+/** One page on screen; "Load more" asks for the next. */
+const AUDIT_PAGE_SIZE = 200;
+/** The export's bound: it pages through the store, but never past this many rows. */
+export const AUDIT_EXPORT_MAX_ROWS = 50_000;
+const AUDIT_EXPORT_PAGE_SIZE = 1000;
+/** How long a typed filter waits for the next keystroke before it asks the server. */
+const FILTER_DEBOUNCE_MS = 300;
+
+/** What the operator asked for. Every field is also applied to the rows on screen. */
+interface AuditFilters {
+  type: string;
+  result: string;
+  action: string;
+  engine: string;
+  user: string;
+  ip: string;
+  text: string;
+  /** ISO-8601, or "" for unbounded. */
+  from: string;
+  to: string;
+}
+
+interface AuditPage {
+  events: AuditEvent[];
+  nextCursor: string | null;
+  source: "store" | "buffer" | null;
+}
+
+/** A `datetime-local` value as the ISO instant it names in the viewer's zone; "" when unset or unreadable. */
+function isoFromLocal(value: string): string {
+  if (!value) return "";
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? "" : new Date(time).toISOString();
+}
+
+function auditParams(filters: AuditFilters, limit: number, cursor: string | null): URLSearchParams {
+  const params = new URLSearchParams({ limit: String(limit) });
+  for (const [name, value] of Object.entries(filters)) {
+    if (value && value !== "all") params.set(name, value);
+  }
+  if (cursor) params.set("cursor", cursor);
+  return params;
+}
+
+/**
  * The audit read, kept free of state writes so the Effect below can stay in the
  * shape react.dev prescribes for fetching. A failed request reads as "no events"
  * — the same thing the old catch branch put on screen.
  */
-async function loadAuditEvents(type: string): Promise<AuditEvent[]> {
+async function loadAuditPage(
+  filters: AuditFilters,
+  cursor: string | null,
+  limit = AUDIT_PAGE_SIZE,
+): Promise<AuditPage> {
   try {
-    // The whole server buffer (1000 events), so the filters below search all of it rather than
-    // the most recent slice.
-    const params = new URLSearchParams({ limit: "1000" });
-    if (type !== "all") params.set("type", type);
-    const res = await appFetch(`/api/admin/audit?${params}`);
+    const res = await appFetch(`/api/admin/audit?${auditParams(filters, limit, cursor)}`);
     const data = await res.json();
-    return data.events || [];
+    return { events: data.events || [], nextCursor: data.nextCursor ?? null, source: data.source ?? null };
   } catch {
-    return [];
+    return { events: [], nextCursor: null, source: null };
   }
+}
+
+/** The same filters, applied to rows already loaded: the server's answer, re-read on screen. */
+function matchesFilters(e: AuditEvent, filters: AuditFilters): boolean {
+  const contains = (haystack: string, needle: string) => !needle || haystack.includes(needle.toLowerCase());
+  return (
+    (filters.result === "all" || e.result === filters.result) &&
+    (filters.action === "all" || e.action === filters.action) &&
+    (!filters.engine || (e.engine ?? "") === filters.engine) &&
+    (!filters.from || e.timestamp >= filters.from) &&
+    (!filters.to || e.timestamp <= filters.to) &&
+    contains(e.user.toLowerCase(), filters.user) &&
+    contains(`${e.ip ?? ""}\n${e.forwardedFor ?? ""}`.toLowerCase(), filters.ip) &&
+    contains(searchableText(e), filters.text)
+  );
+}
+
+/** `value`, once it has stopped changing for `delayMs`. */
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return settled;
 }
 
 function OperationsAudit() {
@@ -214,6 +317,14 @@ function OperationsAudit() {
   const [resultFilter, setResultFilter] = useState<string>("all");
   const [userQuery, setUserQuery] = useState("");
   const [ipQuery, setIpQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
+  const [engineQuery, setEngineQuery] = useState("");
+  const [fromValue, setFromValue] = useState("");
+  const [toValue, setToValue] = useState("");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [source, setSource] = useState<AuditPage["source"]>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
 
   const toggleExpanded = (id: string) => {
@@ -232,17 +343,60 @@ function OperationsAudit() {
   // (Bundling matters: a bare refresh token is never read inside the Effect, so it
   // cannot honestly be a dependency — inside the descriptor it is the value the Effect
   // synchronizes against. Same shape as OverviewTab's fleet health.)
-  const auditRequest = useMemo(() => ({ typeFilter, refreshCount }), [typeFilter, refreshCount]);
+  //
+  // Typed filters reach the server once they settle, so a word typed into Search is one request,
+  // not one per keystroke; the rows on screen are re-filtered on every keystroke meanwhile.
+  const typed = useDebounced(
+    useMemo(
+      () => ({ user: userQuery, ip: ipQuery, text: searchQuery, engine: engineQuery }),
+      [userQuery, ipQuery, searchQuery, engineQuery],
+    ),
+    FILTER_DEBOUNCE_MS,
+  );
+  const filters: AuditFilters = useMemo(
+    () => ({
+      type: typeFilter,
+      result: resultFilter,
+      action: actionFilter,
+      engine: engineQuery.trim(),
+      user: userQuery.trim(),
+      ip: ipQuery.trim(),
+      text: searchQuery.trim(),
+      from: isoFromLocal(fromValue),
+      to: isoFromLocal(toValue),
+    }),
+    [typeFilter, resultFilter, actionFilter, engineQuery, userQuery, ipQuery, searchQuery, fromValue, toValue],
+  );
+  const serverFilters: AuditFilters = useMemo(
+    () => ({
+      type: typeFilter,
+      result: resultFilter,
+      action: actionFilter,
+      engine: typed.engine.trim(),
+      user: typed.user.trim(),
+      ip: typed.ip.trim(),
+      text: typed.text.trim(),
+      from: isoFromLocal(fromValue),
+      to: isoFromLocal(toValue),
+    }),
+    [typeFilter, resultFilter, actionFilter, typed, fromValue, toValue],
+  );
+  const auditRequest = useMemo(() => ({ serverFilters, refreshCount }), [serverFilters, refreshCount]);
+  // The request the rows on screen belong to, so a "Load more" that lands after the filters
+  // changed is dropped instead of appending another query's rows.
+  const currentRequest = useRef(auditRequest);
 
   useEffect(() => {
-    const { typeFilter: requestedType } = auditRequest;
+    currentRequest.current = auditRequest;
     let ignore = false;
     async function run() {
-      const next = await loadAuditEvents(requestedType);
+      const page = await loadAuditPage(auditRequest.serverFilters, null);
       // A response that lost the race (unmount, a newer filter, or a newer refresh)
       // must not win.
       if (ignore) return;
-      setEvents(next);
+      setEvents(page.events);
+      setNextCursor(page.nextCursor);
+      setSource(page.source);
       setLoading(false);
     }
     run();
@@ -264,20 +418,38 @@ function OperationsAudit() {
     setRefreshCount((c) => c + 1);
   };
 
-  const filteredEvents = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    const userNeedle = userQuery.toLowerCase();
-    const ipNeedle = ipQuery.toLowerCase();
-    return events.filter(
-      (e) =>
-        (resultFilter === "all" || e.result === resultFilter) &&
-        (!userNeedle || e.user.toLowerCase().includes(userNeedle)) &&
-        (!ipNeedle || `${e.ip ?? ""}\n${e.forwardedFor ?? ""}`.toLowerCase().includes(ipNeedle)) &&
-        (!q || searchableText(e).includes(q)),
-    );
-  }, [events, searchQuery, resultFilter, userQuery, ipQuery]);
+  const handleLoadMore = async () => {
+    if (!nextCursor) return;
+    const request = auditRequest;
+    setLoadingMore(true);
+    const page = await loadAuditPage(request.serverFilters, nextCursor);
+    setLoadingMore(false);
+    if (currentRequest.current !== request) return;
+    setEvents((current) => [...current, ...page.events]);
+    setNextCursor(page.nextCursor);
+  };
 
-  const exportEvents = (format: "csv" | "json") => {
+  const filteredEvents = useMemo(() => events.filter((e) => matchesFilters(e, filters)), [events, filters]);
+
+  /**
+   * Every matching event, not just the loaded pages: the export pages through the server with
+   * the current filters, bounded at AUDIT_EXPORT_MAX_ROWS.
+   */
+  const collectForExport = async (): Promise<AuditEvent[]> => {
+    const rows: AuditEvent[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: AuditPage = await loadAuditPage(filters, cursor, AUDIT_EXPORT_PAGE_SIZE);
+      rows.push(...page.events.filter((e) => matchesFilters(e, filters)));
+      cursor = page.nextCursor;
+    } while (cursor && rows.length < AUDIT_EXPORT_MAX_ROWS);
+    return rows.slice(0, AUDIT_EXPORT_MAX_ROWS);
+  };
+
+  const exportEvents = async (format: "csv" | "json") => {
+    setExporting(true);
+    const exported = await collectForExport();
+    setExporting(false);
     let content: string;
     if (format === "csv") {
       const headers = [
@@ -308,9 +480,10 @@ function OperationsAudit() {
         "Rows Affected",
         "Error",
         "Query ID",
+        "Counts",
         "ID",
       ];
-      const rows = filteredEvents.map((event) =>
+      const rows = exported.map((event) =>
         csvRow([
           event.timestamp,
           event.type,
@@ -339,12 +512,13 @@ function OperationsAudit() {
           event.rowsAffected,
           event.error,
           event.queryId,
+          event.counts ? JSON.stringify(event.counts) : undefined,
           event.id,
         ]),
       );
       content = [csvRow(headers), ...rows].join("\n");
     } else {
-      content = jsonText(filteredEvents, 2);
+      content = jsonText(exported, 2);
     }
     downloadText(
       content,
@@ -383,6 +557,19 @@ function OperationsAudit() {
             <SelectItem value="failure">Failure</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={actionFilter} onValueChange={setActionFilter}>
+          <SelectTrigger aria-label="Action" className="w-[170px] h-8 text-xs bg-panel border-hairline-strong">
+            <SelectValue placeholder="Action" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Actions</SelectItem>
+            {RESOURCE_ACTION_OPTIONS.map((action) => (
+              <SelectItem key={action} value={action}>
+                {action}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
           placeholder="Search..."
           aria-label="Search action, target, connection or statement"
@@ -404,6 +591,27 @@ function OperationsAudit() {
           onChange={(e) => setIpQuery(e.target.value)}
           className="w-[120px] h-8 text-xs bg-panel border-hairline-strong"
         />
+        <Input
+          placeholder="Connection type..."
+          aria-label="Filter by connection type"
+          value={engineQuery}
+          onChange={(e) => setEngineQuery(e.target.value)}
+          className="w-[140px] h-8 text-xs bg-panel border-hairline-strong"
+        />
+        <Input
+          type="datetime-local"
+          aria-label="From"
+          value={fromValue}
+          onChange={(e) => setFromValue(e.target.value)}
+          className="w-[190px] h-8 text-xs bg-panel border-hairline-strong"
+        />
+        <Input
+          type="datetime-local"
+          aria-label="To"
+          value={toValue}
+          onChange={(e) => setToValue(e.target.value)}
+          className="w-[190px] h-8 text-xs bg-panel border-hairline-strong"
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -414,7 +622,7 @@ function OperationsAudit() {
           <RefreshCw className={`w-3 h-3 mr-1.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
-        <AuditExport disabled={loading || filteredEvents.length === 0} onExport={exportEvents} />
+        <AuditExport disabled={loading || exporting || filteredEvents.length === 0} onExport={exportEvents} />
       </div>
 
       {/* Stats Summary */}
@@ -425,6 +633,13 @@ function OperationsAudit() {
         <span>
           Success: <span className="font-bold text-success">{successRate}%</span>
         </span>
+        {source !== null && (
+          <span data-testid="audit-source" className="ml-auto">
+            {source === "store"
+              ? "Durable store — kept across restarts"
+              : "In-memory buffer — the last 1000 events, lost on restart"}
+          </span>
+        )}
       </div>
 
       {/* Events Table */}
@@ -531,6 +746,13 @@ function OperationsAudit() {
           </Table>
         )}
       </div>
+      {nextCursor !== null && (
+        <div className="flex justify-center">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleLoadMore} disabled={loadingMore}>
+            {loadingMore ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

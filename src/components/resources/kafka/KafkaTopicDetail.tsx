@@ -98,6 +98,11 @@ export function KafkaTopicDetail({
         />
       ) : tab === "partitions" ? (
         <div className="space-y-4">
+          {detail.offsetsError !== null && (
+            <p className="text-xs text-warning leading-relaxed break-words">
+              Offsets could not be read: {detail.offsetsError}
+            </p>
+          )}
           <Table className="text-xs">
             <TableHeader>
               <TableRow>
@@ -120,8 +125,8 @@ export function KafkaTopicDetail({
                   >
                     {partition.isr.join(", ")}
                   </TableCell>
-                  <TableCell className="text-right font-mono">{partition.earliestOffset}</TableCell>
-                  <TableCell className="text-right font-mono">{partition.latestOffset}</TableCell>
+                  <TableCell className="text-right font-mono">{partition.earliestOffset ?? "—"}</TableCell>
+                  <TableCell className="text-right font-mono">{partition.latestOffset ?? "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

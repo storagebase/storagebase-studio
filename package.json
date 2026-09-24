@@ -176,6 +176,8 @@
     "@aws-sdk/client-secrets-manager": "^3.1136.0",
     "@aws-sdk/client-sqs": "^3.1136.0",
     "@azure/identity": "^4.13.3",
+    "@azure/keyvault-certificates": "^4.10.3",
+    "@azure/keyvault-keys": "^4.10.2",
     "@azure/keyvault-secrets": "^4.11.2",
     "@azure/storage-blob": "^12.33.0",
     "@duckdb/node-api": "1.5.5-r.4",

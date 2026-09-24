@@ -46,7 +46,7 @@ export async function handleResourceRequest(
         { status: 400 },
       );
     }
-    return await run(body.connection, body, { session: guard.session, route });
+    return await run(body.connection, body, { session: guard.session, route, connection: body.connection });
   } catch (error) {
     if (error instanceof ResourceRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -63,6 +63,8 @@ export async function handleResourceRequest(
 export interface ResourceRequestContext {
   readonly session: { readonly role: string; readonly username?: string };
   readonly route: string;
+  /** The connection the action runs against, for the audit event's connection fields. */
+  readonly connection: Pick<ResourceConnection, "id" | "name" | "type">;
 }
 
 async function readResourceBody(req: NextRequest): Promise<Record<string, unknown>> {

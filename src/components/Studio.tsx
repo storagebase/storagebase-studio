@@ -57,7 +57,7 @@ import { useConnectionOrder } from "@/hooks/use-connection-order";
 import { useAuth } from "@/hooks/use-auth";
 import { useConnectionManager } from "@/hooks/use-connection-manager";
 import { useResourceConnections } from "@/hooks/use-resource-connections";
-import type { ResourceConnection } from "@/lib/resources/types";
+import { RESOURCE_CATEGORY_OF, type ResourceConnection } from "@/lib/resources/types";
 // Family provider registration (client side): the standalone shell composes
 // the build's families, so the picker's offers match what the server answers.
 // Presentational components never import this barrel — unit tests start from
@@ -68,6 +68,7 @@ import type { ResourceNode } from "@/lib/resources/types";
 import { ResourceInspector } from "@/components/resources/ResourceInspector";
 import { useResourceWorkbench } from "@/hooks/use-resource-workbench";
 import { KafkaWorkbench } from "@/components/resources/kafka";
+import { VaultWorkbench } from "@/components/resources/vault";
 import { WorkbenchConnectionRows } from "@/components/resources/WorkbenchConnectionRows";
 import { useTabManager } from "@/hooks/use-tab-manager";
 import { useTransactionControl } from "@/hooks/use-transaction-control";
@@ -963,6 +964,8 @@ export default function Studio() {
                 onObjectClick={onObjectClick}
                 objectActions={objectActions}
                 onShowDiagram={() => setShowDiagram(true)}
+                onHideDiagram={() => setShowDiagram(false)}
+                isDiagramOpen={showDiagram}
                 resourceConnections={workbench.treeConnections}
                 activeResourceConnection={workbench.activeTreeConnection}
                 onSelectResourceConnection={res.setActiveConnection}
@@ -1052,21 +1055,34 @@ export default function Studio() {
 
             <main className="flex-1 overflow-hidden relative">
               {/*
-                The Kafka workbench (StorageBase fork) covers the editor rather than
+                The resource workbench (StorageBase fork: Kafka or a vault) covers the editor rather than
                 replacing it: the editor, its tabs and results stay mounted underneath,
                 so closing the workbench returns to exactly where the user was.
               */}
               {workbench.activeWorkbench && (
                 <div className="absolute inset-0 z-30 bg-surface">
-                  <KafkaWorkbench
-                    key={workbench.activeWorkbench.id}
-                    connection={workbench.activeWorkbench}
-                    onClose={workbench.closeWorkbench}
-                    onEditConnection={(c) => {
-                      setEditingResourceConnection(c);
-                      setIsConnectionModalOpen(true);
-                    }}
-                  />
+                  {RESOURCE_CATEGORY_OF[workbench.activeWorkbench.type] === "vault" ? (
+                    <VaultWorkbench
+                      key={workbench.activeWorkbench.id}
+                      connection={workbench.activeWorkbench}
+                      isAdmin={isAdmin}
+                      onClose={workbench.closeWorkbench}
+                      onEditConnection={(c) => {
+                        setEditingResourceConnection(c);
+                        setIsConnectionModalOpen(true);
+                      }}
+                    />
+                  ) : (
+                    <KafkaWorkbench
+                      key={workbench.activeWorkbench.id}
+                      connection={workbench.activeWorkbench}
+                      onClose={workbench.closeWorkbench}
+                      onEditConnection={(c) => {
+                        setEditingResourceConnection(c);
+                        setIsConnectionModalOpen(true);
+                      }}
+                    />
+                  )}
                 </div>
               )}
               <AnimatePresence>

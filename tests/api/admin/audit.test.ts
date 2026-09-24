@@ -178,15 +178,40 @@ describe("/api/admin/audit", () => {
       const req = createMockRequest("/api/admin/audit?type=maintenance");
 
       const res = await GET(req);
-      const data = await parseResponseJSON<{ events: AuditEvent[] }>(res);
+      const data = await parseResponseJSON<{ events: AuditEvent[]; source: string }>(res);
 
       expect(res.status).toBe(200);
-      expect(mockBuffer.filter).toHaveBeenCalled();
-      expect(data.events).toBeArray();
+      expect(data.events.map((event) => event.id)).toEqual(["evt-1"]);
+      // No STORAGE_PROVIDER in this suite, so the in-memory buffer answers.
+      expect(data.source).toBe("buffer");
+    });
+
+    test("pages newest first with a cursor, filtering on the query string", async () => {
+      const first = await parseResponseJSON<{ events: AuditEvent[]; nextCursor: string | null }>(
+        await GET(createMockRequest("/api/admin/audit?limit=1")),
+      );
+      expect(first.events.map((event) => event.id)).toEqual(["evt-2"]);
+      expect(first.nextCursor).not.toBeNull();
+
+      const second = await parseResponseJSON<{ events: AuditEvent[]; nextCursor: string | null }>(
+        await GET(createMockRequest(`/api/admin/audit?limit=1&cursor=${first.nextCursor}`)),
+      );
+      expect(second).toMatchObject({ events: [expect.objectContaining({ id: "evt-1" })], nextCursor: null });
+
+      const filtered = await parseResponseJSON<{ events: AuditEvent[] }>(
+        await GET(createMockRequest("/api/admin/audit?text=ORDERS&from=2026-02-14T10:01:00.000Z")),
+      );
+      expect(filtered.events.map((event) => event.id)).toEqual(["evt-2"]);
+    });
+
+    test("a cursor it did not issue is a 400", async () => {
+      const res = await GET(createMockRequest("/api/admin/audit?cursor=bogus"));
+      expect(res.status).toBe(400);
+      expect((await parseResponseJSON<{ error: string }>(res)).error).toBe("Invalid audit cursor");
     });
 
     test("returns 500 when buffer read fails", async () => {
-      mockBuffer.getRecent.mockImplementationOnce(() => {
+      mockBuffer.getAll.mockImplementationOnce(() => {
         throw new Error("Buffer read failed");
       });
 

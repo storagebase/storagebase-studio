@@ -113,6 +113,13 @@ export const KAFKA_GROUP_LAG_LIMIT = 50;
 /** The throwaway groups the studio's own reads join. Listed as internal, deleted after each workbench read. */
 export const KAFKA_PEEK_GROUP_PREFIX = "storagebase-peek-";
 
+/**
+ * Offset reads in flight at once on one admin client. Small on purpose: the
+ * listing fans out one ListOffsets pair per topic, and a wide fan-out over a
+ * shared admin is where kafkajs' "write after end" socket errors showed up.
+ */
+export const KAFKA_OFFSET_CONCURRENCY = 4;
+
 /** kafkajs `ConfigResourceTypes.TOPIC`, spelled here so the SDK stays lazily loaded. */
 const TOPIC_CONFIG_RESOURCE = 2;
 
@@ -256,6 +263,23 @@ async function mapBounded<T, R>(items: readonly T[], width: number, task: (item:
   });
   await Promise.all(lanes);
   return results;
+}
+
+/** One line for a tooltip: why a best-effort read came back empty. */
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Why a topic's offsets are not worth asking for, read off its metadata:
+ * kafkajs routes ListOffsets per partition leader, and a partition with no
+ * leader (or no partitions at all, a topic mid-deletion) is exactly the case
+ * where its response comes back short and it throws from inside the client.
+ */
+function unreadableOffsets(partitions: ReadonlyArray<{ partitionId: number; leader: number }>): string | null {
+  if (partitions.length === 0) return "no partition metadata (the topic may be being deleted)";
+  const leaderless = partitions.find((partition) => partition.leader < 0);
+  return leaderless === undefined ? null : `partition ${leaderless.partitionId} has no leader`;
 }
 
 function sumWatermarks(offsets: ReadonlyArray<{ high: string; low: string }>): number {
@@ -555,11 +579,21 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
       const { topics } = await admin.fetchTopicMetadata();
       const sorted = [...topics].sort((a, b) => a.name.localeCompare(b.name));
       // Counts cost two ListOffsets round trips per topic, so they are
-      // measured for the first N topics only, eight in flight at a time.
+      // measured for the first N topics only, a few in flight at a time. Each
+      // is best effort: one topic whose offsets cannot be read (measured on a
+      // live cluster: kafkajs throws a TypeError from inside its offset
+      // fetch when a topic's response comes back short) answers null with
+      // its reason, and the listing still answers for every other topic.
       const counted = sorted.slice(0, KAFKA_TOPIC_COUNT_LIMIT);
-      const counts = await mapBounded(counted, 8, async (topic) =>
-        sumWatermarks(await admin.fetchTopicOffsets(topic.name)),
-      );
+      const counts = await mapBounded(counted, KAFKA_OFFSET_CONCURRENCY, async (topic) => {
+        const skip = unreadableOffsets(topic.partitions);
+        if (skip !== null) return { count: null, error: skip };
+        try {
+          return { count: sumWatermarks(await admin.fetchTopicOffsets(topic.name)), error: null };
+        } catch (error) {
+          return { count: null, error: reasonOf(error) };
+        }
+      });
       return {
         topics: sorted.map((topic, index) => ({
           name: topic.name,
@@ -569,7 +603,8 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
           underReplicatedPartitions: topic.partitions.filter(
             (partition) => partition.isr.length < partition.replicas.length,
           ).length,
-          messageCount: index < counted.length ? counts[index] : null,
+          messageCount: index < counted.length ? counts[index].count : null,
+          countError: index < counted.length ? counts[index].error : null,
         })),
         countsTruncated: sorted.length > counted.length,
       };
@@ -580,9 +615,19 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
     return this.withAdmin(`describe "${topic}"`, async (admin) => {
       await this.requireTopic(admin, topic);
       const metadata = await admin.fetchTopicMetadata({ topics: [topic] });
-      const offsets = await admin.fetchTopicOffsets(topic);
-      const configs = await this.readTopicConfigs(admin, topic);
       const partitions = metadata.topics[0]?.partitions ?? [];
+      // Best effort, like the listing: partitions and configs still answer
+      // when the offsets cannot be read, with the reason beside them.
+      let offsets: Array<{ partition: number; high: string; low: string }> = [];
+      let offsetsError = unreadableOffsets(partitions);
+      if (offsetsError === null) {
+        try {
+          offsets = await admin.fetchTopicOffsets(topic);
+        } catch (error) {
+          offsetsError = reasonOf(error);
+        }
+      }
+      const configs = await this.readTopicConfigs(admin, topic);
       return {
         name: topic,
         internal: topic.startsWith("__"),
@@ -596,11 +641,12 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
               replicas: partition.replicas,
               isr: partition.isr,
               offlineReplicas: partition.offlineReplicas ?? [],
-              earliestOffset: watermark?.low ?? "0",
-              latestOffset: watermark?.high ?? "0",
+              earliestOffset: watermark?.low ?? null,
+              latestOffset: watermark?.high ?? null,
             };
           }),
         configs,
+        offsetsError,
       };
     });
   }
@@ -862,26 +908,39 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
   private async groupOffsets(
     admin: KafkaAdmin,
     groupId: string,
-    endOffsets: Map<string, Map<number, string>>,
+    endOffsets: Map<string, Map<number, string> | string>,
   ): Promise<KafkaGroupOffset[]> {
     const committed = await admin.fetchOffsets({ groupId });
     const rows: KafkaGroupOffset[] = [];
     for (const { topic, partitions } of committed) {
       let ends = endOffsets.get(topic);
       if (ends === undefined) {
-        ends = new Map((await admin.fetchTopicOffsets(topic)).map((entry) => [entry.partition, entry.high]));
+        // A topic whose end offsets cannot be read (deleted since the group
+        // committed, leaderless) costs its own rows their lag, never the
+        // group's other topics. The failure is cached like a success, so a
+        // topic ten groups consumed is not asked for — and failed — ten times.
+        try {
+          ends = new Map((await admin.fetchTopicOffsets(topic)).map((entry) => [entry.partition, entry.high]));
+        } catch (error) {
+          ends = reasonOf(error);
+        }
         endOffsets.set(topic, ends);
       }
       for (const { partition, offset } of partitions) {
-        const endOffset = ends.get(partition) ?? "0";
         // "-1": the group never committed on this partition.
         const committedOffset = offset === "-1" ? null : offset;
+        if (typeof ends === "string") {
+          rows.push({ topic, partition, committedOffset, endOffset: null, lag: null, endOffsetError: ends });
+          continue;
+        }
+        const endOffset = ends.get(partition) ?? "0";
         rows.push({
           topic,
           partition,
           committedOffset,
           endOffset,
           lag: committedOffset === null ? null : Math.max(0, Number(BigInt(endOffset) - BigInt(committedOffset))),
+          endOffsetError: null,
         });
       }
     }
@@ -897,15 +956,25 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
       const byId = new Map(described.groups.map((group) => [group.groupId, group]));
       // Lag is measured for the first N non-internal groups; end offsets are
       // shared across them, so a topic consumed by ten groups is read once.
-      const endOffsets = new Map<string, Map<number, string>>();
+      const endOffsets = new Map<string, Map<number, string> | string>();
       const measured = ids.filter((id) => !id.startsWith(KAFKA_PEEK_GROUP_PREFIX)).slice(0, KAFKA_GROUP_LAG_LIMIT);
-      const lags = new Map<string, number>();
+      const lags = new Map<string, { lag: number | null; error: string | null }>();
       for (const id of measured) {
-        const rows = await this.groupOffsets(admin, id, endOffsets);
-        lags.set(
-          id,
-          rows.reduce((sum, row) => sum + (row.lag ?? 0), 0),
-        );
+        // Per group, best effort: one group's unreadable offsets answer as
+        // that group's lagError, never as a failed listing. A total over a
+        // partial set would read as the real lag, so it is null instead.
+        try {
+          const rows = await this.groupOffsets(admin, id, endOffsets);
+          const unreadable = rows.find((row) => row.endOffsetError !== null);
+          lags.set(
+            id,
+            unreadable === undefined
+              ? { lag: rows.reduce((sum, row) => sum + (row.lag ?? 0), 0), error: null }
+              : { lag: null, error: `${unreadable.topic}: ${unreadable.endOffsetError}` },
+          );
+        } catch (error) {
+          lags.set(id, { lag: null, error: reasonOf(error) });
+        }
       }
       const external = ids.filter((id) => !id.startsWith(KAFKA_PEEK_GROUP_PREFIX)).length;
       return {
@@ -917,7 +986,8 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
             protocolType: group?.protocolType ?? "",
             protocol: group?.protocol ?? "",
             members: group?.members.length ?? 0,
-            totalLag: lags.get(id) ?? null,
+            totalLag: lags.get(id)?.lag ?? null,
+            lagError: lags.get(id)?.error ?? null,
             internal: id.startsWith(KAFKA_PEEK_GROUP_PREFIX),
           };
         }),
@@ -1009,6 +1079,7 @@ export class KafkaProvider extends BaseResourceProvider implements MessagingOper
           committedOffset,
           endOffset: entry.high.toString(),
           lag: Number(entry.high - BigInt(committedOffset)),
+          endOffsetError: null,
         };
       });
     });

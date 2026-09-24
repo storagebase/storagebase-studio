@@ -54,13 +54,13 @@ export async function auditedKafkaWrite<T>(
   const user = context.session.username ?? context.session.role;
   const auditTarget = `${connection.type}:${target}`;
   // The request rides along so both events carry the caller's address and agent.
-  const correlationId = beginResourceWrite(user, action, auditTarget, request);
+  const correlationId = beginResourceWrite(user, action, auditTarget, request, connection);
   try {
     const result = await run(await resolveKafkaOperations(connection, operation));
-    endResourceWrite(user, action, auditTarget, correlationId, null, request);
+    endResourceWrite(user, action, auditTarget, correlationId, null, request, connection);
     return result;
   } catch (error) {
-    endResourceWrite(user, action, auditTarget, correlationId, error, request);
+    endResourceWrite(user, action, auditTarget, correlationId, error, request, connection);
     throw error;
   }
 }

@@ -35,6 +35,7 @@ let capturedCodeGenProps: Record<string, unknown> = {};
 let capturedTestDataProps: Record<string, unknown> = {};
 let capturedInspectorProps: Record<string, unknown> = {};
 let capturedKafkaWorkbenchProps: Record<string, unknown> = {};
+let capturedVaultWorkbenchProps: Record<string, unknown> = {};
 let originalFetch: typeof globalThis.fetch;
 let originalMatchMedia: typeof window.matchMedia;
 
@@ -455,6 +456,15 @@ mock.module("@/components/resources/kafka", () => ({
   },
 }));
 
+mock.module("@/components/resources/vault", () => ({
+  VaultWorkbench: (props: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require("react");
+    capturedVaultWorkbenchProps = props;
+    return React.createElement("div", { "data-testid": "vault-workbench" }, "VaultWorkbench");
+  },
+}));
+
 mock.module("@/components/SaveQueryModal", () => ({
   SaveQueryModal: (props: Record<string, unknown>) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -581,6 +591,7 @@ describe("Studio", () => {
     capturedTestDataProps = {};
     capturedInspectorProps = {};
     capturedKafkaWorkbenchProps = {};
+    capturedVaultWorkbenchProps = {};
 
     // Reset overrides
     connMgrOverride = {};
@@ -2000,6 +2011,18 @@ describe("Studio", () => {
     expect(queryByTestId("createtablemodal")).not.toBeNull();
   });
 
+  test("Sidebar ERD toggle closes the open diagram and reports its state", async () => {
+    const { queryByTestId } = render(<Studio />);
+    expect(capturedSidebarProps.isDiagramOpen).toBe(false);
+    await act(async () => (capturedSidebarProps.onShowDiagram as () => void)());
+    expect(queryByTestId("schemadiagram")).not.toBeNull();
+    expect(capturedSidebarProps.isDiagramOpen).toBe(true);
+
+    await act(async () => (capturedSidebarProps.onHideDiagram as () => void)());
+    expect(queryByTestId("schemadiagram")).toBeNull();
+    expect(capturedSidebarProps.isDiagramOpen).toBe(false);
+  });
+
   test("Sidebar onShowDiagram opens schema diagram", async () => {
     const { queryByTestId } = render(<Studio />);
     expect(queryByTestId("schemadiagram")).toBeNull();
@@ -3158,6 +3181,29 @@ describe("Studio", () => {
         expect(rows.props.connections).toEqual([kafkaConn]);
         act(() => rows.props.onSelect(kafkaConn));
         expect(queryByTestId("kafka-workbench")).not.toBeNull();
+      });
+
+      test("a vault connection opens the vault workbench, told whether the user is an admin", () => {
+        const vaultConn: ResourceConnection = {
+          id: "res-vault",
+          name: "secrets",
+          type: "azure-key-vault",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          vaultName: "example",
+        };
+        storedResourceConnections = [vaultConn];
+        const { queryByTestId } = render(<Studio />);
+        expect(capturedSidebarProps.workbenchConnections).toEqual([vaultConn]);
+        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(vaultConn));
+        expect(queryByTestId("vault-workbench")).not.toBeNull();
+        expect(queryByTestId("kafka-workbench")).toBeNull();
+        expect(capturedVaultWorkbenchProps.connection).toEqual(vaultConn);
+        expect(typeof capturedVaultWorkbenchProps.isAdmin).toBe("boolean");
+
+        act(() => (capturedVaultWorkbenchProps.onEditConnection as (c: ResourceConnection) => void)(vaultConn));
+        expect(capturedConnectionModalProps.editResourceConnection).toEqual(vaultConn);
+        act(() => (capturedVaultWorkbenchProps.onClose as () => void)());
+        expect(queryByTestId("vault-workbench")).toBeNull();
       });
 
       test("the mobile list carries no rows without kafka connections", () => {

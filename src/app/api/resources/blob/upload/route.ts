@@ -50,7 +50,7 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
 
     const user = session.username ?? session.role;
     const target = `${connection.type}:${bucket}/${name}`;
-    const correlationId = beginResourceWrite(user, "blob.upload", target);
+    const correlationId = beginResourceWrite(user, "blob.upload", target, req, connection);
     try {
       const blob = await resolveBlobOperations(connection, "blob.upload");
       const meta = await blob.uploadBlob(
@@ -63,10 +63,10 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
           },
         }),
       );
-      endResourceWrite(user, "blob.upload", target, correlationId, null);
+      endResourceWrite(user, "blob.upload", target, correlationId, null, req, connection);
       return NextResponse.json(meta);
     } catch (error) {
-      endResourceWrite(user, "blob.upload", target, correlationId, error);
+      endResourceWrite(user, "blob.upload", target, correlationId, error, req, connection);
       throw error;
     }
   });

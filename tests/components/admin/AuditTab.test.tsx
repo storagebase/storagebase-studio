@@ -61,7 +61,7 @@ import React from "react";
 
 import { mockGlobalFetch, restoreGlobalFetch } from "../../helpers/mock-fetch";
 
-import { AuditTab } from "@/components/admin/tabs/AuditTab";
+import { AuditTab, AUDIT_EXPORT_MAX_ROWS } from "@/components/admin/tabs/AuditTab";
 
 // =============================================================================
 // AuditTab Tests
@@ -168,6 +168,8 @@ describe("AuditTab", () => {
     fireEvent.change(view.getByPlaceholderText("Search..."), { target: { value: "archive" } });
     await user.click(view.getByRole("button", { name: "Export" }));
     await user.click(view.getByRole("menuitem", { name: `Export as ${format.toUpperCase()}` }));
+    // The export pages through the server first, so the download lands after the click.
+    await waitFor(() => expect(mockDownloadText).toHaveBeenCalled());
     const [content, mime, fileName] = mockDownloadText.mock.calls.at(-1)!;
     expect(fileName).toMatch(new RegExp(`^audit_operations_\\d+\\.${format}$`));
     if (format === "json") {
@@ -176,7 +178,7 @@ describe("AuditTab", () => {
     } else {
       expect(mime).toBe("text/csv");
       expect(content).toBe(
-        'Timestamp,Type,Action,Target,Connection,User,Result,Duration (ms),Details,IP,Reason,Bucket,Correlation ID,Role,User Agent,Forwarded For,Connection ID,Engine,Host,Database,Statement Kind,Statement,Statement Truncated,Rows Returned,Rows Affected,Error,Query ID,ID\n2026-09-09T10:00:00.000Z,maintenance,VACUUM,"users,""archive""\n2026","团队,DB","\'=admin",success,0,"completed ""safely""",192.0.2.1,origin_mismatch,login_client,op-1,,,,,,,,,,,,,,,audit-export',
+        'Timestamp,Type,Action,Target,Connection,User,Result,Duration (ms),Details,IP,Reason,Bucket,Correlation ID,Role,User Agent,Forwarded For,Connection ID,Engine,Host,Database,Statement Kind,Statement,Statement Truncated,Rows Returned,Rows Affected,Error,Query ID,Counts,ID\n2026-09-09T10:00:00.000Z,maintenance,VACUUM,"users,""archive""\n2026","团队,DB","\'=admin",success,0,"completed ""safely""",192.0.2.1,origin_mismatch,login_client,op-1,,,,,,,,,,,,,,,,audit-export',
       );
     }
   });
@@ -747,9 +749,9 @@ describe("AuditTab — query_execution events", () => {
     return view;
   }
 
-  test("asks for the whole server buffer so the filters search all of it", async () => {
+  test("asks for one page at a time", async () => {
     await renderLoaded();
-    expect(auditCalls(fetchMock)[0]).toContain("limit=1000");
+    expect(auditCalls(fetchMock)[0]).toContain("limit=200");
   });
 
   test("shows the IP, statement kind and rows columns, preferring affected over returned rows", async () => {
@@ -836,11 +838,213 @@ describe("AuditTab — query_execution events", () => {
     fireEvent.change(view.getByPlaceholderText("User..."), { target: { value: "alice" } });
     await user.click(view.getByRole("button", { name: "Export" }));
     await user.click(view.getByRole("menuitem", { name: "Export as CSV" }));
+    await waitFor(() => expect(mockDownloadText).toHaveBeenCalled());
     const [content] = mockDownloadText.mock.calls.at(-1)!;
     expect(content.split("\n")[1]).toBe(
       "2026-09-20T08:00:00.000Z,query_execution,executed,POST /api/db/query,Orders DB,alice,success,12,,203.0.113.9,,,," +
         'user,Mozilla/5.0,"203.0.113.9, 10.0.0.1",conn-1,postgres,db.internal:5432,orders,UPDATE,' +
-        "UPDATE orders SET paid = ? WHERE id = ?,true,0,3,,qid-1,q1",
+        "UPDATE orders SET paid = ? WHERE id = ?,true,0,3,,qid-1,,q1",
     );
+  });
+});
+
+// =============================================================================
+// Paging, the durable store, and the resource-action filters (StorageBase fork)
+// =============================================================================
+
+describe("AuditTab — paging and resource actions", () => {
+  const readEvent = (id: string, timestamp: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    timestamp,
+    type: "resource_operation",
+    action: "blob.download",
+    target: `s3:bucket-a/${id}.csv`,
+    connectionName: "Blob store",
+    engine: "s3",
+    user: "alice",
+    result: "success",
+    counts: { bytes: 120 },
+    ...overrides,
+  });
+
+  afterEach(() => {
+    cleanup();
+    restoreGlobalFetch();
+  });
+
+  beforeEach(() => {
+    mockDownloadText.mockClear();
+  });
+
+  test("loads the next page on demand and says the trail is durable", async () => {
+    const fetchMock = mockGlobalFetch({
+      "/api/admin/audit": (req: Request) =>
+        new URL(req.url).searchParams.get("cursor") === "page-2"
+          ? { json: { events: [readEvent("r2", "2026-09-24T09:00:00.000Z")], nextCursor: null, source: "store" } }
+          : { json: { events: [readEvent("r1", "2026-09-24T10:00:00.000Z")], nextCursor: "page-2", source: "store" } },
+    });
+    const user = userEvent.setup();
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv")).not.toBeNull());
+    expect(view.getByTestId("audit-source").textContent).toContain("Durable store");
+
+    await user.click(view.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r2.csv")).not.toBeNull());
+    expect(auditCalls(fetchMock).at(-1)).toContain("cursor=page-2");
+    expect(view.queryByRole("button", { name: "Load more" }) === null).toBe(true);
+  });
+
+  test("says when only the in-memory buffer answered", async () => {
+    mockGlobalFetch({
+      "/api/admin/audit": { json: { events: [readEvent("r1", "2026-09-24T10:00:00.000Z")], source: "buffer" } },
+    });
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.getByTestId("audit-source").textContent).toContain("In-memory buffer"));
+  });
+
+  test("a page that lands after the filters changed is dropped", async () => {
+    let releaseMore: (() => void) | null = null;
+    mockGlobalFetch({
+      "/api/admin/audit": async (req: Request) => {
+        const params = new URL(req.url).searchParams;
+        if (params.get("cursor") === "page-2") {
+          await new Promise<void>((resolve) => {
+            releaseMore = resolve;
+          });
+          return { json: { events: [readEvent("stale", "2026-09-24T08:00:00.000Z")], nextCursor: null } };
+        }
+        const failuresOnly = params.get("result") === "failure";
+        return {
+          json: {
+            events: [
+              readEvent(
+                failuresOnly ? "f1" : "r1",
+                "2026-09-24T10:00:00.000Z",
+                failuresOnly ? { result: "failure" } : {},
+              ),
+            ],
+            nextCursor: failuresOnly ? null : "page-2",
+          },
+        };
+      },
+    });
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv")).not.toBeNull());
+    fireEvent.click(view.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(releaseMore).not.toBeNull());
+
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Result" }), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("option", { name: "Failure" }), { key: "Enter" });
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/f1.csv")).not.toBeNull());
+
+    await act(async () => {
+      releaseMore!();
+    });
+    expect(view.queryByText("s3:bucket-a/stale.csv") === null).toBe(true);
+  });
+
+  test("the action, connection type and date filters reach the server and the rows on screen", async () => {
+    const fetchMock = mockGlobalFetch({
+      "/api/admin/audit": {
+        json: {
+          events: [
+            readEvent("r1", "2026-09-24T10:00:00.000Z"),
+            readEvent("k1", "2026-09-20T10:00:00.000Z", {
+              action: "kafka.messages.read",
+              engine: "kafka",
+              target: "kafka:orders",
+            }),
+          ],
+        },
+      },
+    });
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("kafka:orders")).not.toBeNull());
+
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Action" }), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("option", { name: "kafka.messages.read" }), { key: "Enter" });
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv") === null).toBe(true));
+    expect(auditCalls(fetchMock).at(-1)).toContain("action=kafka.messages.read");
+
+    fireEvent.change(view.getByPlaceholderText("Connection type..."), { target: { value: "s3" } });
+    await waitFor(() => expect(view.queryByText("kafka:orders") === null).toBe(true));
+    await waitFor(() => expect(auditCalls(fetchMock).at(-1)).toContain("engine=s3"));
+
+    fireEvent.keyDown(view.getByRole("combobox", { name: "Action" }), { key: "ArrowDown" });
+    fireEvent.keyDown(view.getByRole("option", { name: "All Actions" }), { key: "Enter" });
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv")).not.toBeNull());
+
+    fireEvent.change(view.getByLabelText("From"), { target: { value: "2026-09-25T00:00" } });
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv") === null).toBe(true));
+    expect(auditCalls(fetchMock).at(-1)).toContain("from=");
+    fireEvent.change(view.getByLabelText("From"), { target: { value: "" } });
+    fireEvent.change(view.getByLabelText("To"), { target: { value: "2026-09-01T00:00" } });
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv") === null).toBe(true));
+    expect(auditCalls(fetchMock).at(-1)).toContain("to=");
+  });
+
+  test("typed filters reach the server once they settle", async () => {
+    const fetchMock = mockGlobalFetch({
+      "/api/admin/audit": { json: { events: [readEvent("r1", "2026-09-24T10:00:00.000Z")] } },
+    });
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(auditCalls(fetchMock)).toHaveLength(1));
+    fireEvent.change(view.getByPlaceholderText("Search..."), { target: { value: "bucket-a" } });
+    await waitFor(() => expect(auditCalls(fetchMock).at(-1)).toContain("text=bucket-a"));
+    expect(auditCalls(fetchMock)).toHaveLength(2);
+  });
+
+  test("the export pages through every matching event and carries the counts", async () => {
+    const fetchMock = mockGlobalFetch({
+      "/api/admin/audit": (req: Request) => {
+        const params = new URL(req.url).searchParams;
+        if (params.get("cursor") === "export-2") {
+          return { json: { events: [readEvent("r3", "2026-09-24T08:00:00.000Z")], nextCursor: null } };
+        }
+        if (params.get("limit") === "1000") {
+          return {
+            json: {
+              events: [readEvent("r1", "2026-09-24T10:00:00.000Z"), readEvent("r2", "2026-09-24T09:00:00.000Z")],
+              nextCursor: "export-2",
+            },
+          };
+        }
+        return { json: { events: [readEvent("r1", "2026-09-24T10:00:00.000Z")], nextCursor: "more" } };
+      },
+    });
+    const user = userEvent.setup();
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r1.csv")).not.toBeNull());
+    await user.click(view.getByRole("button", { name: "Export" }));
+    await user.click(view.getByRole("menuitem", { name: "Export as CSV" }));
+    await waitFor(() => expect(mockDownloadText).toHaveBeenCalled());
+
+    const [content] = mockDownloadText.mock.calls.at(-1)!;
+    const lines = content.split("\n");
+    expect(lines).toHaveLength(4);
+    expect(lines[1]).toContain('"{""bytes"":120}"');
+    expect(auditCalls(fetchMock).filter((url) => url.includes("limit=1000"))).toHaveLength(2);
+  });
+
+  test("the export stops at its row bound", async () => {
+    let served = 0;
+    mockGlobalFetch({
+      "/api/admin/audit": (req: Request) => {
+        if (new URL(req.url).searchParams.get("limit") !== "1000") {
+          return { json: { events: [readEvent("r0", "2026-09-24T10:00:00.000Z")], nextCursor: null } };
+        }
+        const events = Array.from({ length: 1000 }, (_, i) => readEvent(`x${served + i}`, "2026-09-24T10:00:00.000Z"));
+        served += 1000;
+        return { json: { events, nextCursor: `c${served}` } };
+      },
+    });
+    const user = userEvent.setup();
+    const view = render(<AuditTab />);
+    await waitFor(() => expect(view.queryByText("s3:bucket-a/r0.csv")).not.toBeNull());
+    await user.click(view.getByRole("button", { name: "Export" }));
+    await user.click(view.getByRole("menuitem", { name: "Export as JSON" }));
+    await waitFor(() => expect(mockDownloadText).toHaveBeenCalled(), { timeout: 10_000 });
+    expect(JSON.parse(mockDownloadText.mock.calls.at(-1)![0])).toHaveLength(AUDIT_EXPORT_MAX_ROWS);
+    expect(served).toBe(AUDIT_EXPORT_MAX_ROWS);
   });
 });

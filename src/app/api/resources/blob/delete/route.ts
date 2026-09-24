@@ -16,14 +16,14 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
     const { bucket, name } = requireBlobAddress(body);
     const user = session.username ?? session.role;
     const target = `${connection.type}:${bucket}/${name}`;
-    const correlationId = beginResourceWrite(user, "blob.delete", target);
+    const correlationId = beginResourceWrite(user, "blob.delete", target, req, connection);
     try {
       const blob = await resolveBlobOperations(connection, "blob.delete");
       await blob.deleteBlob(bucket, name);
-      endResourceWrite(user, "blob.delete", target, correlationId, null);
+      endResourceWrite(user, "blob.delete", target, correlationId, null, req, connection);
       return NextResponse.json({ deleted: true });
     } catch (error) {
-      endResourceWrite(user, "blob.delete", target, correlationId, error);
+      endResourceWrite(user, "blob.delete", target, correlationId, error, req, connection);
       throw error;
     }
   });

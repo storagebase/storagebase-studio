@@ -32,6 +32,9 @@ interface SidebarProps {
   /** A row the reader activated, handed over whole: path, kind and the fields the tree loaded. */
   onObjectClick?: (object: DatabaseObject) => void;
   onShowDiagram?: () => void;
+  /** Closes the diagram; with `isDiagramOpen` it turns the ERD button into an open/close toggle. */
+  onHideDiagram?: () => void;
+  isDiagramOpen?: boolean;
   /**
    * What the provider declares about this connection. The object tree is DRIVEN by the
    * declaration - the container levels decide what it reads first, and the kinds decide
@@ -115,6 +118,8 @@ export function Sidebar({
   onAddConnection,
   onObjectClick,
   onShowDiagram,
+  onHideDiagram,
+  isDiagramOpen = false,
   metadata,
   metadataError = null,
   onRetryMetadata,
@@ -152,8 +157,9 @@ export function Sidebar({
           {activeConnection && (
             <button
               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              onClick={onShowDiagram}
-              title="Show ERD Diagram"
+              onClick={isDiagramOpen ? onHideDiagram : onShowDiagram}
+              title={isDiagramOpen ? "Hide ERD Diagram" : "Show ERD Diagram"}
+              aria-pressed={isDiagramOpen}
             >
               <Layers strokeWidth={1.5} className="w-3.5 h-3.5" />
             </button>

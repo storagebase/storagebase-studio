@@ -125,7 +125,7 @@ describe("kafka workbench routes", () => {
     for (const fn of Object.values(kafka)) fn.mockClear();
   });
 
-  test("reads answer the provider's page and audit nothing", async () => {
+  test("reads answer the provider's page and audit one read each", async () => {
     for (const [route, body, fn] of [
       ["cluster", {}, kafka.describeCluster],
       ["topics", {}, kafka.listTopicSummaries],
@@ -139,7 +139,13 @@ describe("kafka workbench routes", () => {
     }
     expect(kafka.describeTopic).toHaveBeenCalledWith("orders");
     expect(kafka.describeConsumerGroup).toHaveBeenCalledWith("billing");
-    expect(mockEmitAuditEvent).not.toHaveBeenCalled();
+    expect(auditEvents().map((event) => event.action)).toEqual([
+      "kafka.cluster.read",
+      "kafka.topics.list",
+      "kafka.topic.read",
+      "kafka.groups.list",
+      "kafka.group.read",
+    ]);
   });
 
   test("messages validate the seek and pass limit and partition through", async () => {

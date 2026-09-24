@@ -91,6 +91,32 @@ describe("KafkaTopicsPanel", () => {
     expect(screen.getByTestId("kafka-create-topic")).toBeDefined();
   });
 
+  test("a topic whose count could not be read shows a dash with the reason, and the list says how many", async () => {
+    installKafkaServer({
+      topics: () => ({
+        json: {
+          topics: [
+            {
+              name: "topic-broken",
+              internal: false,
+              partitions: 2,
+              replicationFactor: 1,
+              underReplicatedPartitions: 0,
+              messageCount: null,
+              countError: "Cannot destructure property 'partitions'",
+            },
+          ],
+          countsTruncated: false,
+        },
+      }),
+    });
+    render(<KafkaTopicsPanel connection={connection} onOpenTopic={onOpenTopic} />);
+    await waitFor(() =>
+      screen.getByText("Message counts could not be read for 1 topic(s); hover the dash for the reason."),
+    );
+    expect(screen.getByTitle("Cannot destructure property 'partitions'").textContent).toBe("—");
+  });
+
   test("a failed listing shows the server sentence", async () => {
     installKafkaServer({ topics: refuse(502, "Kafka list topics failed: timeout") });
     render(<KafkaTopicsPanel connection={connection} onOpenTopic={onOpenTopic} />);
@@ -165,6 +191,35 @@ describe("KafkaTopicDetail", () => {
     expect(screen.getByTestId("kafka-topic-config")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Topics" }));
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  test("partitions still show when the offsets could not be read, with the reason", async () => {
+    installKafkaServer({
+      topic: (body) => ({
+        json: {
+          name: body.topic,
+          internal: false,
+          partitions: [
+            {
+              partition: 0,
+              leader: 1,
+              replicas: [1],
+              isr: [1],
+              offlineReplicas: [],
+              earliestOffset: null,
+              latestOffset: null,
+            },
+          ],
+          configs: [],
+          offsetsError: "partition 0 has no leader",
+        },
+      }),
+    });
+    renderDetail("topic-broken");
+    await waitFor(() => screen.getByTestId("kafka-messages"));
+    fireEvent.click(screen.getByRole("tab", { name: "Partitions" }));
+    expect(screen.getByText("Offsets could not be read: partition 0 has no leader")).toBeDefined();
+    expect(screen.getAllByText("—")).toHaveLength(2);
   });
 
   test("a topic that cannot be read says why", async () => {

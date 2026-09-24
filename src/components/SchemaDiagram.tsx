@@ -122,6 +122,18 @@ function SchemaDiagramInner({ schema, onClose, capabilities }: SchemaDiagramProp
   // What this canvas may draw at all: the engine's declared relation kinds.
   const relations = useMemo(() => relationObjects(schema, capabilities), [schema, capabilities]);
 
+  // Escape leaves the diagram — including the empty state, where there is no
+  // canvas to focus and the close button is the only other way out. Bound only
+  // while the diagram is mounted; a prevented Escape belongs to a dialog above it
+  // (the CodeGenerator / DataProfiler precedent) and is left alone.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   // Filter tables by search (deferred so typing stays responsive on large schemas)
   const filteredSchema = useMemo(() => {
     if (!deferredQuery.trim()) return relations;
@@ -369,11 +381,27 @@ function SchemaDiagramInner({ schema, onClose, capabilities }: SchemaDiagramProp
     ? `${schemaHasFkData ? "No usable FK relationships in this view." : "No FK data available."} Showing heuristic relationships (dashed).`
     : "No FK data available.";
 
+  // Nothing to draw is a state, not a wait: a connection with no relations (a
+  // key-value store, an empty database, a schema that has not loaded or failed)
+  // never produces any, so a spinner here trapped the user until they switched
+  // to a connection that did.
   if (relations.length === 0) {
     return (
-      <div className="absolute inset-0 z-50 bg-canvas flex flex-col items-center justify-center">
-        <LoaderCircle strokeWidth={1.5} className="w-8 h-8 text-brand animate-spin mb-4" />
-        <p className="text-fg-muted text-xs">Generating ERD Diagram...</p>
+      <div className="absolute inset-0 z-50 bg-canvas flex flex-col items-center justify-center gap-3">
+        <p className="text-fg-secondary text-xs font-medium">Nothing to draw for this connection</p>
+        <p className="text-fg-muted text-xs max-w-sm text-center">
+          The diagram needs tables. This connection has none, or its schema has not loaded yet.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-raised border-hairline-strong hover:bg-fill text-xs"
+          onClick={onClose}
+          aria-label="Close schema diagram"
+        >
+          <X strokeWidth={1.5} className="w-3.5 h-3.5" />
+          Close
+        </Button>
       </div>
     );
   }

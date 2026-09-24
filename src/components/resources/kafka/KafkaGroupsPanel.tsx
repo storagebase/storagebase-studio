@@ -84,7 +84,9 @@ export function KafkaGroupsPanel({
                   {[group.protocolType, group.protocol].filter((part) => part !== "").join(" / ") || "—"}
                 </TableCell>
                 <TableCell className="text-right font-mono">{group.members}</TableCell>
-                <TableCell className="text-right font-mono">{group.totalLag ?? "—"}</TableCell>
+                <TableCell className="text-right font-mono" title={group.lagError ?? undefined}>
+                  {group.totalLag ?? "—"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

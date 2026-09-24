@@ -9,10 +9,11 @@ import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 
 // Family viewer barrels land here, one import per family with a viewer. The
 // import is for effect (self-registration); the inspector reads viewers
-// through the registry, and the registry test pins every type to one.
+// through the registry, and the registry test pins every tree-browsed type to
+// one. Vault types have none: they open the vault workbench instead
+// (`opensWorkbench`), so no dialog ever inspects a secret.
 import "@/components/resources/blob";
 import "@/components/resources/messaging";
-import "@/components/resources/vaults";
 
 /**
  * The resource inspector: what a tree row opens. Renders the family's viewer

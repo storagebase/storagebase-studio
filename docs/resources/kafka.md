@@ -62,7 +62,10 @@ routes under `/api/resources/kafka/*`), gated by four capability flags:
 Every write is audited as `resource_operation` (decision + outcome, one
 correlation id, the caller's address and user agent) with actions
 `kafka.topic.create|delete|partitions|config`, `kafka.produce`,
-`kafka.group.reset-offsets|delete`; reads audit nothing. Writes follow the
+`kafka.group.reset-offsets|delete`. Every read is audited too, as one
+`resource_operation` event with its outcome (`kafka.cluster.read`, `kafka.topics.list`,
+`kafka.topic.read`, `kafka.messages.read` with the topic, partition, seek position, count, bytes
+and offset range — never a key, value or header — `kafka.groups.list`, `kafka.group.read`). Writes follow the
 resource-write RBAC precedent: any authenticated session, no admin gate. Never `message.purge`: Kafka has no purge semantic, so the
 provider throws `ResourceOperationUnsupportedError` and the capability gate
 refuses before any socket opens. Deleting and recreating the topic to fake a
@@ -120,6 +123,20 @@ database connection. Three areas:
   (`ResourceInvalidRequestError`: invalid RF/partitions/config, policy),
   409 (`ResourceConflictError`: topic exists, non-empty group, rebalance)
   or 404; everything else is a 502 connection error.
+- **Offsets are best effort per topic.** Measured on a live cluster: one
+  topic whose ListOffsets response came back short made kafkajs throw
+  `TypeError: Cannot destructure property 'partitions' of 'high.pop(...)'`
+  from inside `fetchTopicOffsets`, and the whole topic list 502'd. Now only
+  `listTopics` / metadata failures fail a read. A topic whose offsets cannot
+  be read answers `messageCount: null` with `countError` (the UI shows "—"
+  with the reason on hover); a topic with no partition metadata or a
+  leaderless partition is not asked at all. Topic detail keeps partitions and
+  configs with null offsets and `offsetsError`. Consumer-group lag: an
+  unreadable topic's rows get `endOffset: null` + `endOffsetError` (cached,
+  so it is tried once per listing), and the group's `totalLag` is null with
+  `lagError` — never a partial total that reads as the real one — while the
+  listing still answers. Offset reads run four at a time
+  (`KAFKA_OFFSET_CONCURRENCY`) on the shared admin client.
 - **Bounded listings.** Message counts are measured for the first 200
   topics (`countsTruncated`), lag for the first 50 non-internal groups
   (`lagTruncated`); end offsets are read once per topic across groups.
@@ -147,5 +164,8 @@ line the client's fetch path is verified against — re-probe before moving it.
 - No SASL/TLS, Schema Registry, Kafka Connect, KSQL or ACLs.
 - Broker rack is always empty: kafkajs 2.2.4's `describeCluster` drops it.
 - No topic/partition size on disk (kafkajs has no DescribeLogDirs).
+- A topic whose offsets kafkajs cannot read (short ListOffsets response,
+  leaderless partition, mid-deletion) shows no message count, offsets or
+  lag — the reason is surfaced, but the numbers are not guessed.
 - Reads are request/response snapshots, not a live tail.
 - The generic Resources peek stays oldest-first; seeking is the workbench's.

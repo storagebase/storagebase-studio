@@ -67,6 +67,7 @@ export function KafkaTopicsPanel({
     }
   };
 
+  const unreadable = (listing?.topics ?? []).filter((topic) => topic.countError !== null).length;
   const needle = filter.trim().toLowerCase();
   const visible = (listing?.topics ?? []).filter(
     (topic) => (showInternal || !topic.internal) && topic.name.toLowerCase().includes(needle),
@@ -199,11 +200,18 @@ export function KafkaTopicsPanel({
                 >
                   {topic.underReplicatedPartitions}
                 </TableCell>
-                <TableCell className="text-right font-mono">{topic.messageCount ?? "—"}</TableCell>
+                <TableCell className="text-right font-mono" title={topic.countError ?? undefined}>
+                  {topic.messageCount ?? "—"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+      )}
+      {unreadable > 0 && (
+        <p className="text-xs text-fg-subtle">
+          Message counts could not be read for {unreadable} topic(s); hover the dash for the reason.
+        </p>
       )}
       {listing?.countsTruncated && (
         <p className="text-xs text-fg-subtle">Message counts are measured for the first 200 topics only.</p>

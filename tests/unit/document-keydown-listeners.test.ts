@@ -46,7 +46,7 @@ const registrations = sourceFiles(SRC)
   .sort((a, b) => a.file.localeCompare(b.file));
 
 describe("every global keydown listener in src", () => {
-  test("the registrations are the six this repository has enumerated", () => {
+  test("the registrations are the seven this repository has enumerated", () => {
     expect(registrations).toEqual([
       // Escape (#879), bound only while the generator is open. It closes that modal and moves no
       // tab; a prevented Escape belongs to the dialog above it and is left alone.
@@ -57,6 +57,9 @@ describe("every global keydown listener in src", () => {
       // Escape, bound only while the profiler is open, and it closes the profiler. Moves no tab,
       // and it is the listener the two-listener sentence used to miss.
       { file: "src/components/DataProfiler.tsx", target: "document" },
+      // Escape, bound only while the schema diagram is mounted, and it closes the diagram. On
+      // `window`, moves no tab, and leaves a prevented Escape to the dialog above it.
+      { file: "src/components/SchemaDiagram.tsx", target: "window" },
       // `?` (#746), guarded against the editor and every text input. Opens a dialog of shortcut
       // labels and moves no tab. `DataProfiler.tsx` always mounts one while it is open, so this
       // site is live on both shells even though only `Studio.tsx` mounts it directly.

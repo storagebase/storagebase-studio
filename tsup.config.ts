@@ -57,6 +57,8 @@ export default defineConfig({
     "@aws-sdk/client-secrets-manager",
     "@azure/storage-blob",
     "@azure/keyvault-secrets",
+    "@azure/keyvault-keys",
+    "@azure/keyvault-certificates",
     "@azure/identity",
     "kafkajs",
     "amqplib",

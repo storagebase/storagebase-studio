@@ -57,12 +57,14 @@ export type AuditEventType =
    */
   | "resource_connection_test"
   /**
-   * A resource-layer write (StorageBase fork): one event for the guard decision
-   * and, when allowed, one for the provider's outcome — the `agent_operation` /
-   * `object_edit` shape, so an operator can tell who decided from what happened.
-   * Reads (meta/tree/health/test) are not audited here: like object reads, they
-   * change nothing. Family routes emit these; the registry of outcome reasons
-   * below is the closed set they map to.
+   * A resource-layer action (StorageBase fork). A WRITE emits one event for the guard decision
+   * and, when allowed, one for the provider's outcome — the `agent_operation` / `object_edit`
+   * shape, so an operator can tell who decided from what happened. A READ (tree listing, blob
+   * preview/download/meta, message browse, health, meta, every Kafka inspection) emits exactly
+   * one event with its outcome (src/lib/api/resource-audit.ts `auditedResourceRead`): every
+   * resource action is on the trail, because "who looked at what" is the question an operator
+   * of a storage and messaging console is asked. The registry of outcome reasons below is the
+   * closed set both map to.
    */
   | "resource_operation"
   // Phase 1 auth events
@@ -172,6 +174,9 @@ export type AuditReason =
   | "resource_conflict"
   | "resource_unsupported"
   | "resource_failed"
+  // A request the resource layer refused as malformed after the action began (a provider's
+  // ResourceInvalidRequestError, or a route's own 400 raised inside the audited action).
+  | "resource_invalid_request"
   // The editor query path (StorageBase fork), emitted on `query_execution` failures by
   // src/lib/api/query-audit.ts. Cancelled and timed out are apart from failed because an operator
   // reads them differently: the first is the user's own choice, the second the engine's limit.
@@ -247,6 +252,14 @@ export interface AuditEvent {
   error?: string;
   /** The client's own cancellation id for the query: client-supplied, so a label, not a key. */
   queryId?: string;
+  /**
+   * Small numeric facts about a resource action (StorageBase fork): how many items a listing
+   * returned, how many bytes a download carried, how many messages a read returned. Numbers and
+   * booleans only, at most MAX_AUDIT_COUNTS entries with identifier-shaped keys - a count can
+   * never carry a value, a body or secret material, which is the whole reason this is not a
+   * free-text field. Anything else is dropped by sanitizeAuditInput.
+   */
+  counts?: Record<string, number | boolean>;
 }
 
 const MAX_EVENTS = 1000;
@@ -357,6 +370,25 @@ const FIELD_LENGTH_OVERRIDES: Readonly<Record<string, number>> = { statement: MA
  */
 const NUMBER_FIELDS = new Set(["duration", "rowsReturned", "rowsAffected"]);
 const BOOLEAN_FIELDS = new Set(["statementTruncated"]);
+/** The bound on `counts`: a handful of facts, never a payload. */
+export const MAX_AUDIT_COUNTS = 8;
+const COUNT_KEY = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
+
+/**
+ * `counts` reduced to what it may hold: finite numbers and booleans under identifier-shaped
+ * keys, at most MAX_AUDIT_COUNTS of them. Undefined when nothing survives, so the field is
+ * omitted rather than recorded empty.
+ */
+function sanitizeCounts(value: unknown): Record<string, number | boolean> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const kept: Array<[string, number | boolean]> = [];
+  for (const [key, count] of Object.entries(value)) {
+    if (kept.length >= MAX_AUDIT_COUNTS) break;
+    if (!COUNT_KEY.test(key)) continue;
+    if ((typeof count === "number" && Number.isFinite(count)) || typeof count === "boolean") kept.push([key, count]);
+  }
+  return kept.length > 0 ? Object.fromEntries(kept) : undefined;
+}
 /** The address derivation's "no usable signal" placeholder; never recorded as if it were one. */
 const UNKNOWN_ADDRESS = "unknown";
 /** Redaction marker for a URI's userinfo segment. Never a value real credentials could equal. */
@@ -533,6 +565,12 @@ export function sanitizeAuditInput(event: Omit<AuditEvent, "id" | "timestamp">):
   for (const key of Object.keys(mutable)) {
     if (DANGEROUS_KEYS.has(key)) continue;
     const value = mutable[key];
+    if (key === "counts") {
+      const counts = sanitizeCounts(value);
+      if (counts === undefined) delete mutable[key];
+      else mutable[key] = counts;
+      continue;
+    }
     const maxLength = Object.hasOwn(FIELD_LENGTH_OVERRIDES, key) ? FIELD_LENGTH_OVERRIDES[key] : undefined;
     if (typeof value === "string") {
       mutable[key] = sanitizeAuditField(value, maxLength);
@@ -580,6 +618,7 @@ interface AuditLogLine {
   rows_affected?: number;
   error?: string;
   query_id?: string;
+  counts?: Record<string, number | boolean>;
 }
 
 /** A count that may reach the line: finite, so the field's JSON type never flips to null. */
@@ -616,6 +655,7 @@ function toAuditLine(event: AuditEvent): AuditLogLine {
     ...(finiteNumber(event.rowsAffected) ? { rows_affected: event.rowsAffected } : {}),
     ...(event.error ? { error: event.error } : {}),
     ...(event.queryId ? { query_id: event.queryId } : {}),
+    ...(event.counts ? { counts: event.counts } : {}),
     // Number.isFinite excludes NaN and +/-Infinity: JSON.stringify(NaN) silently produces `null`,
     // which would flip duration_ms from a number to null for that one line in a contract parsers
     // depend on. Omitting it entirely keeps the field's type stable instead.
@@ -654,7 +694,54 @@ export function emitAuditEvent(event: Omit<AuditEvent, "id" | "timestamp">): Aud
   // JSON.stringify escapes newlines and control characters, so an attacker-controlled actor
   // cannot forge a second log line. This is why the audit channel does not reuse logger.ts.
   console.log(JSON.stringify(toAuditLine(stored)));
+  deliverToAuditSinks(stored);
   return stored;
+}
+
+/**
+ * A durable destination for emitted events (StorageBase fork): the fork store's audit table
+ * (src/lib/fork-store/audit-sink.ts). Registered at boot rather than imported here, because this
+ * module is imported by client components and by the proxy, and neither may pull a database
+ * driver into its bundle.
+ *
+ * The registry lives on globalThis rather than in a module variable: the instrumentation hook
+ * that registers the sink and the route that emits an event can be separately compiled entries
+ * (see the ring-buffer caveat above), and globalThis is the one object a Node process shares
+ * between them.
+ */
+export type AuditSink = (event: AuditEvent) => Promise<void> | void;
+
+const AUDIT_SINKS_KEY = Symbol.for("storagebase.audit.sinks");
+
+function auditSinks(): Set<AuditSink> {
+  const holder = globalThis as { [AUDIT_SINKS_KEY]?: Set<AuditSink> };
+  holder[AUDIT_SINKS_KEY] ??= new Set();
+  return holder[AUDIT_SINKS_KEY];
+}
+
+/** Adds a sink; returns the function that removes it. Registering the same sink twice is a no-op. */
+export function registerAuditSink(sink: AuditSink): () => void {
+  auditSinks().add(sink);
+  return () => {
+    auditSinks().delete(sink);
+  };
+}
+
+/**
+ * Hands the stored event to every sink, asynchronously and isolated: the request that emitted
+ * it has already been answered by the two channels above, so a sink that throws or rejects can
+ * never fail it. Sinks own their error reporting (the store's is rate-limited).
+ */
+function deliverToAuditSinks(event: AuditEvent): void {
+  for (const sink of auditSinks()) {
+    queueMicrotask(() => {
+      try {
+        void Promise.resolve(sink(event)).catch(() => undefined);
+      } catch {
+        // A synchronous throw is the sink's to report, as a rejection is.
+      }
+    });
+  }
 }
 
 // Client-side localStorage persistence — delegates to storage module

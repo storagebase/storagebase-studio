@@ -119,6 +119,12 @@ export interface KafkaTopicSummary {
   readonly underReplicatedPartitions: number;
   /** Sum of high minus low watermarks — approximate (compaction, transaction markers); null past the count bound. */
   readonly messageCount: number | null;
+  /**
+   * Why `messageCount` is null for a topic that was inside the count bound:
+   * its offsets could not be read (no leader, mid-deletion, a broker that
+   * answered short). Null when the count was read or never attempted.
+   */
+  readonly countError: string | null;
 }
 
 export interface KafkaTopicListing {
@@ -133,8 +139,9 @@ export interface KafkaPartitionDetail {
   readonly replicas: readonly number[];
   readonly isr: readonly number[];
   readonly offlineReplicas: readonly number[];
-  readonly earliestOffset: string;
-  readonly latestOffset: string;
+  /** Null when the partition's offsets could not be read (see `offsetsError`). */
+  readonly earliestOffset: string | null;
+  readonly latestOffset: string | null;
 }
 
 export interface KafkaConfigEntry {
@@ -152,6 +159,8 @@ export interface KafkaTopicDetail {
   readonly internal: boolean;
   readonly partitions: readonly KafkaPartitionDetail[];
   readonly configs: readonly KafkaConfigEntry[];
+  /** Why the offsets are missing, when the offset read failed; the rest of the detail still answers. */
+  readonly offsetsError: string | null;
 }
 
 export interface KafkaCreateTopicInput {
@@ -213,8 +222,10 @@ export interface KafkaConsumerGroupSummary {
   readonly protocolType: string;
   readonly protocol: string;
   readonly members: number;
-  /** Null when lag was not measured (the lag bound, or the studio's own peek groups). */
+  /** Null when lag was not measured (the lag bound, the studio's own peek groups) or could not be (`lagError`). */
   readonly totalLag: number | null;
+  /** Why lag could not be measured for a group inside the bound; null otherwise. */
+  readonly lagError: string | null;
   /** The studio's own throwaway peek groups — hidden by default in the UI. */
   readonly internal: boolean;
 }
@@ -236,8 +247,10 @@ export interface KafkaGroupOffset {
   readonly partition: number;
   /** Null when the group has no committed offset for the partition. */
   readonly committedOffset: string | null;
-  readonly endOffset: string;
+  /** Null when the topic's end offsets could not be read (see `endOffsetError`). */
+  readonly endOffset: string | null;
   readonly lag: number | null;
+  readonly endOffsetError: string | null;
 }
 
 export interface KafkaConsumerGroupDetail {
@@ -283,4 +296,129 @@ export interface KafkaAdminOperations {
 
 export function asKafkaAdminOperations(provider: object): KafkaAdminOperations | null {
   return "describeCluster" in provider ? (provider as KafkaAdminOperations) : null;
+}
+
+/*
+ * The vault workbench surface (docs/resources/azure-key-vault.md and the other
+ * vault docs). One object model over secrets, keys and certificates; each
+ * provider declares which of them it serves through the `vault.*` capability
+ * flags, and the workbench renders only those tabs. Values never ride on a
+ * listing or a detail: `revealSecret` is the only method that returns one.
+ */
+
+export type VaultObjectType = "secret" | "key" | "certificate";
+
+export const VAULT_OBJECT_TYPES: readonly VaultObjectType[] = ["secret", "key", "certificate"];
+
+export interface VaultObjectSummary {
+  readonly type: VaultObjectType;
+  /** The address every by-name call takes (a bare name, or a mount path on Vault). */
+  readonly name: string;
+  readonly enabled: boolean | null;
+  readonly createdOn: string | null;
+  readonly updatedOn: string | null;
+  readonly expiresOn: string | null;
+  readonly notBefore: string | null;
+  readonly tags: Readonly<Record<string, string>>;
+  /** Secrets. */
+  readonly contentType: string | null;
+  /** Keys: RSA / EC (-HSM), the size in bits or the curve. */
+  readonly keyType: string | null;
+  readonly keySize: number | null;
+  readonly curve: string | null;
+  /** Certificates. */
+  readonly subject: string | null;
+  readonly issuer: string | null;
+  readonly thumbprint: string | null;
+}
+
+export interface VaultObjectListing {
+  readonly objects: readonly VaultObjectSummary[];
+  readonly truncated: boolean;
+}
+
+export interface VaultObjectVersion {
+  readonly version: string;
+  readonly enabled: boolean | null;
+  readonly createdOn: string | null;
+  readonly updatedOn: string | null;
+  readonly expiresOn: string | null;
+}
+
+export interface VaultObjectDetail extends VaultObjectSummary {
+  readonly version: string | null;
+  readonly recoveryLevel: string | null;
+  /** Keys: the operations the key permits (encrypt, sign, wrapKey, ...). */
+  readonly keyOperations: readonly string[];
+  readonly versions: readonly VaultObjectVersion[];
+  readonly versionsTruncated: boolean;
+}
+
+export interface VaultDeletedObject {
+  readonly type: VaultObjectType;
+  readonly name: string;
+  readonly deletedOn: string | null;
+  readonly scheduledPurgeDate: string | null;
+}
+
+export interface VaultSecretReveal {
+  readonly name: string;
+  readonly value: string;
+  readonly version: string | null;
+}
+
+export interface VaultSecretWrite {
+  /** Absent: update the current version's properties only, never its value. */
+  readonly value?: string;
+  readonly contentType?: string;
+  readonly tags?: Readonly<Record<string, string>>;
+  /** ISO timestamp, or null to clear. */
+  readonly expiresOn?: string | null;
+  readonly enabled?: boolean;
+}
+
+export type VaultRsaKeySize = 2048 | 3072 | 4096;
+export type VaultEcCurve = "P-256" | "P-384" | "P-521";
+
+export type VaultKeyCreate =
+  | {
+      readonly keyType: "RSA";
+      readonly keySize: VaultRsaKeySize;
+      readonly tags?: Readonly<Record<string, string>>;
+      readonly expiresOn?: string;
+      readonly enabled?: boolean;
+    }
+  | {
+      readonly keyType: "EC";
+      readonly curve: VaultEcCurve;
+      readonly tags?: Readonly<Record<string, string>>;
+      readonly expiresOn?: string;
+      readonly enabled?: boolean;
+    };
+
+export interface VaultCertificateImport {
+  /** The file's bytes, base64. PEM files may carry the key and chain; PFX/P12 are PKCS#12. */
+  readonly contentsBase64: string;
+  readonly format: "pem" | "pkcs12";
+  readonly password?: string;
+  readonly tags?: Readonly<Record<string, string>>;
+  readonly enabled?: boolean;
+}
+
+export interface VaultWorkbenchOperations {
+  listVaultObjects(type: VaultObjectType): Promise<VaultObjectListing>;
+  describeVaultObject(type: VaultObjectType, name: string): Promise<VaultObjectDetail>;
+  revealSecret(name: string, version?: string): Promise<VaultSecretReveal>;
+  saveSecret(name: string, input: VaultSecretWrite): Promise<void>;
+  createKey(name: string, input: VaultKeyCreate): Promise<void>;
+  importCertificate(name: string, input: VaultCertificateImport): Promise<void>;
+  /** Soft delete where the service has one (declared by `vault.soft-delete`). */
+  deleteVaultObject(type: VaultObjectType, name: string): Promise<void>;
+  listDeletedVaultObjects(type: VaultObjectType): Promise<readonly VaultDeletedObject[]>;
+  recoverDeletedVaultObject(type: VaultObjectType, name: string): Promise<void>;
+  purgeDeletedVaultObject(type: VaultObjectType, name: string): Promise<void>;
+}
+
+export function asVaultWorkbenchOperations(provider: object): VaultWorkbenchOperations | null {
+  return "listVaultObjects" in provider ? (provider as VaultWorkbenchOperations) : null;
 }

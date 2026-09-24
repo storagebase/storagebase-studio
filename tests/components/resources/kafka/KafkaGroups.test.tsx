@@ -40,6 +40,30 @@ describe("KafkaGroupsPanel", () => {
     await waitFor(() => expect(server.count("groups")).toBe(2));
   });
 
+  test("a group whose lag could not be read shows a dash with the reason", async () => {
+    installKafkaServer({
+      groups: () => ({
+        json: {
+          groups: [
+            {
+              groupId: "group-mixed",
+              state: "Empty",
+              protocolType: "consumer",
+              protocol: "",
+              members: 0,
+              totalLag: null,
+              lagError: "topic-broken: Cannot destructure",
+              internal: false,
+            },
+          ],
+          lagTruncated: false,
+        },
+      }),
+    });
+    render(<KafkaGroupsPanel connection={connection} onOpenGroup={onOpenGroup} />);
+    await waitFor(() => screen.getByTitle("topic-broken: Cannot destructure"));
+  });
+
   test("says when lag stopped at the bound; a failed listing says why", async () => {
     installKafkaServer({ groups: () => ({ json: { groups: [], lagTruncated: true } }) });
     render(<KafkaGroupsPanel connection={connection} onOpenGroup={onOpenGroup} />);
@@ -76,6 +100,8 @@ describe("KafkaGroupDetail", () => {
     await waitFor(() => expect(screen.getAllByTestId("kafka-member-row")).toHaveLength(2));
     expect(screen.getByText("orders [0, 1]")).toBeDefined();
     expect(screen.getAllByTestId("kafka-offset-row")).toHaveLength(2);
+    // An end offset that could not be read is a dash carrying the reason.
+    expect(screen.getByTitle("topic offsets unavailable").textContent).toBe("—");
     expect(screen.getByText(/The group is Stable with 2 active member\(s\)/)).toBeDefined();
     expect((screen.getByRole("button", { name: "Reset offsets" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Delete group" }) as HTMLButtonElement).disabled).toBe(true);

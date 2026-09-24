@@ -41,6 +41,7 @@ const ALLOWED_KEYS = new Set([
   "rows_affected",
   "error",
   "query_id",
+  "counts",
 ]);
 
 function captureLine(emit: () => void): Record<string, unknown> {
@@ -280,6 +281,32 @@ describe("emitAuditEvent", () => {
       error: "QueryError: ?",
       query_id: "q-1",
     });
+  });
+
+  test("carries a resource action's counts, reduced to numbers and booleans", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "resource_operation",
+        action: "kafka.messages.read",
+        target: "kafka:orders[partition=0,seek=earliest]",
+        user: "alice",
+        result: "success",
+        counts: {
+          messagesRead: 3,
+          truncated: false,
+          value: "leaked-body" as unknown as number,
+          nested: { deep: 1 } as unknown as number,
+          "not a key": 1,
+          notFinite: Number.NaN,
+        },
+      }),
+    );
+
+    for (const key of Object.keys(line)) {
+      expect({ key, allowed: ALLOWED_KEYS.has(key) }).toEqual({ key, allowed: true });
+    }
+    expect(line.counts).toEqual({ messagesRead: 3, truncated: false });
+    expect(JSON.stringify(line)).not.toContain("leaked-body");
   });
 
   test("omits every query_execution field an event does not carry", () => {

@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerAuditBuffer, sanitizeAuditInput, type AuditEventType } from "@/lib/audit";
+import { getServerAuditBuffer, sanitizeAuditInput } from "@/lib/audit";
+import { readAuditPage, readAuditQuery } from "@/lib/fork-store/admin-query";
+import { AuditQueryError } from "@/lib/fork-store/types";
 import { auditRoleDenial } from "@/lib/api/require-session";
 import { createErrorResponse } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
@@ -13,15 +15,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type") as AuditEventType | null;
-    const limit = parseInt(searchParams.get("limit") || "100", 10);
-
     const buffer = getServerAuditBuffer();
-    const events = type ? buffer.filter({ type }) : buffer.getRecent(limit);
+    const query = readAuditQuery(new URL(request.url).searchParams);
+    const page = await readAuditPage(query, buffer.getAll());
 
-    return NextResponse.json({ events, total: buffer.size });
+    return NextResponse.json({ ...page, total: buffer.size });
   } catch (error) {
+    if (error instanceof AuditQueryError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return createErrorResponse(error, { route: "GET /api/admin/audit" });
   }
 }

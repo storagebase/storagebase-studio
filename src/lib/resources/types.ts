@@ -132,7 +132,21 @@ export type ResourceOperation =
   | "kafka.inspect"
   | "kafka.topic.write"
   | "kafka.produce"
-  | "kafka.group.write";
+  | "kafka.group.write"
+  // Vault workbench (docs/resources/azure-key-vault.md). Which tabs render and
+  // which controls appear is read off these flags, never off the type-id.
+  | "vault.secrets"
+  | "vault.keys"
+  | "vault.certificates"
+  | "vault.secret.reveal"
+  | "vault.secret.write"
+  /** Content type, tags, expiry and enabled travel with a secret write. */
+  | "vault.secret.metadata"
+  | "vault.key.write"
+  | "vault.certificate.write"
+  | "vault.delete"
+  /** Delete is soft: deleted-item views, recover and purge exist. */
+  | "vault.soft-delete";
 
 export interface ResourceProviderCapabilities {
   category: ResourceCategory;

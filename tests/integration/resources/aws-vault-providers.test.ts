@@ -266,7 +266,14 @@ describe("AwsKmsProvider", () => {
 
   test("capabilities declare the mapped vault surface", () => {
     const provider = new AwsKmsProvider(kmsConnection);
-    expect(provider.getCapabilities().operations).toEqual(["tree", "secret.read", "secret.write", "secret.delete"]);
+    expect(provider.getCapabilities().operations).toEqual([
+      "tree",
+      "secret.read",
+      "secret.write",
+      "secret.delete",
+      "vault.keys",
+      "vault.delete",
+    ]);
     expect(provider.getLabels()).toEqual({ containerNoun: "Keys", itemNoun: "Keys" });
   });
 });
@@ -343,7 +350,16 @@ describe("AwsSecretsManagerProvider", () => {
 
   test("capabilities declare the vault surface", () => {
     const provider = new AwsSecretsManagerProvider(smConnection);
-    expect(provider.getCapabilities().operations).toEqual(["tree", "secret.read", "secret.write", "secret.delete"]);
+    expect(provider.getCapabilities().operations).toEqual([
+      "tree",
+      "secret.read",
+      "secret.write",
+      "secret.delete",
+      "vault.secrets",
+      "vault.secret.reveal",
+      "vault.secret.write",
+      "vault.delete",
+    ]);
     expect(provider.getLabels()).toEqual({ containerNoun: "Secrets", itemNoun: "Secrets" });
   });
 });

@@ -39,6 +39,7 @@ export const defaultHandlers: Record<string, Handler> = {
           replicationFactor: 1,
           underReplicatedPartitions: 0,
           messageCount: 5,
+          countError: null,
         },
         {
           name: "orders",
@@ -47,6 +48,7 @@ export const defaultHandlers: Record<string, Handler> = {
           replicationFactor: 2,
           underReplicatedPartitions: 1,
           messageCount: 3,
+          countError: null,
         },
         {
           name: "payments",
@@ -55,6 +57,7 @@ export const defaultHandlers: Record<string, Handler> = {
           replicationFactor: 1,
           underReplicatedPartitions: 0,
           messageCount: null,
+          countError: null,
         },
       ],
       countsTruncated: false,
@@ -111,6 +114,7 @@ export const defaultHandlers: Record<string, Handler> = {
           isSensitive: false,
         },
       ],
+      offsetsError: null,
     },
   }),
   messages: () => ({
@@ -155,6 +159,7 @@ export const defaultHandlers: Record<string, Handler> = {
           protocol: "range",
           members: 2,
           totalLag: 7,
+          lagError: null,
           internal: false,
         },
         {
@@ -164,6 +169,7 @@ export const defaultHandlers: Record<string, Handler> = {
           protocol: "",
           members: 0,
           totalLag: null,
+          lagError: null,
           internal: false,
         },
         {
@@ -173,6 +179,7 @@ export const defaultHandlers: Record<string, Handler> = {
           protocol: "",
           members: 0,
           totalLag: null,
+          lagError: null,
           internal: true,
         },
       ],
@@ -197,8 +204,15 @@ export const defaultHandlers: Record<string, Handler> = {
               { memberId: "m-2", clientId: "svc-2", clientHost: "/10.0.0.2", assignments: [] },
             ],
             offsets: [
-              { topic: "orders", partition: 0, committedOffset: "1", endOffset: "2", lag: 1 },
-              { topic: "orders", partition: 1, committedOffset: null, endOffset: "1", lag: null },
+              { topic: "orders", partition: 0, committedOffset: "1", endOffset: "2", lag: 1, endOffsetError: null },
+              {
+                topic: "orders",
+                partition: 1,
+                committedOffset: null,
+                endOffset: null,
+                lag: null,
+                endOffsetError: "topic offsets unavailable",
+              },
             ],
           }
         : {
@@ -207,7 +221,9 @@ export const defaultHandlers: Record<string, Handler> = {
             protocolType: "consumer",
             protocol: "",
             members: [],
-            offsets: [{ topic: "orders", partition: 0, committedOffset: "0", endOffset: "2", lag: 2 }],
+            offsets: [
+              { topic: "orders", partition: 0, committedOffset: "0", endOffset: "2", lag: 2, endOffsetError: null },
+            ],
           },
   }),
   "topic/create": () => ({ json: { created: true } }),

@@ -97,7 +97,7 @@ describe("blob read routes", () => {
     mockGetOrCreateResourceProvider.mockImplementation(async () => fakeBlob);
   });
 
-  test("meta answers the provider's metadata and audits nothing", async () => {
+  test("meta answers the provider's metadata and audits one blob.meta read", async () => {
     const req = createMockRequest("/api/resources/blob/meta", {
       method: "POST",
       body: { connection, bucket: "fixture-blobs", name: "hello.txt" },
@@ -106,7 +106,13 @@ describe("blob read routes", () => {
     const data = await parseResponseJSON<{ name: string; sizeBytes: number }>(res);
     expect(res.status).toBe(200);
     expect(data).toMatchObject({ name: "hello.txt", sizeBytes: 18 });
-    expect(mockEmitAuditEvent).not.toHaveBeenCalled();
+    expect(mockEmitAuditEvent).toHaveBeenCalledTimes(1);
+    expect(mockEmitAuditEvent.mock.calls[0]?.[0]).toMatchObject({
+      type: "resource_operation",
+      action: "blob.meta",
+      result: "success",
+      counts: { bytes: 18 },
+    });
   });
 
   test("meta without bucket or name is a 400", async () => {

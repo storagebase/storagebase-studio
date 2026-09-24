@@ -143,7 +143,18 @@ export class VaultProvider extends BaseResourceProvider implements VaultOperatio
       category: "vault",
       defaultPort: 8200,
       supportsSshTunnel: false,
-      operations: ["tree", "secret.read", "secret.write", "secret.delete"],
+      // The workbench flags (basic-workbench.ts serves them): no soft
+      // delete, no secret properties, no certificates on this service.
+      operations: [
+        "tree",
+        "secret.read",
+        "secret.write",
+        "secret.delete",
+        "vault.secrets",
+        "vault.secret.reveal",
+        "vault.secret.write",
+        "vault.delete",
+      ],
     };
   }
 
@@ -249,7 +260,7 @@ export class VaultProvider extends BaseResourceProvider implements VaultOperatio
     const { mount, relative } = splitSecretPath(path);
     // Metadata delete destroys ALL versions: the most destructive form, and
     // the only one the tree's "delete" can honestly mean (a version delete
-    // would leave the secret readable). The viewer confirms twice.
+    // would leave the secret readable). The workbench asks for the typed name.
     const response = await this.request(`/v1/${mount}/metadata/${relative}`, { method: "DELETE" });
     if (response.status === 404) throw new ResourceNotFoundError(`Secret "${path}" does not exist`);
     if (!response.ok && response.status !== 204) {

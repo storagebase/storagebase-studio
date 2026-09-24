@@ -106,7 +106,18 @@ export class AwsSecretsManagerProvider extends BaseResourceProvider implements V
       category: "vault",
       defaultPort: 443,
       supportsSshTunnel: false,
-      operations: ["tree", "secret.read", "secret.write", "secret.delete"],
+      // The workbench flags (basic-workbench.ts serves them): no soft
+      // delete, no secret properties, no certificates on this service.
+      operations: [
+        "tree",
+        "secret.read",
+        "secret.write",
+        "secret.delete",
+        "vault.secrets",
+        "vault.secret.reveal",
+        "vault.secret.write",
+        "vault.delete",
+      ],
     };
   }
 

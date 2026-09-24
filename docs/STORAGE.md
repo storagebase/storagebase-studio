@@ -448,6 +448,35 @@ version column. A row that is never written again stays plaintext — which is w
 
 ---
 
+## Durable audit trail
+
+StorageBase fork. With `STORAGE_PROVIDER=sqlite` or `postgres`, every audit event is also written
+to the same storage database, in two fork-owned tables that are created on first use
+(`CREATE TABLE IF NOT EXISTS`, so the privileges above cover them):
+
+| Table | Columns | Indexes |
+|---|---|---|
+| `storagebase_audit_events` | `id` (PK), `ts` (ISO-8601 UTC), `type`, `action`, `result`, `user_name`, `user_text`, `engine`, `address_text`, `search_text`, `event` (the whole event as JSON) | `ts`; `(type, ts)`; `(user_name, ts)` |
+| `storagebase_settings` | `key` (PK), `value` (JSON), `updated_at`, `updated_by` | — |
+
+- **What it is for.** The in-process ring buffer the admin Audit tab used to read holds the last
+  1000 events and is empty after every restart. `GET /api/admin/audit` now reads this table
+  (filters, newest first, cursor paging) and falls back to the buffer only when storage is `local`
+  or the table cannot be read; the response's `source` says which one answered.
+- **What it is not.** The authoritative channel is still the `libredb.audit.v1` line on stdout,
+  collected by cluster logging. The append runs after the request has been answered, and a failed
+  append is logged (at most one line a minute) — it never fails the request. An event whose append
+  failed is still on stdout.
+- **Retention.** `STORAGEBASE_AUDIT_RETENTION_DAYS` (default `365`, `0` = keep everything). Pruning is
+  lazy: at most once an hour, an append deletes events older than the window.
+- **Implementation.** `src/lib/fork-store/**`. SQLite opens a second better-sqlite3 handle on
+  `STORAGE_SQLITE_PATH` (WAL, 5 s busy timeout); PostgreSQL opens its own two-connection pool on
+  `STORAGE_POSTGRES_URL`, with TLS decided by the storage provider's own reading of the URL. The
+  event rows are not encrypted: an audit event carries no credential by construction (see
+  [SECURITY.md](./SECURITY.md) row 3.2).
+
+---
+
 ## Environment Variables Reference
 
 | Variable | Required | Default | Description |
@@ -455,6 +484,7 @@ version column. A row that is never written again stays plaintext — which is w
 | `STORAGE_PROVIDER` | No | `local` | `local`, `sqlite`, or `postgres` |
 | `STORAGE_SQLITE_PATH` | No | `./data/libredb-storage.db` | Path to SQLite file. Directory and file are auto-created. |
 | `STORAGE_POSTGRES_URL` | **Yes** (postgres mode) | — | PostgreSQL connection string. **No default — app will error without it.** |
+| `STORAGEBASE_AUDIT_RETENTION_DAYS` | No | `365` | Days the durable audit trail keeps an event (`0` keeps every event). See [Durable audit trail](#durable-audit-trail). |
 
 > These are **server-side only** variables (no `NEXT_PUBLIC_` prefix). The client discovers the mode at runtime via `GET /api/storage/config`. This means one Docker image works for all modes. See [Why Not `NEXT_PUBLIC_*`?](#why-not-next_public_) for the rationale.
 

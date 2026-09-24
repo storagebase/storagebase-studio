@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleResourceRequest, ResourceRouteError } from "@/lib/api/resource-route";
 import { resolveVaultOperations, requireSecretPath } from "@/lib/api/resource-vault";
 import { beginResourceWrite, endResourceWrite } from "@/lib/api/resource-audit";
+import { requireVisibleSecret } from "@/lib/api/resource-vault-workbench";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
     const target = `${connection.type}:${path}`;
     const correlationId = beginResourceWrite(user, "secret.write", target);
     try {
+      // Admin exclusion rules: an excluded path answers 404 like a missing one.
+      await requireVisibleSecret(connection, path);
       const vault = await resolveVaultOperations(connection, "secret.write");
       await vault.writeSecret(path, body.value);
       endResourceWrite(user, "secret.write", target, correlationId, null);

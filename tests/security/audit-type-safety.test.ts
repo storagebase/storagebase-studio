@@ -195,6 +195,34 @@ describe("sanitizeAuditInput's number and boolean exemptions are keyed on the fi
 });
 
 /**
+ * `counts` is the one object-valued field, and the client-supplied POST /api/admin/audit body can
+ * set it: it may only ever hold a handful of finite numbers and booleans under identifier-shaped
+ * keys, so no string - a value, a body, a secret - can ride inside it to either destination.
+ */
+describe("sanitizeAuditInput bounds counts to numbers and booleans", () => {
+  const base = {
+    type: "resource_operation" as const,
+    action: "tree.list",
+    target: "s3:/",
+    user: "u",
+    result: "success" as const,
+  };
+
+  test("keeps at most MAX_AUDIT_COUNTS identifier-keyed numbers and booleans", () => {
+    const counts = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`k${i}`, i]));
+    const result = sanitizeAuditInput({ ...base, counts: { "bad key": 1, str: "x" as unknown as number, ...counts } });
+    expect(Object.keys(result.counts ?? {})).toEqual(["k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7"]);
+  });
+
+  test("drops counts that are not a plain object, or that keep nothing", () => {
+    for (const counts of ["a string", [1, 2], null, { onlyText: "x" }]) {
+      const result = sanitizeAuditInput({ ...base, counts: counts as unknown as Record<string, number> });
+      expect("counts" in result).toBe(false);
+    }
+  });
+});
+
+/**
  * Threat: CodeQL's js/remote-property-injection (alerts #113/#114) - `sanitizeAuditInput` writes
  * through `mutable[key]` where `key` is enumerated from an object built by spreading
  * `POST /api/admin/audit`'s client-supplied JSON body (see src/app/api/admin/audit/route.ts). This

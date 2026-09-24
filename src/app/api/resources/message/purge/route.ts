@@ -16,14 +16,14 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
     const destination = requireDestination(body);
     const user = session.username ?? session.role;
     const target = `${connection.type}:${destination}`;
-    const correlationId = beginResourceWrite(user, "message.purge", target);
+    const correlationId = beginResourceWrite(user, "message.purge", target, req, connection);
     try {
       const messaging = await resolveMessagingOperations(connection, "message.purge");
       await messaging.purgeQueue(destination);
-      endResourceWrite(user, "message.purge", target, correlationId, null);
+      endResourceWrite(user, "message.purge", target, correlationId, null, req, connection);
       return NextResponse.json({ purged: true });
     } catch (error) {
-      endResourceWrite(user, "message.purge", target, correlationId, error);
+      endResourceWrite(user, "message.purge", target, correlationId, error, req, connection);
       throw error;
     }
   });

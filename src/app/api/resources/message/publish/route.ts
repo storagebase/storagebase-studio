@@ -21,14 +21,14 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
     const attributes = optionalAttributes(body);
     const user = session.username ?? session.role;
     const target = `${connection.type}:${destination}`;
-    const correlationId = beginResourceWrite(user, "message.publish", target);
+    const correlationId = beginResourceWrite(user, "message.publish", target, req, connection);
     try {
       const messaging = await resolveMessagingOperations(connection, "message.publish");
       await messaging.publishMessage(destination, messageBody, attributes);
-      endResourceWrite(user, "message.publish", target, correlationId, null);
+      endResourceWrite(user, "message.publish", target, correlationId, null, req, connection);
       return NextResponse.json({ published: true });
     } catch (error) {
-      endResourceWrite(user, "message.publish", target, correlationId, error);
+      endResourceWrite(user, "message.publish", target, correlationId, error, req, connection);
       throw error;
     }
   });

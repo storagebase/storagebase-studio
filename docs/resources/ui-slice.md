@@ -28,7 +28,9 @@ family branch: everything here is the merge surface families must not touch.
   one correlation id (the `agent_operation` shape). Map outcomes with a total
   record so an unmapped outcome fails to compile. `resource_unsupported` is the
   honest refusal (Kafka has no purge); the trail records the class, the response
-  carries the provider's sentence.
+  carries the provider's sentence. Reads are audited too: wrap the provider call in
+  `auditedResourceRead` (`src/lib/api/resource-audit.ts`) with the action's address as the target
+  and numeric `counts` only — one event per read, success or failure.
 
 ## Firewall rule for families
 

@@ -267,7 +267,16 @@ describe("VaultProvider", () => {
   test("capabilities and labels are type-driven", () => {
     const provider = new VaultProvider(connection);
     expect(provider.getCapabilities()).toMatchObject({ category: "vault", defaultPort: 8200 });
-    expect(provider.getCapabilities().operations).toEqual(["tree", "secret.read", "secret.write", "secret.delete"]);
+    expect(provider.getCapabilities().operations).toEqual([
+      "tree",
+      "secret.read",
+      "secret.write",
+      "secret.delete",
+      "vault.secrets",
+      "vault.secret.reveal",
+      "vault.secret.write",
+      "vault.delete",
+    ]);
     expect(provider.getLabels()).toEqual({ containerNoun: "Mounts", itemNoun: "Secrets" });
   });
 

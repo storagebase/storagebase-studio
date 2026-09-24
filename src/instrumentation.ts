@@ -22,6 +22,12 @@ export async function register(): Promise<void> {
 
   const { logger } = await import("@/lib/logger");
 
+  // Durable audit trail (StorageBase fork): every audit event is also appended to the server
+  // storage database when STORAGE_PROVIDER is sqlite or postgres. Installed first so the boot's
+  // own events and the first login are on it. Never throws; a store failure is logged, rate-limited.
+  const { installDurableAuditSink } = await import("@/lib/fork-store/audit-sink");
+  installDurableAuditSink();
+
   // LibreDB sample: programmatic and fast — seeded synchronously as before.
   const { isSampleEnabled, resolveSamplePath, seedSampleFile } = await import("@/lib/seed/libredb-sample");
   if (isSampleEnabled()) {

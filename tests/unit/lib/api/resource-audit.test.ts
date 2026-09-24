@@ -1,6 +1,9 @@
-import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { beginResourceWrite, endResourceWrite } from "@/lib/api/resource-audit";
+import { describe, test, expect, mock, beforeEach, spyOn } from "bun:test";
+import { auditedResourceRead, beginResourceWrite, endResourceWrite } from "@/lib/api/resource-audit";
+import { ResourceRouteError } from "@/lib/api/resource-route";
+import { logger } from "@/lib/logger";
 import {
+  ResourceInvalidRequestError,
   ResourceConflictError,
   ResourceNotFoundError,
   ResourceOperationUnsupportedError,
@@ -98,5 +101,135 @@ describe("resource audit helper", () => {
     });
     const correlationId = beginResourceWrite("admin", "message.purge", "kafka:t");
     expect(typeof correlationId).toBe("string");
+  });
+});
+
+describe("auditedResourceRead", () => {
+  const ctx = {
+    session: { role: "user", username: "alice" },
+    route: "api/resources/tree",
+    connection: { id: "res-1", name: "Blob store", type: "s3" as const },
+  };
+  const request = {
+    headers: new Headers({ "x-forwarded-for": "203.0.113.5", "user-agent": "test-agent/1.0" }),
+  } as never;
+
+  beforeEach(() => {
+    mockEmitAuditEvent.mockClear();
+    mockEmitAuditEvent.mockImplementation((_event: Record<string, unknown>) => ({ id: "audit-1" }));
+  });
+
+  function onlyEvent(): Record<string, unknown> {
+    expect(mockEmitAuditEvent).toHaveBeenCalledTimes(1);
+    return mockEmitAuditEvent.mock.calls[0]?.[0] ?? {};
+  }
+
+  test("a successful read returns the result and records one event with the caller, connection and counts", async () => {
+    const result = await auditedResourceRead(
+      ctx,
+      request,
+      "tree.list",
+      "s3:bucket-a",
+      async () => ({ nodes: [1, 2, 3], truncated: false }),
+      (page) => ({ itemsListed: page.nodes.length, truncated: page.truncated }),
+    );
+
+    expect(result).toEqual({ nodes: [1, 2, 3], truncated: false });
+    const event = onlyEvent();
+    expect(event).toMatchObject({
+      type: "resource_operation",
+      action: "tree.list",
+      target: "s3:bucket-a",
+      result: "success",
+      user: "alice",
+      role: "user",
+      ip: "203.0.113.5",
+      forwardedFor: "203.0.113.5",
+      userAgent: "test-agent/1.0",
+      connectionId: "res-1",
+      connectionName: "Blob store",
+      engine: "s3",
+      counts: { itemsListed: 3, truncated: false },
+    });
+    expect(typeof event.duration).toBe("number");
+    expect(event).not.toHaveProperty("reason");
+  });
+
+  test("a read with no details records no counts, and the role stands in for a missing username", async () => {
+    await auditedResourceRead(
+      { ...ctx, session: { role: "admin" } },
+      request,
+      "resource.meta",
+      "s3:x",
+      async () => "ok",
+    );
+    const event = onlyEvent();
+    expect(event).not.toHaveProperty("counts");
+    expect(event.user).toBe("admin");
+  });
+
+  test.each([
+    [new ResourceNotFoundError("gone"), "resource_not_found"],
+    [new ResourceOperationUnsupportedError("no"), "resource_unsupported"],
+    [new ResourceConflictError("busy"), "resource_conflict"],
+    [new ResourceInvalidRequestError("bad"), "resource_invalid_request"],
+    [new ResourceRouteError("bad", 400), "resource_invalid_request"],
+    [new ResourceConnectionError("down"), "resource_failed"],
+    [new Error("boom"), "resource_failed"],
+  ])("a failed read rethrows %p and records one failure with reason %p", async (error, reason) => {
+    await expect(
+      auditedResourceRead(ctx, request, "blob.preview", "s3:b/k", async () => {
+        throw error;
+      }),
+    ).rejects.toBe(error);
+    expect(onlyEvent()).toMatchObject({ result: "failure", reason, action: "blob.preview" });
+  });
+
+  test("a broken sink never fails the read or hides its error", async () => {
+    const logged = spyOn(logger, "error").mockImplementation(() => {});
+    mockEmitAuditEvent.mockImplementation(() => {
+      throw new Error("sink down");
+    });
+    try {
+      await expect(auditedResourceRead(ctx, request, "tree.list", "s3:/", async () => 7)).resolves.toBe(7);
+      const failure = new Error("provider down");
+      await expect(
+        auditedResourceRead(ctx, request, "tree.list", "s3:/", async () => {
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      expect(logged).toHaveBeenCalledTimes(2);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test("a counting bug is logged and the read still succeeds, recorded without counts", async () => {
+    const logged = spyOn(logger, "error").mockImplementation(() => {});
+    try {
+      const result = await auditedResourceRead(
+        ctx,
+        request,
+        "tree.list",
+        "s3:/",
+        async () => null,
+        () => {
+          throw new Error("cannot count null");
+        },
+      );
+      expect(result).toBeNull();
+      expect(onlyEvent()).not.toHaveProperty("counts");
+      expect(logged).toHaveBeenCalledTimes(1);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test("the write helpers carry the connection when a route passes it", () => {
+    const correlationId = beginResourceWrite("alice", "blob.delete", "s3:b/k", request, ctx.connection);
+    endResourceWrite("alice", "blob.delete", "s3:b/k", correlationId, null, request, ctx.connection);
+    for (const call of mockEmitAuditEvent.mock.calls) {
+      expect(call[0]).toMatchObject({ connectionId: "res-1", connectionName: "Blob store", engine: "s3" });
+    }
   });
 });

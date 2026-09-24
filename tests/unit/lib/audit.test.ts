@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, spyOn } from "bun:test";
 import {
   AuditRingBuffer,
   type AuditEvent,
@@ -471,5 +471,39 @@ describe("saveAuditToStorage", () => {
     // Should keep the last 1000 (indices 500-1499)
     expect(parsed[0].id).toBe("id-500");
     expect(parsed[999].id).toBe("id-1499");
+  });
+});
+
+describe("audit sinks", () => {
+  test("an emitted event reaches every registered sink after the request's own channels, and never throws back", async () => {
+    const { emitAuditEvent, registerAuditSink } = await import("@/lib/audit");
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    const received: string[] = [];
+    const removeGood = registerAuditSink((event) => {
+      received.push(event.id);
+    });
+    const removeThrowing = registerAuditSink(() => {
+      throw new Error("sink threw");
+    });
+    const removeRejecting = registerAuditSink(async () => {
+      throw new Error("sink rejected");
+    });
+    try {
+      const stored = emitAuditEvent({ type: "logout", action: "logout", target: "t", user: "u", result: "success" });
+      // Delivery is deferred: the emitter has returned before any sink runs.
+      expect(received).toEqual([]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(received).toEqual([stored.id]);
+
+      removeGood();
+      emitAuditEvent({ type: "logout", action: "logout", target: "t", user: "u", result: "success" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(received).toEqual([stored.id]);
+    } finally {
+      removeGood();
+      removeThrowing();
+      removeRejecting();
+      log.mockRestore();
+    }
   });
 });

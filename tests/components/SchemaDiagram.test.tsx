@@ -760,12 +760,38 @@ describe("SchemaDiagram", () => {
 
   // ── Empty schema / loading state ────────────────────────────────────────
 
-  test("empty schema shows loading/generating state", () => {
-    const props = createDefaultProps({ schema: emptySchema });
+  test("empty schema says there is nothing to draw and can be closed", () => {
+    // Not an endless spinner: a connection with no tables (a key-value store, an
+    // empty database, a schema that failed to load) used to trap the user here.
+    const onClose = mock(() => {});
+    const props = createDefaultProps({ schema: emptySchema, onClose });
     const { container } = render(<SchemaDiagram {...props} />);
     const view = within(container);
 
-    expect(view.queryByText("Generating ERD Diagram...")).not.toBeNull();
+    expect(view.queryByText("Generating ERD Diagram...")).toBeNull();
+    expect(view.queryByText("Nothing to draw for this connection")).not.toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Close schema diagram" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("Escape closes the diagram, with or without tables", () => {
+    for (const schema of [emptySchema, mockSchema]) {
+      const onClose = mock(() => {});
+      const { unmount } = render(<SchemaDiagram {...createDefaultProps({ schema, onClose })} />);
+      fireEvent.keyDown(window, { key: "Escape" });
+      fireEvent.keyDown(window, { key: "Enter" });
+      expect(onClose).toHaveBeenCalledTimes(1);
+      unmount();
+    }
+  });
+
+  test("an Escape a dialog above already handled does not close the diagram", () => {
+    const onClose = mock(() => {});
+    render(<SchemaDiagram {...createDefaultProps({ schema: emptySchema, onClose })} />);
+    const handled = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+    handled.preventDefault();
+    window.dispatchEvent(handled);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   test("empty schema does not render ReactFlow", () => {

@@ -48,7 +48,7 @@ mock.module("@/components/ui/dialog", () => ({
 // production); the completeness test below pins every type to a viewer.
 import { ResourceInspector } from "@/components/resources/ResourceInspector";
 import { hasResourceViewer } from "@/components/resources/viewer-registry";
-import { RESOURCE_TYPES } from "@/lib/resources/types";
+import { RESOURCE_CATEGORY_OF, RESOURCE_TYPES } from "@/lib/resources/types";
 import type { ResourceConnection, ResourceNode } from "@/lib/resources/types";
 
 const s3Connection: ResourceConnection = {
@@ -101,11 +101,11 @@ describe("ResourceInspector", () => {
     expect(screen.queryByTestId("resource-inspector-fallback")).toBeNull();
   });
 
-  test("every resource type resolves a viewer — getResourceViewer never misses", () => {
-    // All ten type-ids registered a viewer with their family; a miss throws
-    // instead of rendering nothing, so this fails when a family forgets a
-    // registration. RESOURCE_TYPES is the union's only list.
-    for (const type of RESOURCE_TYPES) {
+  test("every tree-browsed resource type resolves a viewer — getResourceViewer never misses", () => {
+    // A miss throws instead of rendering nothing, so this fails when a family
+    // forgets a registration. RESOURCE_TYPES is the union's only list; the
+    // vault types open their workbench and never reach the inspector.
+    for (const type of RESOURCE_TYPES.filter((candidate) => RESOURCE_CATEGORY_OF[candidate] !== "vault")) {
       expect(hasResourceViewer(type), type).toBe(true);
     }
   });

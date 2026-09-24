@@ -105,7 +105,9 @@ export class AwsKmsProvider extends BaseResourceProvider implements VaultOperati
       category: "vault",
       defaultPort: 443,
       supportsSshTunnel: false,
-      operations: ["tree", "secret.read", "secret.write", "secret.delete"],
+      // The workbench flags (basic-workbench.ts serves them): no soft
+      // delete, no secret properties, no certificates on this service.
+      operations: ["tree", "secret.read", "secret.write", "secret.delete", "vault.keys", "vault.delete"],
     };
   }
 

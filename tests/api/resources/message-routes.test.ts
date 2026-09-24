@@ -84,7 +84,7 @@ describe("message routes", () => {
     mockBrowseMessages.mockClear();
   });
 
-  test("browse answers the page and audits nothing", async () => {
+  test("browse answers the page and audits one message.browse read", async () => {
     mockBrowseMessages.mockResolvedValueOnce({
       messages: [{ id: "topic/t/0/0", parentId: "topic/t", kind: "message", name: "#0", hasChildren: false }],
       truncated: false,
@@ -98,7 +98,12 @@ describe("message routes", () => {
     expect(res.status).toBe(200);
     expect(data.messages).toHaveLength(1);
     expect(mockBrowseMessages).toHaveBeenCalledWith("topic/fixture-events", 10);
-    expect(mockEmitAuditEvent).not.toHaveBeenCalled();
+    expect(mockEmitAuditEvent).toHaveBeenCalledTimes(1);
+    expect(mockEmitAuditEvent.mock.calls[0]?.[0]).toMatchObject({
+      action: "message.browse",
+      result: "success",
+      counts: { messagesRead: 1, limit: 10, truncated: false },
+    });
   });
 
   test("browse validates destination and limit", async () => {

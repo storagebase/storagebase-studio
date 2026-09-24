@@ -160,7 +160,9 @@ export function KafkaGroupDetail({
                       <TableCell className="font-mono">{row.topic}</TableCell>
                       <TableCell className="font-mono">{row.partition}</TableCell>
                       <TableCell className="text-right font-mono">{row.committedOffset ?? "—"}</TableCell>
-                      <TableCell className="text-right font-mono">{row.endOffset}</TableCell>
+                      <TableCell className="text-right font-mono" title={row.endOffsetError ?? undefined}>
+                        {row.endOffset ?? "—"}
+                      </TableCell>
                       <TableCell className="text-right font-mono">{row.lag ?? "—"}</TableCell>
                     </TableRow>
                   ))}
