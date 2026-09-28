@@ -42,10 +42,13 @@ export function VaultObjectsTab({
   connection,
   type,
   flags,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
   type: VaultObjectType;
   flags: ReadonlySet<ResourceOperation>;
+  /** Withholds recover and purge in the Deleted view; the write flags are already gone from `flags`. */
+  readOnly?: boolean;
 }) {
   const read = useCallback(() => postVault<VaultObjectListing>(connection, "objects", { type }), [connection, type]);
   const { data: listing, error, reload } = useKafkaRead(read);
@@ -98,7 +101,7 @@ export function VaultObjectsTab({
         />
       )}
       {view === "deleted" ? (
-        <VaultDeletedList connection={connection} type={type} />
+        <VaultDeletedList connection={connection} type={type} readOnly={readOnly} />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-4">
           <div className="space-y-3 min-w-0">

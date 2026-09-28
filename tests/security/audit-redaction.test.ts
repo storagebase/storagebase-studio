@@ -42,6 +42,13 @@ const ALLOWED_KEYS = new Set([
   "error",
   "query_id",
   "counts",
+  // Sign-in identity and managed-connection grants (StorageBase fork).
+  "auth_provider",
+  "subject",
+  "app_roles",
+  "permission",
+  "granted_by",
+  "access_groups",
 ]);
 
 function captureLine(emit: () => void): Record<string, unknown> {
@@ -307,6 +314,35 @@ describe("emitAuditEvent", () => {
     }
     expect(line.counts).toEqual({ messagesRead: 3, truncated: false });
     expect(JSON.stringify(line)).not.toContain("leaked-body");
+  });
+
+  test("carries sign-in identity and a managed connection's grant, never a token", () => {
+    const line = captureLine(() =>
+      emitAuditEvent({
+        type: "login_success",
+        action: "login",
+        target: "GET /api/auth/entra/callback",
+        user: "alice@example.com",
+        result: "success",
+        authProvider: "entra",
+        subject: "object-id",
+        appRoles: "Team.Payments.Read",
+        permission: "read",
+        grantedBy: "Team.Payments.Read",
+        accessGroups: "Payments",
+      }),
+    );
+    for (const key of Object.keys(line)) {
+      expect({ key, allowed: ALLOWED_KEYS.has(key) }).toEqual({ key, allowed: true });
+    }
+    expect(line).toMatchObject({
+      auth_provider: "entra",
+      subject: "object-id",
+      app_roles: "Team.Payments.Read",
+      permission: "read",
+      granted_by: "Team.Payments.Read",
+      access_groups: "Payments",
+    });
   });
 
   test("omits every query_execution field an event does not carry", () => {

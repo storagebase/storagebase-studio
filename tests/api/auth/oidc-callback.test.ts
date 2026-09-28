@@ -49,7 +49,7 @@ mock.module("@/lib/oidc", () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const mockLogin = mock(async (_role: string, _username?: string) => {});
+const mockLogin = mock(async (_role: string, _username?: string, _claims?: unknown) => {});
 
 mock.module("@/lib/auth", () => ({
   login: mockLogin,
@@ -108,9 +108,20 @@ describe("GET /api/auth/oidc/callback", () => {
 
     expect(mockDecryptState).toHaveBeenCalledWith("encrypted-state-cookie");
     expect(mockExchangeCode).toHaveBeenCalledTimes(1);
-    expect(mockLogin).toHaveBeenCalledWith("user", "user@example.com");
+    expect(mockLogin).toHaveBeenCalledWith("user", "user@example.com", { provider: "oidc", appRoles: [] });
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/");
+  });
+
+  // StorageBase fork: the configured role claim's values become the session's app roles.
+  test("carries the role claim's values into the session as app roles", async () => {
+    mockExchangeCode.mockImplementation(async () => ({ ...defaultClaims, roles: ["Team.Payments.Read", " admin "] }));
+    const req = new Request("http://localhost:3000/api/auth/oidc/callback?code=auth-code&state=test-state");
+    await GET(req);
+    expect(mockLogin).toHaveBeenCalledWith("user", "user@example.com", {
+      provider: "oidc",
+      appRoles: ["Team.Payments.Read", "admin"],
+    });
   });
 
   test("redirects admin to /admin", async () => {
@@ -119,7 +130,7 @@ describe("GET /api/auth/oidc/callback", () => {
     const req = new Request("http://localhost:3000/api/auth/oidc/callback?code=auth-code&state=test-state");
     const res = await GET(req);
 
-    expect(mockLogin).toHaveBeenCalledWith("admin", "user@example.com");
+    expect(mockLogin).toHaveBeenCalledWith("admin", "user@example.com", { provider: "oidc", appRoles: [] });
     expect(res.headers.get("location")).toContain("/admin");
   });
 
@@ -183,7 +194,7 @@ describe("GET /api/auth/oidc/callback", () => {
     const req = new Request("http://localhost:3000/api/auth/oidc/callback?code=auth-code&state=test-state");
     await GET(req);
 
-    expect(mockLogin).toHaveBeenCalledWith("user", "user-123");
+    expect(mockLogin).toHaveBeenCalledWith("user", "user-123", { provider: "oidc", appRoles: [] });
   });
 
   test("passes claims to mapOIDCRole with correct config", async () => {

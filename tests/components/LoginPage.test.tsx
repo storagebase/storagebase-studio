@@ -229,7 +229,8 @@ describe("LoginPage route (app/login/page)", () => {
     delete process.env.NEXT_PUBLIC_AUTH_PROVIDER;
     const { default: LoginPageRoute } = await import("@/app/login/page");
 
-    const { container } = render(<LoginPageRoute />);
+    // An async server component (StorageBase fork: it reads the runtime sign-in switch).
+    const { container } = render(await LoginPageRoute());
     expect(container.querySelector("form")).not.toBeNull();
   });
 
@@ -237,7 +238,7 @@ describe("LoginPage route (app/login/page)", () => {
     process.env.NEXT_PUBLIC_AUTH_PROVIDER = "oidc";
     const { default: LoginPageRoute } = await import("@/app/login/page");
 
-    const { queryByText, container } = render(<LoginPageRoute />);
+    const { queryByText, container } = render(await LoginPageRoute());
     expect(queryByText("Login with SSO")).not.toBeNull();
     expect(container.querySelector("form")).toBeNull();
   });

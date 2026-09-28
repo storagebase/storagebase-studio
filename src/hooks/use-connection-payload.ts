@@ -1,4 +1,5 @@
 import type { DatabaseConnection, SSHTunnelConfig, SSLConfig } from "@/lib/types";
+import { isServerHeld, userConnectionId } from "@/lib/user-connections/ids"; // StorageBase fork
 
 /** A seed connection as `GET /api/connections/managed` serializes it. */
 export type ManagedConnectionPayload = Omit<DatabaseConnection, "createdAt"> & { createdAt: string; seedId?: string };
@@ -49,7 +50,8 @@ export type AgentRunConnection =
 /**
  * Builds the connection portion of an API request body.
  * For managed connections: sends { connectionId: "seed:X" } (no credentials).
- * For user connections: sends { connection: conn } (full object).
+ * For a connection the server holds (StorageBase fork): sends { connectionId: "user:X" } (no credentials).
+ * For other user connections: sends { connection: conn } (full object).
  */
 export function buildConnectionPayload(
   conn: DatabaseConnection,
@@ -57,6 +59,7 @@ export function buildConnectionPayload(
   if (conn.managed && conn.seedId) {
     return { connectionId: `seed:${conn.seedId}` };
   }
+  if (isServerHeld(conn)) return { connectionId: userConnectionId(conn.id) }; // StorageBase fork
   return { connection: conn };
 }
 
@@ -121,6 +124,8 @@ const CONNECTION_RELEVANCE: Record<keyof DatabaseConnection, FieldRelevance> = {
   // profile even when it points at the same database (#328).
   agentUser: "resolution",
   agentPassword: "resolution",
+  // Which secrets the server holds, not what they are or where they point (StorageBase fork).
+  savedSecrets: "cosmetic",
   ssl: "nested",
   sshTunnel: "nested",
 };
@@ -199,8 +204,10 @@ function reachesSameDatabase(conn: DatabaseConnection, served: ManagedConnection
  * the seed's database and report on it as if it were the one on screen.
  */
 export function resolveAgentRunConnectionId(conn: DatabaseConnection, servedSeeds: ServedSeeds): AgentRunConnection {
+  if (conn.managed && conn.seedId) return { id: `seed:${conn.seedId}` };
+  // StorageBase fork: the server holds this connection for its user, so it can rebuild it.
+  if (isServerHeld(conn)) return { id: userConnectionId(conn.id) };
   if (!conn.seedId) return { id: null, reason: "browser-only" };
-  if (conn.managed) return { id: `seed:${conn.seedId}` };
 
   // An unread seed list is not an empty one (B37). Comparing against seeds nobody has
   // seen would answer "the server does not hold this" from having asked nothing, which

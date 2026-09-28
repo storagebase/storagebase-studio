@@ -117,6 +117,8 @@ const EVENT_TYPE_OPTIONS: ReadonlyArray<readonly [string, string]> = [
   ["object_edit", "Object Edit"],
   ["resource_connection_test", "Resource Test"],
   ["resource_operation", "Resource Operation"],
+  ["access_config", "Access Config"],
+  ["auth_settings_changed", "Sign-in Settings"],
   ["login_success", "Login Success"],
   ["login_failure", "Login Failure"],
   ["logout", "Logout"],
@@ -155,6 +157,13 @@ function detailRows(event: AuditEvent): Array<[string, string]> {
     ["Details", event.details],
     ["Query ID", event.queryId],
     ["Correlation ID", event.correlationId],
+    // StorageBase fork: sign-in identity and the grant a managed-connection action ran under.
+    ["Sign-in", event.authProvider],
+    ["Subject", event.subject],
+    ["App Roles", event.appRoles],
+    ["Permission", event.permission],
+    ["Granted By", event.grantedBy],
+    ["Access Groups", event.accessGroups],
   ];
   return rows
     .filter((row): row is [string, string | number] => row[1] !== undefined && row[1] !== "")

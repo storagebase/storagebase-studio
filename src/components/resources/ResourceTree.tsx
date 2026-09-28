@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appFetch } from "@/lib/config/base-path";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
+import { routeRefusal } from "@/components/resources/route-refusal";
 import type { ResourceConnection, ResourceNode, ResourceNodePage } from "@/lib/resources/types";
 
 /**
@@ -59,13 +61,12 @@ export function ResourceTree({ connection, onNodeClick, refreshToken }: Resource
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          connection,
+          ...resourceConnectionBody(connection),
           ...(parentId === null ? {} : { parent: parentId }),
         }),
       });
       if (!response.ok) {
-        const failure = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(failure?.message ?? `Tree read failed (${response.status})`);
+        throw new Error(await routeRefusal(response, `Tree read failed (${response.status})`));
       }
       return (await response.json()) as ResourceNodePage;
     },

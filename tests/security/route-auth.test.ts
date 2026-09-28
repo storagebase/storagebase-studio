@@ -226,14 +226,20 @@ const ROUTES_WITHOUT_A_PROVIDER: Record<string, string> = {
     "hands back rows one run already stored, from process memory; no database or LLM provider is reached to answer it (GET, no POST export). Same guardRoute path as above, through src/lib/api/agent-run-access.ts, and tests/api/agent/artifacts.test.ts proves an unauthenticated caller gets 401 and reads nothing",
   "agent/runs/[runId]/stream":
     "follows one run's own durable ledger; no database or LLM provider (GET, no POST export). Same guardRoute path as above",
-  "resources/admin/vault-exclusions":
-    "reads and replaces admin exclusion rules in the app's own settings store (STORAGE_PROVIDER), never a user database, vault or LLM provider (GET/PUT, no POST export). Admin-only through guardAdminRoute, and tests/api/resources/vault-exclusions.test.ts proves anonymous GET and PUT get 401 and non-admins 403",
   "auth/login": "authenticates the credential itself; a session cannot be required before one exists",
   "auth/logout": "clears the session cookie unconditionally; touches no provider either way",
   "auth/me": "reads the caller's own session claims only (GET, no POST export)",
+  "auth/entra/callback":
+    "completes the Microsoft Entra exchange that CREATES the session (GET, no POST export); reads the sign-in switch from the app's own settings store, never a user database",
+  "auth/entra/login": "starts the Microsoft Entra redirect before a session exists (GET, no POST export)",
+  "auth/providers":
+    "publicly answers which sign-in methods the login page offers, from the sign-in switch in the app's own settings store (GET, no POST export)",
   "auth/oidc/callback": "completes the OIDC exchange that CREATES the session (GET, no POST export)",
   "auth/oidc/login": "starts the OIDC redirect before a session exists (GET, no POST export)",
-  "connections/managed": "reads seed config metadata only; never opens a database connection (GET, no POST export)",
+  "connections/managed":
+    "reads seed config metadata and the admin-managed connection list from the app's own settings store; never opens a database connection (GET, no POST export)",
+  "resources/managed":
+    "lists the caller's admin-managed resource connections from the app's own settings store, without credentials; never opens a resource connection (GET, no POST export). It requires a session: a bare getSession(), and tests/api/resources/managed-route.test.ts proves an anonymous caller gets 401",
   storage: "reaches the app's own storage backend (STORAGE_PROVIDER), not a user database or LLM provider (GET only)",
   "storage/[collection]": "same storage backend as above, scoped to the caller's own data (PUT, no POST export)",
   "storage/config": "publicly documents whether server storage is enabled; no session, no provider (GET only)",
@@ -382,16 +388,25 @@ describe("routes that reach a provider require a session", () => {
 
   const ALLOWLISTED_ROUTE_HELPERS: Record<string, string> = {
     "@/hooks/use-connection-payload": "shapes a connection record for the client; opens nothing",
+    "@/lib/access/auth-settings":
+      "reads the sign-in switch from the app's own settings table (fork store on STORAGE_PROVIDER) and the Entra env config; never a user database",
+    "@/lib/access/local-login":
+      "the local-login policy gate: reads the sign-in switch from the app's own settings table and answers a refusal; never a user database",
+    "@/lib/access/redact":
+      "strips credential fields from a connection row by the storage classification maps; data only",
+    "@/lib/access/resolve":
+      "evaluates role bindings over the app's own access records (fork store on STORAGE_PROVIDER) and serves managed rows without credentials; the listing path opens no connection",
+    "@/lib/access/session": "reads the session's role and app-role claims; data only",
+    "@/lib/entra/flow":
+      "the Microsoft Entra Authorization Code + PKCE redirect and callback through the upstream OIDC engine; reaches the identity provider, never a user database",
     "@/lib/agent/config": `reads the agent runtime's env config and ${PROVIDER_NAMING_HELPER} (@/lib/llm/utils/config) to validate the model id, which resolves config rather than calling a model`,
     "@/lib/agent/model-tuning": "the per-model tuning table; data only",
     "@/lib/agent/runtime": `the run loop, and it ${PROVIDER_NAMING_HELPER} - but the artifacts route imports only readAgentArtifact, which reads the in-process ExecutionArtifactStore`,
     "@/lib/api/agent-run-access": "resolves a run id to its ledger behind guardRoute; reads no provider",
-    "@/lib/api/audit-request": "copies the client address, forwarded-for chain and user agent onto an audit event",
     "@/lib/api/client-address": "parses the forwarded-for chain for the audit record",
     "@/lib/api/errors": `maps a thrown error to a response and ${PROVIDER_NAMING_HELPER} (@/lib/db/errors, @/lib/llm/types) for the error CLASSES alone - nearly every route imports it, and treating it as an entry point would fire on all fifteen`,
     "@/lib/api/rate-limit": "the in-process token buckets",
     "@/lib/api/require-session": "guardRoute itself",
-    "@/lib/api/resource-admin": "guardRoute plus an admin-role check (guardAdminRoute); reads no provider",
     "@/lib/audit": "the in-process audit ring buffer",
     "@/lib/auth": "session cookie minting and reading",
     "@/lib/auth-compare": "constant-time credential comparison",
@@ -403,11 +418,6 @@ describe("routes that reach a provider require a session", () => {
     "@/lib/local-auth": "the local email/password credential store",
     "@/lib/logger": "structured logging",
     "@/lib/oidc": "the OIDC discovery and PKCE exchange",
-    "@/lib/resources/errors": "the resource error classes; data only",
-    "@/lib/resources/types": "the resource type-id table; data only",
-    "@/lib/resources/vault-exclusions": "validates and matches exclusion rules in memory; opens nothing",
-    "@/lib/resources/vault-exclusions-store":
-      "reads and writes exclusion rules in the app's own settings table (fork store on STORAGE_PROVIDER); never a user vault",
     "@/lib/seed": "reads seed connection metadata from config; never connects",
     "@/lib/storage/factory": "the app's own storage backend (STORAGE_PROVIDER), not a user database",
     "@/lib/storage/types": "the storage backend's interfaces",

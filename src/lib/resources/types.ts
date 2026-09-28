@@ -106,6 +106,37 @@ export interface ResourceConnection {
   /** HashiCorp Vault / OpenBao Enterprise namespace. */
   namespace?: string;
   sshTunnel?: SSHTunnelConfig;
+  /**
+   * Present when the server holds this connection's credentials (src/lib/user-connections): the
+   * secret paths it holds. Such a connection carries no secret in the browser and is addressed
+   * as `user:<id>`.
+   */
+  savedSecrets?: string[];
+}
+
+/** What an admin-managed connection lets its viewer do. A user-owned connection carries none: it is theirs in full. */
+export type ResourcePermission = "read" | "write" | "admin";
+
+/**
+ * An admin-managed ("preconfigured") resource connection: listed beside the
+ * viewer's own, usable, but never theirs to see into or change. It arrives
+ * without credentials — the server resolves them by id — so nothing the UI
+ * renders from it can leak one.
+ */
+export type ManagedResourceConnection = ResourceConnection & {
+  managed: true;
+  permission: ResourcePermission;
+  /** The groups that grant it, for the row's tooltip. */
+  groupNames?: string[];
+};
+
+export function isManagedResourceConnection(conn: ResourceConnection): conn is ManagedResourceConnection {
+  return (conn as Partial<ManagedResourceConnection>).managed === true;
+}
+
+/** Whether every write affordance must be withheld: a managed connection granted `read`. */
+export function isReadOnlyResourceConnection(conn: ResourceConnection): boolean {
+  return isManagedResourceConnection(conn) && conn.permission === "read";
 }
 
 /**

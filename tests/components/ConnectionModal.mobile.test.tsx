@@ -1,4 +1,5 @@
 import "../setup-dom";
+import { serverHeldSecretsStub } from "../helpers/server-held-secrets";
 import "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
@@ -182,6 +183,7 @@ function getDefaultForm() {
       },
       { value: "mysql", label: "MySQL", icon: () => React.createElement("span", null, "MY"), color: "text-hue-amber" },
     ],
+    secrets: serverHeldSecretsStub(),
     ...mockFormOverrides,
   };
 }

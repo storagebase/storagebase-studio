@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { clientAddress } from "@/lib/api/client-address";
 import { emitAuditEvent, type AuditReason } from "@/lib/audit";
 import { AuthConfigError } from "@/lib/auth-errors";
+import { claimAtPath, normalizeAppRoles } from "@/lib/access/session";
 
 const ROUTE = "GET /api/auth/oidc/callback";
 
@@ -84,7 +85,10 @@ export async function GET(request: Request) {
 
     // Create local JWT session (same as password login)
     const username = claims.email || claims.preferred_username || claims.sub || role;
-    await login(role, username);
+    // StorageBase fork: the role claim's values ride in the session as app roles, so connection
+    // groups can be bound to a generic OIDC provider's roles too (docs/ENTRA.md).
+    const appRoles = normalizeAppRoles(claimAtPath(claims as Record<string, unknown>, oidcConfig.roleClaim));
+    await login(role, username, { provider: "oidc", appRoles });
 
     // Clean up state cookie
     cookieStore.delete({ name: "oidc-state", path: getBasePath() || "/" });
@@ -100,6 +104,8 @@ export async function GET(request: Request) {
         user: String(username),
         result: "success",
         ip,
+        authProvider: "oidc",
+        ...(appRoles.length > 0 ? { appRoles: appRoles.join(",") } : {}),
       });
     } catch (auditError) {
       logger.error("Failed to record OIDC login_success audit event", auditError, { route: ROUTE });

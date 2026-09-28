@@ -10,8 +10,8 @@ Three SDKs share the credential: `@azure/keyvault-secrets`,
 `@azure/keyvault-keys` and `@azure/keyvault-certificates` (all
 `serverExternalPackages`, staged by `scripts/stage-resource-sdks.mjs`).
 
-Vault connections list in the sidebar's **Connections** list and open the
-**vault workbench** in the main area (`opensWorkbench()`), like Kafka. The
+Vault connections list on the **Vaults** page (`/vaults`) and open the
+**vault workbench** full-page there (`opensWorkbench()`), like Kafka. The
 generic tree (`/api/resources/tree`) and secret routes still answer for API
 callers; no dialog viewer exists for vault types any more.
 
@@ -61,25 +61,74 @@ material, certificate contents and passwords never enter an event
 
 ## Exclusion rules (admin)
 
-Per vault identity (`vaultIdentity`: type + normalized vault URL), a list of
-`{ pattern, kind: exact|glob|regex, objectType: secret|key|certificate|any,
-note }`, stored in the fork settings store (`getForkStore().setSetting`,
-key `vault-exclusions:<type>:<address>`). Enforced server-side on every
-vault route — workbench, legacy secret routes and the tree — for everyone,
-admins included: excluded objects vanish from lists, version and deleted
-lists, and any by-name call answers the same 404 a missing object gets.
-Matching is case-insensitive; globs are a linear two-pointer match; regexes
-are restricted at save AND load time (no backreferences or lookaround, no
-repeated group containing a repetition or alternation, at most two unbounded
-quantifiers, 256-character evaluation bound). Fail closed: an unreadable
-store or an invalid stored row refuses the vault instead of showing it
-unfiltered. With `STORAGE_PROVIDER=local` no store exists, so no rule can be
-saved (409 with the reason).
+One **global** rule list, managed in **Admin → Access → Vault exclusions**
+and stored once in the fork settings store (`getForkStore()`, key
+`vault-exclusions:global`). A rule is
 
-Admin API: `GET/PUT /api/resources/admin/vault-exclusions?type=&address=`
-(admin role, audited; a PUT records the before/after rule sets) and
-`POST …/preview` (counts per type of what a draft would hide — never names).
-The workbench shows the editor to admins (Exclusions button).
+```
+{ id, vaultType: <vault type-id>|any, vaultPattern, vaultPatternKind: exact|glob|regex,
+  objectPattern, objectPatternKind: exact|glob|regex,
+  objectType: secret|key|certificate|any, enabled, note, updatedBy, updatedAt }
+```
+
+and reads "on vaults of `vaultType` whose identity matches `vaultPattern`,
+hide `objectType` objects whose name matches `objectPattern`".
+
+**Where the vault identity comes from.** On every vault request the server
+takes the connection it runs against — for a managed connection
+(`managed:<id>`) the record it resolved and decrypted itself — and derives
+the strings a vault pattern is matched against (`vaultIdentities` in
+`src/lib/resources/vault-exclusions.ts`). Nothing the browser sends names the
+vault: the admin API has no address parameter, and an inline `connection`
+riding beside a `connectionId` is ignored. A rule applies when its pattern
+matches ANY identity string:
+
+| Vault type | Identity strings (lower-cased) |
+|---|---|
+| Azure Key Vault | the vault **name** (first DNS label of the vault host), the host, the vault URL. The URL is `endpoint` when set — the provider connects there, so it wins over `vaultName` — else `https://<vaultName>.vault.azure.net`. |
+| HashiCorp Vault / OpenBao | the endpoint host, the endpoint URL, and `<url>#<namespace>` when a namespace is set (see their docs) |
+| AWS Secrets Manager / KMS | the region, plus the endpoint URL and `<region>@<url>` when an endpoint override is set (see their docs) |
+
+URLs are normalised (lower case, no trailing slash, no default port). A rule
+matches the address the connection uses; an alias of the same vault (another
+host name for one HashiCorp server, say) is a different identity, so a rule
+that must hold everywhere uses a vault-type-wide pattern (`*`).
+
+Enforced server-side on every vault route — workbench, legacy secret routes
+and the tree — for everyone, admins included: excluded objects vanish from
+lists, version and deleted lists, and any by-name call answers the same 404 a
+missing object gets. Matching is case-insensitive for both patterns; globs are
+a linear two-pointer match anchored at both ends; regexes are unanchored
+(`^…$` anchors them) and restricted at save AND load time (no backreferences
+or lookaround, no repeated group containing a repetition or alternation, at
+most two unbounded quantifiers, 256-character evaluation bound, 200-character
+patterns, at most 500 rules). The compiled list is cached in-process for 10 s
+and dropped on every save, so a change applies at once on the replica that
+saved it and within 10 s on the others. Fail closed: an unreadable store or an
+invalid stored row refuses the vault instead of showing it unfiltered. With
+`STORAGE_PROVIDER=local` no store exists, so no rule can be saved (409 with
+the reason).
+
+**Migration.** Rules used to be stored per vault as
+`vault-exclusions:<type>:<address>`, keyed by an address the browser computed
+— which for a managed connection (whose vault name the browser never has)
+came out as `https://.vault.azure.net` and applied to no vault. While
+`vault-exclusions:global` does not exist, the first read folds every such key
+into global rules (`vaultType` = the key's type, `vaultPattern` = the
+address, `exact`; ids derived from the key so replicas agree) and writes the
+global setting, which ends the migration. Keys whose vault part is empty
+(`https://.vault.azure.net`, `#<namespace>` with no endpoint, AWS `default`)
+are dropped with a warning; an invalid legacy row refuses (fail closed). The
+old keys stay in the table, unread.
+
+Admin API (admin role; every call audited as `resource_operation`, changes
+with the rule before and after): `GET /api/resources/admin/vault-exclusions`
+(the list, plus `storeAvailable`), `POST` (create), `PUT` (`{ id, ...rule }`),
+`DELETE ?id=`; `POST …/preview` (`{ connectionId | connection, rules? }` —
+the saved rules or the given drafts; answers `applicableRules` and counts per
+type of what they would hide, never names; the listing is read unfiltered on
+the server); `POST …/applicable` (the count the workbench's read-only notice
+shows admins: "N exclusion rules apply to this vault — manage them in Admin").
 
 ## Legacy operations
 
@@ -102,8 +151,11 @@ three SDKs and @azure/identity with `mock.module` — there is NO emulator
 documented contracts. The fake counts `getSecret` calls, so "opening a
 secret never reads its value" is asserted. Routes:
 `tests/api/resources/vault-routes.test.ts`, exclusions and admin API:
-`tests/api/resources/vault-exclusions.test.ts`; UI:
-`tests/components/resources/vault/`.
+`tests/api/resources/vault-exclusions.test.ts`, rules and migration:
+`tests/unit/lib/resources/vault-exclusions*.test.ts`, end to end on a managed
+connection (and no credential in any response):
+`tests/security/vault-exclusions-server-side.test.ts`; UI:
+`tests/components/resources/vault/`, `tests/components/admin/access/VaultExclusionsPanel.test.tsx`.
 
 ## Known limitations
 

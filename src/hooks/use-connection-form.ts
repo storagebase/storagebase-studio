@@ -14,6 +14,8 @@ import {
 import { getDBConfig, takesConnectionField } from "@/lib/db-ui-config";
 import { parseConnectionString } from "@/lib/connection-string-parser";
 import { newLocalId } from "@/lib/ids";
+import { UserConnectionRequestError } from "@/lib/user-connections/client"; // StorageBase fork
+import { useServerHeldSecrets } from "@/lib/user-connections/use-server-held-secrets"; // StorageBase fork
 
 /**
  * Whether this editor OWNS a connection field or merely carries it.
@@ -73,6 +75,9 @@ const FIELD_OWNERSHIP: Record<keyof DatabaseConnection, FieldOwnership> = {
   seedId: "preserved",
   agentUser: "preserved",
   agentPassword: "preserved",
+  // Written by the server alone (src/lib/user-connections): the save answers the connection with
+  // it, so a form that carried the old list would claim secrets the save just cleared.
+  savedSecrets: "edited",
 };
 
 const SSL_OWNERSHIP: Record<keyof SSLConfig, FieldOwnership> = {
@@ -227,6 +232,13 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
   const [sshPassphrase, setSSHPassphrase] = useState("");
 
   const isEditMode = !!editConnection;
+  // StorageBase fork: where the credentials typed here live (src/lib/user-connections).
+  const secrets = useServerHeldSecrets({
+    kind: "database",
+    editConnection,
+    isOpen,
+    hostManaged: !!onTestConnection,
+  });
 
   // Populate form when editing.
   //
@@ -499,15 +511,18 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       // Platform adapter: use callback instead of fetch
       if (onTestConnection) return await onTestConnection(conn);
 
-      const response = await appFetch("/api/db/test-connection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(conn),
-      });
+      // StorageBase fork: an edit of a server-held connection is tested with its stored secrets.
+      return secrets.probe<TestOutcome>(conn, async () => {
+        const response = await appFetch("/api/db/test-connection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(conn),
+        });
 
-      return await response.json();
+        return await response.json();
+      });
     },
-    [onTestConnection],
+    [onTestConnection, secrets],
   );
 
   const validateQueryTimeout = useCallback(() => {
@@ -607,7 +622,9 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
         return;
       }
 
-      onConnect(conn);
+      // StorageBase fork: with server storage the save goes to the server first, and the caller is
+      // handed the copy the browser may keep, which carries no secret.
+      onConnect(await secrets.persist(conn));
       setQueryTimeout("");
       // Reset form
       setName("");
@@ -617,12 +634,23 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       setConnectionString("");
       setMongoConnectionMode("host");
       setTestResult(null);
-    } catch {
-      setTestResult({ tone: "error", message: "Network error - could not reach server" });
+    } catch (error) {
+      setTestResult({
+        tone: "error",
+        message: error instanceof UserConnectionRequestError ? error.message : "Network error - could not reach server",
+      });
     } finally {
       setIsTesting(false);
     }
-  }, [buildConnection, degradedSaveAcknowledged, isEditMode, onConnect, probeConnection, validateQueryTimeout]);
+  }, [
+    buildConnection,
+    degradedSaveAcknowledged,
+    isEditMode,
+    onConnect,
+    probeConnection,
+    secrets,
+    validateQueryTimeout,
+  ]);
 
   const handlePasteConnectionString = useCallback(() => {
     const trimmed = pasteInput.trim();
@@ -819,6 +847,9 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
     setSSHPrivateKey,
     sshPassphrase,
     setSSHPassphrase,
+
+    // StorageBase fork: saved-secret hints and the credential-storage notice
+    secrets,
 
     // Handlers
     handleTestConnection,

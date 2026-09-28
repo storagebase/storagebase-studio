@@ -15,6 +15,7 @@ import { hmacHex, secretsMatch } from "@/lib/auth-compare";
 import { emitAuditEvent, MAX_AUDIT_FIELD_LENGTH, type AuditReason } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { claimTotpStep, verifyTotp } from "@/lib/totp";
+import { localLoginGate } from "@/lib/access/local-login";
 
 const ROUTE = "POST /api/auth/login";
 
@@ -74,6 +75,9 @@ export async function POST(request: NextRequest) {
     // refused before this route ever attempts to parse anything - including a malformed body,
     // which the catch below cannot reach for the same reason it cannot be enforced afterwards.
     enforceLoginLimit("login_client", clientKey, "anonymous", ip);
+    // StorageBase fork: the local-login policy (break-glass once Entra carries sign-in).
+    const localLogin = await localLoginGate(ip);
+    if (localLogin.refused) return localLogin.refused;
 
     let email: unknown;
     let password: unknown;
@@ -129,7 +133,7 @@ export async function POST(request: NextRequest) {
     const user = users.find((u) => u.email === submittedEmail);
     const candidate = user?.password ?? DUMMY_PASSWORD;
     const passwordMatches = secretsMatch(submittedPassword, candidate);
-    const matched = user && passwordMatches ? user : null;
+    const matched = user && passwordMatches && localLogin.allows(user.role) ? user : null;
 
     // Second factor. Reached only once the password already matched, so answering "code required"
     // here is not the account-enumeration oracle the uniform 401 below exists to prevent: an

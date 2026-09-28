@@ -1,9 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { KafkaIcon } from "@/components/resources/resource-icons";
 import type { ResourceConnection } from "@/lib/resources/types";
 import { SectionTabs } from "./parts";
 import { KafkaBrokersPanel } from "./KafkaBrokersPanel";
@@ -21,22 +18,23 @@ const SECTIONS = [
 ] as const;
 
 /**
- * The Kafka workbench — what selecting a Kafka connection opens in the main
- * area, in place of the resource tree + message dialog the other messaging
- * types use. Three areas: topics (list, detail, messages, config), consumer
- * groups (list, detail, offset reset) and the broker overview.
+ * The Kafka workbench — what a Kafka connection opens full-page on the
+ * Messaging page, in place of the resource tree + message viewer the other
+ * messaging types use. Three areas: topics (list, detail, messages, config),
+ * consumer groups (list, detail, offset reset) and the broker overview. The
+ * page header names the connection; this owns everything below it.
  *
- * The shell mounts it keyed by connection id, so switching clusters starts
+ * The page mounts it keyed by connection id, so switching clusters starts
  * from a clean slate rather than showing one cluster's topic on another.
+ * `readOnly` (a managed connection granted read) withholds every write —
+ * create, delete, partitions, config, produce, offset reset — and keeps reads.
  */
 export function KafkaWorkbench({
   connection,
-  onClose,
-  onEditConnection,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
-  onClose: () => void;
-  onEditConnection?: (connection: ResourceConnection) => void;
+  readOnly?: boolean;
 }) {
   const [section, setSection] = useState<Section>("topics");
   const [topic, setTopic] = useState<string | null>(null);
@@ -44,39 +42,19 @@ export function KafkaWorkbench({
 
   return (
     <div data-testid="kafka-workbench" className="h-full flex flex-col bg-surface text-fg">
-      <header className="h-12 px-4 flex items-center gap-2 border-b border-hairline shrink-0">
-        <KafkaIcon className="w-4 h-4 text-hue-violet" />
-        <span className="text-sm font-medium truncate">{connection.name}</span>
-        <span className="text-xs font-mono text-fg-subtle truncate">{connection.endpoint}</span>
-        <div className="ml-auto flex items-center gap-1">
-          {onEditConnection && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-              aria-label="Edit connection"
-              onClick={() => onEditConnection(connection)}
-            >
-              <Pencil strokeWidth={1.5} className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" className="text-xs" aria-label="Close workbench" onClick={onClose}>
-            <X strokeWidth={1.5} className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </header>
       <div className="px-4 pt-2 shrink-0">
         <SectionTabs label="Kafka sections" tabs={SECTIONS} active={section} onChange={setSection} />
       </div>
       <div className="flex-1 min-h-0 overflow-auto p-4">
         {section === "topics" &&
           (topic === null ? (
-            <KafkaTopicsPanel connection={connection} onOpenTopic={setTopic} />
+            <KafkaTopicsPanel connection={connection} onOpenTopic={setTopic} readOnly={readOnly} />
           ) : (
             <KafkaTopicDetail
               key={topic}
               connection={connection}
               topic={topic}
+              readOnly={readOnly}
               onBack={() => setTopic(null)}
               onDeleted={() => setTopic(null)}
             />
@@ -89,6 +67,7 @@ export function KafkaWorkbench({
               key={groupId}
               connection={connection}
               groupId={groupId}
+              readOnly={readOnly}
               onBack={() => setGroupId(null)}
               onDeleted={() => setGroupId(null)}
             />

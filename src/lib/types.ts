@@ -297,6 +297,12 @@ export interface DatabaseConnection {
   seedId?: string; // stable reference to seed config ID
   agentUser?: string; // optional least-privilege role for the agent read-only execution profile (#328)
   agentPassword?: string; // password for agentUser; secret-classified, sealed at rest by connection-secrets
+  /**
+   * StorageBase fork (src/lib/user-connections): present when the server holds this connection's
+   * credentials, listing the secret paths it holds (`password`, `sshTunnel.privateKey`). Such a
+   * connection carries no secret in the browser and is addressed as `user:<id>`.
+   */
+  savedSecrets?: string[];
 }
 
 export interface ForeignKeySchema {

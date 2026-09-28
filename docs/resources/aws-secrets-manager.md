@@ -20,16 +20,20 @@ Capabilities: vault category, port 443, no SSH tunnel. Labels: Secrets/Secrets.
 
 ## Vault workbench
 
-Opens in the main area from the Connections list (`opensWorkbench()`),
+Opens full-page on the Vaults page (`/vaults`, `opensWorkbench()`),
 served by the generic `BasicVaultWorkbench` over this provider's
 `VaultOperations` (src/lib/resources/providers/vaults/basic-workbench.ts):
 the tree is flattened into one bounded list (1000 objects, 200 levels) whose
 names are the by-name addresses. Declared flags: `vault.secrets`, `vault.secret.reveal`, `vault.secret.write`, `vault.delete`. There is no soft
 delete here, so the workbench's delete asks for the typed name and says it is
 permanent (the service still schedules its 30-day recovery window). Details come from the listing, never from a value read;
-Reveal is the only call that reads one. Admin exclusion rules apply exactly
-as for Azure Key Vault (docs/resources/azure-key-vault.md, "Exclusion
-rules"), keyed by region (+ endpoint override): two accounts in one region share rules, the over-hiding direction.
+Reveal is the only call that reads one. Admin exclusion rules (one global
+list, Admin → Access → Vault exclusions) apply exactly as for Azure Key Vault
+(docs/resources/azure-key-vault.md, "Exclusion rules"); a rule's vault pattern
+is matched on the server against this connection's region, and — when an
+endpoint override is set — the endpoint URL and `<region>@<url>`. The account
+is not knowable from the record, so two accounts in one region match alike:
+the over-hiding direction.
 
 ## Testing
 

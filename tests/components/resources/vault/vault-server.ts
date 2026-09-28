@@ -4,7 +4,7 @@ import type { ResourceConnection } from "@/lib/resources/types";
 /**
  * A routed fake of the vault workbench's server side for component tests:
  * /api/resources/meta (the flags), /api/resources/vault/* and the admin
- * exclusion API. Answers on exact routes (`mockGlobalFetch` matches by
+ * exclusion count the workbench notice reads. Answers on exact routes (`mockGlobalFetch` matches by
  * substring, which cannot tell `deleted` from `deleted/purge`).
  */
 
@@ -113,8 +113,7 @@ export const defaultHandlers: Record<string, Handler> = {
   }),
   "deleted/recover": () => ({ json: { recovered: true } }),
   "deleted/purge": () => ({ json: { purged: true } }),
-  exclusions: () => ({ json: { rules: [{ pattern: "hidden-*", kind: "glob", objectType: "any", note: "" }] } }),
-  "exclusions/preview": () => ({ json: { counts: { secret: { total: 3, hidden: 1 } } } }),
+  "exclusions/applicable": () => ({ json: { applicableRules: 2 } }),
 };
 
 export interface VaultCall {

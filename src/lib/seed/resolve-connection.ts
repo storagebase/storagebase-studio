@@ -1,7 +1,7 @@
 import type { DatabaseConnection } from "@/lib/types";
-import { getSeedConnectionById, getSeedConnectionByIdUnfiltered } from "./index";
+import { getSeedConnectionByIdUnfiltered } from "./index";
 import { logger } from "@/lib/logger";
-
+import { resolveOwnedConnection, resolveSeedForSession } from "@/lib/access/seed-hooks"; // StorageBase fork (see STORAGEBASE.md)
 export class SeedConnectionError extends Error {
   constructor(
     message: string,
@@ -23,12 +23,14 @@ export async function resolveConnection(
   }
 
   if (connectionId) {
+    const owned = await resolveOwnedConnection(connectionId, session); // StorageBase fork: `user:<id>`
+    if (owned) return owned;
     if (!connectionId.startsWith("seed:")) {
       throw new SeedConnectionError("Invalid connection ID format", 400);
     }
 
     const seedId = connectionId.slice(5);
-    const seedConn = await getSeedConnectionById(seedId, [session.role]);
+    const seedConn = await resolveSeedForSession(seedId, session); // StorageBase fork: managed seeds, app roles
 
     if (!seedConn) {
       const exists = await getSeedConnectionByIdUnfiltered(seedId);

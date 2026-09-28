@@ -19,12 +19,6 @@ interface ConnectionsListProps {
   /** Persists a new full order after a drag-and-drop completes. */
   onReorderConnections?: (order: string[]) => void;
   onAddConnection: () => void;
-  /**
-   * Rows appended to the Connections section after the database connections
-   * (StorageBase fork: Kafka workbench connections). Opaque to this list — no
-   * favorites, no drag — and when present they replace the empty-state card.
-   */
-  trailingItems?: React.ReactNode;
 }
 
 /** Section header matching the "Connections" label + divider style already used below. */
@@ -54,7 +48,6 @@ export function ConnectionsList({
   connectionOrder,
   onReorderConnections,
   onAddConnection,
-  trailingItems,
 }: ConnectionsListProps) {
   const ordered = applyConnectionOrder(connections, connectionOrder ?? []);
   const reorderable = onReorderConnections !== undefined;
@@ -127,12 +120,12 @@ export function ConnectionsList({
         </section>
       )}
 
-      {(rest.length > 0 || connections.length === 0 || trailingItems !== undefined) && (
+      {(rest.length > 0 || connections.length === 0) && (
         <section>
           <SectionHeader label="Connections" />
 
           <div className="space-y-0.5">
-            {connections.length === 0 && trailingItems === undefined ? (
+            {connections.length === 0 ? (
               <div className="px-3 py-6 text-center border border-dashed border-border/50 rounded-lg mx-2">
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
                   No database connections established yet.
@@ -144,7 +137,6 @@ export function ConnectionsList({
             ) : (
               rest.map((conn) => renderItem(conn, rest))
             )}
-            {trailingItems}
           </div>
         </section>
       )}

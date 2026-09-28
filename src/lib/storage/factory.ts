@@ -6,6 +6,7 @@
 
 import type { ServerStorageProvider, StorageConfigResponse } from "./types";
 import { withCredentialEncryption } from "./encrypting-provider";
+import { withServerHeldSecrets } from "@/lib/user-connections/provider"; // StorageBase fork (see STORAGEBASE.md)
 
 let _provider: ServerStorageProvider | null = null;
 let _initialized = false;
@@ -74,12 +75,12 @@ export async function getStorageProvider(): Promise<ServerStorageProvider | null
     switch (providerType) {
       case "sqlite": {
         const { SQLiteStorageProvider } = await import("./providers/sqlite");
-        _provider = withCredentialEncryption(new SQLiteStorageProvider());
+        _provider = withServerHeldSecrets(withCredentialEncryption(new SQLiteStorageProvider()));
         break;
       }
       case "postgres": {
         const { PostgresStorageProvider } = await import("./providers/postgres");
-        _provider = withCredentialEncryption(new PostgresStorageProvider());
+        _provider = withServerHeldSecrets(withCredentialEncryption(new PostgresStorageProvider()));
         break;
       }
     }

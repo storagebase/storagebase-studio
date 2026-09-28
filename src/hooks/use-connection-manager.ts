@@ -99,7 +99,7 @@ export function useConnectionManager(storageReady = false) {
       const isCurrent = reads.begin();
       setIsLoadingSchema(true);
 
-      const payload = conn.managed && conn.seedId ? { connectionId: `seed:${conn.seedId}` } : { connection: conn };
+      const payload = buildConnectionPayload(conn);
       const init = (path: string, body: unknown = payload): [string, RequestInit] => [
         path,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },

@@ -26,11 +26,14 @@ export function KafkaGroupDetail({
   groupId,
   onBack,
   onDeleted,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
   groupId: string;
   onBack: () => void;
   onDeleted: () => void;
+  /** Withholds reset offsets and delete: members and offsets still read. */
+  readOnly?: boolean;
 }) {
   const read = useCallback(
     () => postKafka<KafkaConsumerGroupDetail>(connection, "group", { groupId }),
@@ -171,84 +174,88 @@ export function KafkaGroupDetail({
             )}
           </section>
 
-          <section
-            data-testid="kafka-reset-offsets"
-            className="rounded-md border border-hairline bg-panel p-3 space-y-2"
-          >
-            <h3 className="text-xs font-medium text-fg">Reset offsets</h3>
-            {blocked && <p className="text-xs text-warning leading-relaxed">{blocked}</p>}
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="kafka-reset-topic" className="text-xs text-fg-muted">
-                  Topic
-                </Label>
-                <Input
-                  id="kafka-reset-topic"
-                  list="kafka-reset-topics"
-                  value={resetTopic}
-                  onChange={(e) => setResetTopic(e.target.value)}
-                  className={`${fieldClass} w-56`}
-                />
-                <datalist id="kafka-reset-topics">
-                  {topics.map((topic) => (
-                    <option key={topic} value={topic}>
-                      {topic}
-                    </option>
-                  ))}
-                </datalist>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="kafka-reset-mode" className="text-xs text-fg-muted">
-                  To
-                </Label>
-                <select
-                  id="kafka-reset-mode"
-                  value={resetMode}
-                  onChange={(e) => setResetMode(e.target.value as ResetMode)}
-                  className={selectClass}
-                >
-                  <option value="earliest">Earliest</option>
-                  <option value="latest">Latest</option>
-                  <option value="timestamp">Timestamp</option>
-                  <option value="offset">Specific offset</option>
-                </select>
-              </div>
-              {resetMode === "offset" && (
-                <Input
-                  aria-label="Reset offset"
-                  value={resetOffset}
-                  onChange={(e) => setResetOffset(e.target.value)}
-                  className={`${fieldClass} w-28`}
-                />
-              )}
-              {resetMode === "timestamp" && (
-                <Input
-                  aria-label="Reset timestamp"
-                  type="datetime-local"
-                  value={resetTime}
-                  onChange={(e) => setResetTime(e.target.value)}
-                  className={`${fieldClass} w-52`}
-                />
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                disabled={blocked !== null || resetTopic.trim() === ""}
-                onClick={() => void reset()}
+          {!readOnly && (
+            <>
+              <section
+                data-testid="kafka-reset-offsets"
+                className="rounded-md border border-hairline bg-panel p-3 space-y-2"
               >
-                Reset offsets
-              </Button>
-            </div>
-          </section>
+                <h3 className="text-xs font-medium text-fg">Reset offsets</h3>
+                {blocked && <p className="text-xs text-warning leading-relaxed">{blocked}</p>}
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="kafka-reset-topic" className="text-xs text-fg-muted">
+                      Topic
+                    </Label>
+                    <Input
+                      id="kafka-reset-topic"
+                      list="kafka-reset-topics"
+                      value={resetTopic}
+                      onChange={(e) => setResetTopic(e.target.value)}
+                      className={`${fieldClass} w-56`}
+                    />
+                    <datalist id="kafka-reset-topics">
+                      {topics.map((topic) => (
+                        <option key={topic} value={topic}>
+                          {topic}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="kafka-reset-mode" className="text-xs text-fg-muted">
+                      To
+                    </Label>
+                    <select
+                      id="kafka-reset-mode"
+                      value={resetMode}
+                      onChange={(e) => setResetMode(e.target.value as ResetMode)}
+                      className={selectClass}
+                    >
+                      <option value="earliest">Earliest</option>
+                      <option value="latest">Latest</option>
+                      <option value="timestamp">Timestamp</option>
+                      <option value="offset">Specific offset</option>
+                    </select>
+                  </div>
+                  {resetMode === "offset" && (
+                    <Input
+                      aria-label="Reset offset"
+                      value={resetOffset}
+                      onChange={(e) => setResetOffset(e.target.value)}
+                      className={`${fieldClass} w-28`}
+                    />
+                  )}
+                  {resetMode === "timestamp" && (
+                    <Input
+                      aria-label="Reset timestamp"
+                      type="datetime-local"
+                      value={resetTime}
+                      onChange={(e) => setResetTime(e.target.value)}
+                      className={`${fieldClass} w-52`}
+                    />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    disabled={blocked !== null || resetTopic.trim() === ""}
+                    onClick={() => void reset()}
+                  >
+                    Reset offsets
+                  </Button>
+                </div>
+              </section>
 
-          <ConfirmByName
-            name={groupId}
-            action="Delete group"
-            consequence="Deleting a group removes its committed offsets; its consumers restart from their reset policy."
-            disabledReason={blocked}
-            onConfirm={deleteGroup}
-          />
+              <ConfirmByName
+                name={groupId}
+                action="Delete group"
+                consequence="Deleting a group removes its committed offsets; its consumers restart from their reset policy."
+                disabledReason={blocked}
+                onConfirm={deleteGroup}
+              />
+            </>
+          )}
         </>
       )}
     </div>

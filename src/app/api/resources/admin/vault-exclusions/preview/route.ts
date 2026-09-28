@@ -1,20 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { guardAdminRoute } from "@/lib/api/resource-admin";
-import { handleResourceRequest } from "@/lib/api/resource-route";
+import { handleResourceRequest, ResourceRouteError } from "@/lib/api/resource-route";
 import { auditedResourceRead } from "@/lib/api/resource-audit";
 import { resolveRawVaultWorkbench } from "@/lib/api/resource-vault-workbench";
 import { getOrCreateResourceProvider } from "@/lib/resources/factory";
 import { VAULT_OBJECT_TYPES } from "@/lib/resources/operations";
-import { compileExclusions, validateExclusionRules } from "@/lib/resources/vault-exclusions";
+import { RESOURCE_CATEGORY_OF } from "@/lib/resources/types";
+import { compileVaultExclusions, validateRuleInput } from "@/lib/resources/vault-exclusions";
+import { loadVaultExclusions } from "@/lib/resources/vault-exclusions-store";
 
 export const dynamic = "force-dynamic";
 
 const TYPE_FLAG = { secret: "vault.secrets", key: "vault.keys", certificate: "vault.certificates" } as const;
 
 /**
- * Admin-only: "these rules would hide N of M objects", per object type. The
- * listing is read UNFILTERED on the server and only COUNTS leave it — never a
- * name — so previewing a rule set cannot reveal what the current one hides.
+ * Admin-only: "these rules would hide N of M objects of this vault", per
+ * object type. The vault is a connection the admin can use — their own inline,
+ * or a managed one by `connectionId`, resolved and decrypted on the server —
+ * and the rules are the SAVED ones, or `rules` (drafts) when given. Which rules
+ * apply is decided exactly as enforcement decides it, on the vault identity the
+ * server derives. The listing is read UNFILTERED on the server and only COUNTS
+ * leave it — never a name — so previewing cannot reveal what the rules hide.
  */
 export async function POST(req: NextRequest) {
   const route = "POST /api/resources/admin/vault-exclusions/preview";
@@ -24,7 +30,17 @@ export async function POST(req: NextRequest) {
     req,
     "api/resources/admin/vault-exclusions/preview",
     async (connection, body, context) => {
-      const matcher = compileExclusions(validateExclusionRules(body.rules));
+      if (RESOURCE_CATEGORY_OF[connection.type] !== "vault") {
+        throw new ResourceRouteError("Preview needs a vault connection", 400);
+      }
+      let matcher;
+      if (body.rules === undefined) {
+        matcher = await loadVaultExclusions(connection);
+      } else {
+        if (!Array.isArray(body.rules)) throw new ResourceRouteError('"rules" must be an array when present', 400);
+        const drafts = body.rules.map((rule, index) => validateRuleInput(rule, `Rule ${index + 1}`));
+        matcher = compileVaultExclusions(drafts).forConnection(connection);
+      }
       const counts = await auditedResourceRead(
         context,
         req,
@@ -43,7 +59,7 @@ export async function POST(req: NextRequest) {
           return result;
         },
       );
-      return NextResponse.json({ counts });
+      return NextResponse.json({ applicableRules: matcher.ruleCount, counts });
     },
   );
 }

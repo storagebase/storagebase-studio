@@ -11,10 +11,9 @@ built in one place (`getKafka()`), which is where `ssl` / `sasl` options
 land when the connection record grows the fields.
 
 Kafka connections are stored like every resource connection (the
-`resource_connections` collection) and created from the same connection
-modal (Messaging tab) or the Resources "+". The shell lists them inside the
-sidebar's **Connections** list, beside the databases, not under Resources —
-see "Workbench" below.
+`resource_connections` collection) and created from the **Messaging** page
+(`/messaging`, its "+"), which lists them beside the RabbitMQ and SQS
+connections — see "Workbench" below.
 
 ## Browse surface
 
@@ -45,7 +44,7 @@ bodies, seeking and headers are the workbench read's (`readMessages`, below).
 
 ## Operations
 
-Generic (the Resources section and `/api/resources/message/*`): `tree`,
+Generic (`/api/resources/message/*`, for API callers; the UI uses the workbench): `tree`,
 `message.browse`, `message.publish` (key via `attributes.key`, rest as
 headers).
 
@@ -54,7 +53,7 @@ routes under `/api/resources/kafka/*`), gated by four capability flags:
 
 | Flag | Routes | Provider methods |
 |---|---|---|
-| `kafka.inspect` | `cluster`, `topics`, `topic`, `messages`, `groups`, `group` | `describeCluster`, `listTopicSummaries`, `describeTopic`, `readMessages`, `listConsumerGroups`, `describeConsumerGroup` |
+| `kafka.inspect` | `cluster`, `topics`, `topics/counts`, `topic`, `messages`, `groups`, `groups/lag`, `group` | `describeCluster`, `listTopicSummaries`, `countTopicMessages`, `describeTopic`, `readMessages`, `listConsumerGroups`, `measureGroupLag`, `describeConsumerGroup` |
 | `kafka.topic.write` | `topic/create`, `topic/delete`, `topic/partitions`, `topic/config` | `createTopic`, `deleteTopic`, `addPartitions`, `alterTopicConfigs` |
 | `kafka.produce` | `produce` | `produceMessage` |
 | `kafka.group.write` | `group/reset-offsets`, `group/delete` | `resetConsumerGroupOffsets`, `deleteConsumerGroup` |
@@ -64,7 +63,8 @@ correlation id, the caller's address and user agent) with actions
 `kafka.topic.create|delete|partitions|config`, `kafka.produce`,
 `kafka.group.reset-offsets|delete`. Every read is audited too, as one
 `resource_operation` event with its outcome (`kafka.cluster.read`, `kafka.topics.list`,
-`kafka.topic.read`, `kafka.messages.read` with the topic, partition, seek position, count, bytes
+`kafka.topics.counts` and `kafka.groups.lag` with how many names were measured and how many were
+unreadable — never the names — `kafka.topic.read`, `kafka.messages.read` with the topic, partition, seek position, count, bytes
 and offset range — never a key, value or header — `kafka.groups.list`, `kafka.group.read`). Writes follow the
 resource-write RBAC precedent: any authenticated session, no admin gate. Never `message.purge`: Kafka has no purge semantic, so the
 provider throws `ResourceOperationUnsupportedError` and the capability gate
@@ -75,15 +75,17 @@ Capabilities: messaging, port 9092, no SSH tunnel. Labels: Topics/Messages.
 
 ## Workbench
 
-Selecting a Kafka connection opens `KafkaWorkbench`
-(`src/components/resources/kafka/`) over the editor in the main area — the
-editor stays mounted underneath and returns on close or on selecting a
-database connection. Three areas:
+Selecting a Kafka connection on the Messaging page opens `KafkaWorkbench`
+(`src/components/resources/kafka/`) full-page, under the page header that
+names the connection and its status. A managed connection granted read opens
+it read-only: every write below is withheld, every read stays. Three areas:
 
 - **Topics** — list with partitions, replication factor, under-replicated
   count and an approximate message count (sum of high minus low
-  watermarks; compaction and transaction markers make it approximate);
-  `__*` topics are a toggle, not hidden. Detail: per-partition leader,
+  watermarks; compaction and transaction markers make it approximate),
+  measured lazily for the rows on screen (see "Lazy listings");
+  `__*` topics are a toggle, not hidden; sortable by name, partitions and
+  count. Detail: per-partition leader,
   replicas, ISR, earliest/latest offset; configuration with source, edit,
   reset-to-default and add-override; create (name, partitions, RF,
   configs); add partitions (upward only, 409 otherwise); delete with a typed
@@ -93,7 +95,12 @@ database connection. Three areas:
   values pretty-printed on expand; non-UTF-8 bytes as base64; a client-side
   filter over the fetched page. Produce with key, value, headers and an
   optional partition.
-- **Consumer groups** — state, protocol, members and total lag; detail with
+- **Consumer groups** — kafbat-ui's Consumers layout: Group ID, Num of
+  members, Num of topics, Consumer lag, Coordinator and State, every column
+  sortable, "Search by Consumer Group ID" and a state filter (All / Stable /
+  Rebalancing / Empty / Dead). State is a badge: STABLE green,
+  PREPARING_REBALANCE / COMPLETING_REBALANCE (and the pre-2.x AWAITING_SYNC)
+  amber "rebalancing", EMPTY grey, DEAD red, anything else UNKNOWN. Detail with
   members (client id, host, decoded assignments) and per-partition
   committed / end offset / lag; reset offsets to earliest / latest /
   timestamp / offset and delete — both only while the group is **Empty**
@@ -130,16 +137,60 @@ database connection. Three areas:
   `listTopics` / metadata failures fail a read. A topic whose offsets cannot
   be read answers `messageCount: null` with `countError` (the UI shows "—"
   with the reason on hover); a topic with no partition metadata or a
-  leaderless partition is not asked at all. Topic detail keeps partitions and
+  leaderless partition is not asked at all, and a name the cluster does not
+  have answers `countError: "topic does not exist"`. Topic detail keeps partitions and
   configs with null offsets and `offsetsError`. Consumer-group lag: an
   unreadable topic's rows get `endOffset: null` + `endOffsetError` (cached,
   so it is tried once per listing), and the group's `totalLag` is null with
   `lagError` — never a partial total that reads as the real one — while the
-  listing still answers. Offset reads run four at a time
+  rest of the batch still answers. Offset reads run four at a time
   (`KAFKA_OFFSET_CONCURRENCY`) on the shared admin client.
-- **Bounded listings.** Message counts are measured for the first 200
-  topics (`countsTruncated`), lag for the first 50 non-internal groups
-  (`lagTruncated`); end offsets are read once per topic across groups.
+- **Lazy listings.** Measured on a live cluster with 681 topics: the listing
+  that counted messages inline (two ListOffsets calls per topic, first 200
+  topics) took 7.7 s before answering, and 669 groups' inline lag was the
+  same shape. So `topics` is metadata only (one round trip, no offset call
+  at any size) and `groups` is ListGroups + DescribeGroups plus one
+  `__consumer_offsets` metadata read for the coordinators. Numbers
+  come from `topics/counts` (`{ topics: string[] }` →
+  `{ counts: { [topic]: { messageCount, countError } } }`) and `groups/lag`
+  (`{ groupIds: string[] }` → `{ lags: { [groupId]: { totalLag, lagError, topics } } }`,
+  where `topics` counts the distinct topics the group has committed offsets
+  on — read off the same OffsetFetch as the lag, so it survives an
+  unreadable end offset and is null only when the committed offsets were),
+  each bounded to 50 names (`KAFKA_MEASURE_BATCH_LIMIT`, 400 past it) and
+  best effort per name. A count batch reads the cluster's metadata once —
+  not the named topics, because kafkajs fails the whole metadata answer for
+  one unknown name — and a lag batch reads each topic's end offsets once
+  across its groups. The UI asks only for the rows the virtualized table
+  has on screen (plus its overscan), 150 ms after scrolling or filtering
+  settles, 25 names per request, two requests at a time, and caches the
+  answers per connection for the session; Refresh forgets them. A pending
+  number is a shimmer; an unreadable one or a failed request is "—" with
+  the reason on hover, never retried in a loop.
+- **Sorting by a lazy number sweeps.** Sorting groups by lag or by topics
+  has to be right over every group, not the screenful, so it queues the
+  whole filtered list behind the rows on screen through the same batches
+  (25 per request, two in flight), shows "Measuring lag n/N…" with Cancel
+  (and Resume), and re-sorts as batches land with unmeasured groups last.
+  Server side, end offsets are reused across batches for 5 s
+  (`endOffsetTtlMs`), so a sweep reads each topic about once rather than
+  once per batch; committed offsets stay one OffsetFetch per group, four at
+  a time. Every count and lag batch is deadline-bound (20 s): names still
+  pending answer "not measured within 20s" and the batch returns.
+- **Coordinator without a request per group.** kafkajs finds each group's
+  coordinator inside `describeGroups` and discards it; asking again
+  (FindCoordinator) costs a request per group. Kafka assigns it
+  deterministically — the leader of `__consumer_offsets` partition
+  `Utils.abs(groupId.hashCode()) % partitionCount` — so the listing reads
+  that topic's metadata once and derives every coordinator
+  (`groupOffsetsPartition`, Java's `String.hashCode`). Unreadable metadata or
+  a leaderless partition is "—", never a failed listing.
+- **Windowed tables.** Topic and group rows are virtualized
+  (`@tanstack/react-virtual`, fixed 33 px rows, spacer rows keep it a real
+  `<table>` with `aria-rowcount`/`aria-rowindex` and a sticky header), so
+  thousands of rows render a screenful. The filter runs on a deferred value
+  over the in-memory listing; rows are memoized, so a settled batch
+  re-renders only the rows it measured.
 
 ## Testing
 
@@ -164,6 +215,12 @@ line the client's fetch path is verified against — re-probe before moving it.
 - No SASL/TLS, Schema Registry, Kafka Connect, KSQL or ACLs.
 - Broker rack is always empty: kafkajs 2.2.4's `describeCluster` drops it.
 - No topic/partition size on disk (kafkajs has no DescribeLogDirs).
+- Topic counts are only measured for rows that have been on screen, so
+  sorting topics by count orders the measured rows first and the rest after
+  (group lag and topics sweep every group instead).
+- The coordinator is derived from the offsets-topic partitioning, not asked
+  of the broker; during a coordinator move it can name the new leader a
+  moment before the group has finished loading there.
 - A topic whose offsets kafkajs cannot read (short ListOffsets response,
   leaderless partition, mid-deletion) shows no message count, offsets or
   lag — the reason is surfaced, but the numbers are not guessed.

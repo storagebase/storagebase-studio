@@ -61,3 +61,35 @@ data:
   {{- end }}
   OIDC_ADMIN_ROLES: {{ .Values.config.oidcAdminRoles | quote }}
   {{- end }}
+  {{- /* StorageBase fork: Microsoft Entra ID sign-in and the local-login policy. Each
+         key is written only when its value is set, so the app's own default applies
+         otherwise - in particular no admin role is written unless the operator names
+         one, which leaves the app's StorageBase.Admin default in charge. Independent
+         of authProvider: Entra is its own sign-in path beside the local form. The
+         client secret is NOT here; it goes through the Secret (secret.yaml). */}}
+  {{- /* false and unset mean the same to the app (the switch starts off), so only
+         true is written. */}}
+  {{- if eq (include "storagebase-studio.entraValue" (dict "root" . "key" "enabled")) "true" }}
+  STORAGEBASE_ENTRA_ENABLED: "true"
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "tenantId") }}
+  STORAGEBASE_ENTRA_TENANT_ID: {{ . | quote }}
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "clientId") }}
+  STORAGEBASE_ENTRA_CLIENT_ID: {{ . | quote }}
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "adminRoles") }}
+  STORAGEBASE_ENTRA_ADMIN_ROLES: {{ . | quote }}
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "allowedRoles") }}
+  STORAGEBASE_ENTRA_ALLOWED_ROLES: {{ . | quote }}
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "redirectUri") }}
+  STORAGEBASE_ENTRA_REDIRECT_URI: {{ . | quote }}
+  {{- end }}
+  {{- with include "storagebase-studio.entraValue" (dict "root" . "key" "sessionHours") }}
+  STORAGEBASE_ENTRA_SESSION_HOURS: {{ . | quote }}
+  {{- end }}
+  {{- with get (.Values.storagebase | default dict) "localLogin" | default "" | toString | trim }}
+  STORAGEBASE_LOCAL_LOGIN: {{ . | quote }}
+  {{- end }}

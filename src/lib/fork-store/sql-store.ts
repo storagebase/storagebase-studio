@@ -44,6 +44,16 @@ const FORK_STORE_SCHEMA: readonly string[] = [
     updated_at TEXT NOT NULL,
     updated_by TEXT NOT NULL
   )`,
+  // The access model's records (src/lib/access/store.ts): connection groups, role bindings and
+  // managed connections, one row per record, keyed by kind so one table serves all three.
+  `CREATE TABLE IF NOT EXISTS storagebase_access_records (
+    kind       TEXT NOT NULL,
+    id         TEXT NOT NULL,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    PRIMARY KEY (kind, id)
+  )`,
 ];
 
 /** How often, at most, an append also prunes events past retention. */
@@ -137,6 +147,54 @@ export class SqlForkStore implements ForkStore {
          updated_by = excluded.updated_by`,
       [key, JSON.stringify(value), new Date(this.now()).toISOString(), actor],
     );
+  }
+
+  async listSettings<T>(prefix: string): Promise<Array<{ key: string; value: T }>> {
+    // LIKE with its own metacharacters escaped: a prefix is literal text, never a pattern. SQLite's
+    // LIKE folds ASCII case, so the rows are checked again against the exact prefix.
+    const rows = await this.driver.all<{ key: string; value: string }>(
+      "SELECT key, value FROM storagebase_settings WHERE key LIKE ? ESCAPE '\\' ORDER BY key",
+      [`${prefix.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`],
+    );
+    const settings: Array<{ key: string; value: T }> = [];
+    for (const row of rows.filter((candidate) => candidate.key.startsWith(prefix))) {
+      try {
+        settings.push({ key: row.key, value: JSON.parse(row.value) as T });
+      } catch {
+        logger.warn("Corrupted fork setting", { store: "fork-store", key: row.key });
+      }
+    }
+    return settings;
+  }
+
+  async listRecords<T>(kind: string): Promise<T[]> {
+    const rows = await this.driver.all<{ id: string; value: string }>(
+      "SELECT id, value FROM storagebase_access_records WHERE kind = ? ORDER BY id",
+      [kind],
+    );
+    const records: T[] = [];
+    for (const row of rows) {
+      try {
+        records.push(JSON.parse(row.value) as T);
+      } catch {
+        logger.warn("Skipping a corrupted access record", { store: "fork-store", kind, id: row.id });
+      }
+    }
+    return records;
+  }
+
+  async putRecord<T>(kind: string, id: string, value: T, actor: string): Promise<void> {
+    await this.driver.run(
+      `INSERT INTO storagebase_access_records (kind, id, value, updated_at, updated_by)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (kind, id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at,
+         updated_by = excluded.updated_by`,
+      [kind, id, JSON.stringify(value), new Date(this.now()).toISOString(), actor],
+    );
+  }
+
+  async deleteRecord(kind: string, id: string): Promise<void> {
+    await this.driver.run("DELETE FROM storagebase_access_records WHERE kind = ? AND id = ?", [kind, id]);
   }
 
   /** Deletes every event older than the retention window, now. */

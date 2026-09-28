@@ -278,4 +278,21 @@ describe("BlobBrowser", () => {
     });
     expect(screen.queryByTestId("blob-browser-preview")).toBeNull();
   });
+
+  test("read-only lists and previews, downloads, and offers no upload or delete", async () => {
+    mockRoutes();
+    const { unmount } = render(<BlobBrowser {...props} node={containerNode} readOnly />);
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-child")).toBeDefined();
+    });
+    expect(screen.queryByRole("button", { name: "Upload here" })).toBeNull();
+    unmount();
+
+    render(<BlobBrowser {...props} node={objectNode} readOnly />);
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-preview")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Download" })).toBeDefined();
+    expect(screen.queryByTestId("blob-browser-delete")).toBeNull();
+  });
 });

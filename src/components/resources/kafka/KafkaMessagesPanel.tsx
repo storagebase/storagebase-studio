@@ -38,10 +38,13 @@ export function KafkaMessagesPanel({
   connection,
   topic,
   partitions,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
   topic: string;
   partitions: readonly number[];
+  /** Withholds Produce: browsing stays. */
+  readOnly?: boolean;
 }) {
   const [partition, setPartition] = useState("all");
   const [mode, setMode] = useState<SeekMode>("latest");
@@ -238,10 +241,12 @@ export function KafkaMessagesPanel({
           <Play strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
           Read
         </Button>
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => setProducing((open) => !open)}>
-          <Send strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
-          Produce
-        </Button>
+        {!readOnly && (
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => setProducing((open) => !open)}>
+            <Send strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
+            Produce
+          </Button>
+        )}
       </div>
 
       {producing && (

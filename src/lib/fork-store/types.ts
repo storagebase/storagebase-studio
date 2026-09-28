@@ -1,8 +1,9 @@
 import type { AuditEvent } from "@/lib/audit";
 
 /**
- * The fork's own durable server-side tables (StorageBase fork): the audit trail and the settings
- * the fork adds. It lives beside the upstream storage layer rather than inside it — the upstream
+ * The fork's own durable server-side tables (StorageBase fork): the audit trail, the settings
+ * the fork adds, and the access model's records (connection groups, role bindings, managed
+ * connections). It lives beside the upstream storage layer rather than inside it — the upstream
  * `user_storage` table is a per-user key/value of client collections, and neither an append-only
  * event log nor an operator-wide setting is either of those.
  */
@@ -39,6 +40,14 @@ export interface ForkStore {
   queryAuditEvents(query: AuditEventQuery): Promise<AuditEventPage>;
   getSetting<T>(key: string): Promise<T | null>;
   setSetting<T>(key: string, value: T, actor: string): Promise<void>;
+  /** Every setting whose key starts with `prefix`, in key order. Corrupted rows are skipped. */
+  listSettings<T>(prefix: string): Promise<Array<{ key: string; value: T }>>;
+  /** Every record of one kind (`group`, `binding`, `connection`), in id order. Corrupted rows are skipped. */
+  listRecords<T>(kind: string): Promise<T[]>;
+  /** Inserts or replaces one record. */
+  putRecord<T>(kind: string, id: string, value: T, actor: string): Promise<void>;
+  /** Deletes one record; deleting a missing one is not an error. */
+  deleteRecord(kind: string, id: string): Promise<void>;
 }
 
 /** The largest page any caller gets, whatever it asks for. */

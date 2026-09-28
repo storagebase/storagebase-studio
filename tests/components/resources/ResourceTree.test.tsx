@@ -173,6 +173,18 @@ describe("ResourceTree", () => {
     });
   });
 
+  test("a route refusal shows the route's own { error } sentence", async () => {
+    mockGlobalFetch({
+      "api/resources/tree": { status: 502, json: { error: "RabbitMQ connect failed: ECONNREFUSED" } },
+    });
+
+    render(<ResourceTree connection={connection} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("RabbitMQ connect failed: ECONNREFUSED")).toBeDefined();
+    });
+  });
+
   test("a network failure renders the error state", async () => {
     mockGlobalFetch({
       "api/resources/tree": () => {

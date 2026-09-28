@@ -1,6 +1,8 @@
 # Plan: Microsoft Entra ID integration — switchable SSO and resource groups bound to app roles
 
-Status: **plan for the next agent — do not implement until the owner confirms resource testing is done.**
+Status: **implemented** — the shipped behaviour is documented in [`../ENTRA.md`](../ENTRA.md), which wins
+where the two differ. Owner decisions on §6: admin bypass on (audited), user-owned connections stay,
+Entra sessions 8 h, one tenant. "Resource groups" shipped as **connection groups**.
 Companion plan: [`VAULT_AND_REDIS_PARITY.md`](VAULT_AND_REDIS_PARITY.md).
 
 ## 1. Goals

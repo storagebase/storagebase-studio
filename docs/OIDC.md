@@ -182,6 +182,12 @@ Navigate to `/login` and click **"Login with SSO"**.
 
 ### Azure AD (Microsoft Entra ID)
 
+> **StorageBase Studio (fork): prefer the dedicated Entra integration in [`ENTRA.md`](ENTRA.md).** It
+> is switched at runtime (no `NEXT_PUBLIC_AUTH_PROVIDER` rebuild), keeps local sign-in as a
+> break-glass path, refuses tokens from other tenants, and carries the user's app roles into the
+> session so connection groups can be bound to them. Its redirect URI is
+> `/api/auth/entra/callback`. The generic OIDC setup below still works.
+
 1. **Register Application** in Azure Portal → App Registrations → New Registration
    - Redirect URI: `http://localhost:3000/api/auth/oidc/callback` (Web)
 
@@ -295,6 +301,11 @@ The role mapping system:
 ```
 
 > For the precise algorithm and provider-by-provider worked examples, see the [Role Mapping Engine](#role-mapping-engine) in Part 2.
+
+**App roles in the session (StorageBase fork).** Beside the admin/user decision, the values of the
+`OIDC_ROLE_CLAIM` claim are kept in the session as `appRoles` (trimmed, deduplicated, at most 64 of at
+most 128 characters), with `provider: "oidc"`. They are what connection-group role bindings and a seed
+file's `roles:` list match against — see [`ENTRA.md`](ENTRA.md) §5.
 
 ---
 

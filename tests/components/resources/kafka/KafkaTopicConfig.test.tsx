@@ -2,13 +2,15 @@ import "../../../setup-dom";
 
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { restoreGlobalFetch } from "../../../helpers/mock-fetch";
+import { restoreGlobalFetch, type MockFetchResponse } from "../../../helpers/mock-fetch";
 import { connection, defaultHandlers, installKafkaServer, refuse } from "./kafka-server";
 import type { KafkaConfigEntry } from "@/lib/resources/operations";
 
 import { KafkaTopicConfigPanel } from "@/components/resources/kafka/KafkaTopicConfigPanel";
 
-const configs = (defaultHandlers.topic({ topic: "orders" }).json as { configs: KafkaConfigEntry[] }).configs;
+const configs = (
+  (defaultHandlers.topic({ topic: "orders" }) as MockFetchResponse).json as { configs: KafkaConfigEntry[] }
+).configs;
 
 describe("KafkaTopicConfigPanel", () => {
   const onChanged = mock(async () => {});

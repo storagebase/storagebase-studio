@@ -15,11 +15,12 @@ repeatable procedure for pulling their work in.
 2. `git merge upstream/main` (merge, never rebase — published history stays walkable, and upstream
    commit SHAs stay citable in our history)
 3. Expect conflicts only in files both sides touch. In rough likelihood order:
-   - Shared UI files both sides edit: `src/components/Studio.tsx`, `src/components/sidebar/*`,
-     `src/components/ConnectionModal.tsx`, `src/hooks/use-connection-form.ts`, `src/lib/types.ts`.
-     Resolve by keeping BOTH: upstream's database behaviour plus the fork's additive resource fields
-     and branches. Resource additions are always optional fields / additive branches — if a merge
-     cannot preserve both sides, that is a bug in our layering; fix the layering, not the merge.
+   - Shared UI files both sides edit: `src/app/page.tsx` (the section-shell wrap),
+     `src/components/Studio.tsx`, `src/components/sidebar/*`, `src/components/ConnectionModal.tsx`,
+     `src/hooks/use-connection-form.ts`, `src/lib/types.ts`. Resolve by keeping BOTH: upstream's
+     database behaviour plus the fork's recorded exceptions (STORAGEBASE.md). Resource UI itself lives
+     in the fork-owned section pages, never in these files — if a merge cannot preserve both sides,
+     that is a bug in our layering; fix the layering, not the merge.
    - Brand strings in files renamed in M0 (layout, login form, sidebar header, startup banner,
      auth-bootstrap / agent-config / auth-preflight messages, `bin/studio.js`,
      `bin/lib/launcher-utils.mjs`) and their tests. Resolve to StorageBase Studio.

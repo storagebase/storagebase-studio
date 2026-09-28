@@ -676,13 +676,13 @@ function boundText(part: ObjectSourcePart, limit: number): ObjectSourcePart {
  * That was an obligation ON THE EDIT-PLAN ROUTE and BOTH HALVES OF IT HAVE LANDED, so what follows
  * names the enforcer of each half and where it sits, MEASURED by grep at this commit.
  *
- * THE KIND, at `src/app/api/db/objects/edit-plan/route.ts:89`: that route calls
+ * THE KIND, at `src/app/api/db/objects/edit-plan/route.ts:91`: that route calls
  * `requireEditableKind(provider.getCapabilities(), kind, ...)` before it reaches the builder, on the
  * CONNECTED provider and never on the client's copy of the declaration, and its comment there cites
- * this docblock by name as the reason. `src/app/api/db/objects/edit-apply/route.ts:141` asks the same
+ * this docblock by name as the reason. `src/app/api/db/objects/edit-apply/route.ts:143` asks the same
  * question of the plan's kind, so neither half of the write path takes a caller's word for it.
  *
- * THE BOUND, on both sides of the same constant. `edit-plan/route.ts:74` refuses a SUBMITTED text
+ * THE BOUND, on both sides of the same constant. `edit-plan/route.ts:76` refuses a SUBMITTED text
  * longer than `EDIT_CHARACTER_LIMIT`, and all three day-one providers refuse a READ definition longer
  * than it inside `buildObjectEdit`: `providers/sql/postgres.ts:3302`, `providers/keyvalue/redis.ts:1957`
  * and `providers/sql/trino/index.ts:1451`. The second is what closes the class rather than narrowing

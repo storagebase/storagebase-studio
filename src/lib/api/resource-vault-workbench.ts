@@ -28,7 +28,10 @@ import type { ResourceConnection, ResourceNode, ResourceNodePage, ResourceOperat
  * name, and any by-name call on one answers 404 — the same answer as a name
  * that does not exist, so a rule never confirms what it hides. The legacy
  * /api/resources/secret/* and tree routes apply the same matcher through
- * `requireVisibleSecret` / `filterVaultTree`.
+ * `requireVisibleSecret` / `filterVaultTree`. The rules are the global
+ * list's enabled rules whose vault matcher matches THIS connection — the one
+ * the server resolved (a managed connection decrypted from its record) — on
+ * every request (`loadVaultExclusions`, cached for seconds, dropped on save).
  */
 
 /** Object names travel in bodies; Key Vault allows 127 characters, Vault paths more. */

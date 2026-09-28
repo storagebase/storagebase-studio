@@ -49,6 +49,11 @@ mock.module("@/lib/fork-store", () => ({
       setSetting: async (key: string, value: unknown) => {
         settings.set(key, value);
       },
+      listSettings: async (prefix: string) =>
+        [...settings.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, value]) => ({ key, value })),
     };
   }),
 }));
@@ -180,9 +185,34 @@ export const connection = {
   clientSecret: "client-credential",
 };
 
-export const EXCLUSION_KEY = "vault-exclusions:azure-key-vault:https://example.vault.azure.net";
+export const EXCLUSIONS_KEY = "vault-exclusions:global";
+
+const { invalidateVaultExclusionCache } = await import("@/lib/resources/vault-exclusions-store");
+
+/** Stores these global rules (defaults: every vault, every object, enabled) and drops the rule cache. */
+export function excludeRules(rules: Array<Record<string, unknown>>) {
+  settings.set(EXCLUSIONS_KEY, {
+    version: 1,
+    rules: rules.map((rule, index) => ({
+      id: `rule-${index + 1}`,
+      vaultType: "any",
+      vaultPattern: "*",
+      vaultPatternKind: "glob",
+      objectPattern: "*",
+      objectPatternKind: "glob",
+      objectType: "any",
+      enabled: true,
+      note: "",
+      updatedBy: "admin",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      ...rule,
+    })),
+  });
+  invalidateVaultExclusionCache();
+}
 
 export function resetHarness() {
+  invalidateVaultExclusionCache();
   session.current = { role: "admin", username: "admin" };
   auditEvents.length = 0;
   providerCalls.length = 0;

@@ -57,6 +57,9 @@ export const CONNECTION_FIELDS: Record<keyof DatabaseConnection, FieldClass> = {
   seedId: "public",
   agentUser: "public",
   agentPassword: "secret",
+  // The NAMES of the secret fields the server holds (StorageBase fork, src/lib/user-connections),
+  // never a value: `["password"]` unlocks nothing.
+  savedSecrets: "public",
 };
 
 export const SSL_FIELDS: Record<keyof SSLConfig, FieldClass> = {
@@ -120,6 +123,8 @@ export const RESOURCE_CONNECTION_FIELDS: Record<keyof ResourceConnection, FieldC
   vaultName: "public",
   namespace: "public",
   sshTunnel: "nested",
+  // Secret field names the server holds, never a value (src/lib/user-connections).
+  savedSecrets: "public",
 };
 
 /**

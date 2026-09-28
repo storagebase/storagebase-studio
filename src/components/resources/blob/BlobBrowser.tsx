@@ -5,6 +5,8 @@ import { Download, LoaderCircle, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { appFetch } from "@/lib/config/base-path";
 import { registerResourceViewer, type ResourceViewerProps } from "@/components/resources/viewer-registry";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
+import { routeRefusal } from "@/components/resources/route-refusal";
 import type { ResourceNode, ResourceNodePage } from "@/lib/resources/types";
 import type { BlobObjectMeta, BlobPreview } from "@/lib/resources/operations";
 
@@ -42,7 +44,7 @@ function toMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceViewerProps) {
+export function BlobBrowser({ connection, node, onChanged, onClose, readOnly = false }: ResourceViewerProps) {
   const [children, setChildren] = useState<ResourceNodePage | null>(null);
   const [meta, setMeta] = useState<BlobObjectMeta | null>(null);
   const [preview, setPreview] = useState<BlobPreview | null>(null);
@@ -53,14 +55,17 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
   const fileInput = useRef<HTMLInputElement | null>(null);
 
   const address = splitViewerAddress(node);
-  const basePayload = { connection, bucket: address.bucket };
+  const basePayload = { ...resourceConnectionBody(connection), bucket: address.bucket };
 
   const load = useCallback(async () => {
     setError(null);
     try {
       if (node.hasChildren) {
-        const response = await postBlob("/api/resources/tree", { connection, parent: node.id });
-        if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Tree read failed");
+        const response = await postBlob("/api/resources/tree", {
+          ...resourceConnectionBody(connection),
+          parent: node.id,
+        });
+        if (!response.ok) throw new Error(await routeRefusal(response, "Tree read failed"));
         setChildren((await response.json()) as ResourceNodePage);
       } else {
         const [metaResponse, previewResponse] = await Promise.all([
@@ -68,10 +73,10 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
           postBlob("/api/resources/blob/preview", { ...basePayload, name: address.rest, byteLimit: 65536 }),
         ]);
         if (!metaResponse.ok) {
-          throw new Error((await metaResponse.json().catch(() => null))?.message ?? "Metadata read failed");
+          throw new Error(await routeRefusal(metaResponse, "Metadata read failed"));
         }
         if (!previewResponse.ok) {
-          throw new Error((await previewResponse.json().catch(() => null))?.message ?? "Preview failed");
+          throw new Error(await routeRefusal(previewResponse, "Preview failed"));
         }
         setMeta((await metaResponse.json()) as BlobObjectMeta);
         setPreview((await previewResponse.json()) as BlobPreview);
@@ -96,7 +101,7 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
     setBusy(true);
     try {
       const response = await postBlob("/api/resources/blob/download", { ...basePayload, name: address.rest });
-      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Download failed");
+      if (!response.ok) throw new Error(await routeRefusal(response, "Download failed"));
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -123,7 +128,7 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
     setBusy(true);
     try {
       const response = await postBlob("/api/resources/blob/delete", { ...basePayload, name: address.rest });
-      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Delete failed");
+      if (!response.ok) throw new Error(await routeRefusal(response, "Delete failed"));
       onChanged?.();
       onClose?.();
     } catch (deleteError) {
@@ -150,7 +155,7 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
           name: `${prefix}${file.name}`,
           contentBase64: btoa(binary),
         });
-        if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Upload failed");
+        if (!response.ok) throw new Error(await routeRefusal(response, "Upload failed"));
         setUploadState(`Uploaded ${file.name}.`);
         onChanged?.();
         await load();
@@ -201,29 +206,31 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
               {children.truncated && <li className="text-xs text-fg-subtle px-1">List truncated by the provider.</li>}
             </ul>
           )}
-          <div>
-            <input
-              ref={fileInput}
-              type="file"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void handleUpload(file);
-              }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => fileInput.current?.click()}
-              className="text-xs"
-            >
-              <Upload strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
-              Upload here
-            </Button>
-            {uploadState && <p className="mt-2 text-xs text-success">{uploadState}</p>}
-          </div>
+          {!readOnly && (
+            <div>
+              <input
+                ref={fileInput}
+                type="file"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void handleUpload(file);
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+                className="text-xs"
+              >
+                <Upload strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
+                Upload here
+              </Button>
+              {uploadState && <p className="mt-2 text-xs text-success">{uploadState}</p>}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -271,17 +278,19 @@ export function BlobBrowser({ connection, node, onChanged, onClose }: ResourceVi
               <Download strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
               Download
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={handleDelete}
-              data-testid="blob-browser-delete"
-              className={deleteArmed ? "text-xs text-danger border-danger-tint/30" : "text-xs"}
-            >
-              <Trash2 strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
-              {deleteArmed ? "Click again to confirm" : "Delete"}
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={handleDelete}
+                data-testid="blob-browser-delete"
+                className={deleteArmed ? "text-xs text-danger border-danger-tint/30" : "text-xs"}
+              >
+                <Trash2 strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
+                {deleteArmed ? "Click again to confirm" : "Delete"}
+              </Button>
+            )}
           </div>
         </div>
       )}

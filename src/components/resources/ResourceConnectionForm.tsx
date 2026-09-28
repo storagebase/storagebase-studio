@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ConnectionEnvironment } from "@/lib/types";
 import { ENVIRONMENT_COLORS, ENVIRONMENT_LABELS } from "@/lib/types";
 import { useResourceConnectionForm, type TestOutcome } from "@/hooks/use-resource-connection-form";
+import { CredentialStorageNotice, SavedSecretNote } from "@/components/user-connections/SavedSecretNote";
 import { RESOURCE_CATEGORY_LABELS, RESOURCE_UI_CONFIG, type ResourceConnectionField } from "@/lib/resources/ui-config";
 import type { ResourceCategory, ResourceConnection, ResourceType } from "@/lib/resources/types";
 
@@ -200,10 +201,13 @@ export function ResourceConnectionForm({
                   meta.mono && "font-mono",
                 )}
               />
+              {meta.secret && <SavedSecretNote secrets={form.secrets} path={field} />}
             </div>
           );
         })}
       </div>
+
+      <CredentialStorageNotice secrets={form.secrets} />
 
       {/* Test Result */}
       <AnimatePresence>

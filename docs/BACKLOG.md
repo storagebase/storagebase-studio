@@ -1211,18 +1211,21 @@ accept, a single line, a range and a comma pair, and one negative that fails whe
 
 ### D85. The `@/lib/auth` mock is hand-copied across a layer, untyped, and already misses two exports
 
-`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 44 hits, measured 2026-09-20. Six of
+`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 47 hits, measured 2026-09-27. Six of
 them spread the real module and replace one function (`{ ...realAuth, getSession: mockGetSession }`,
-the agent routes' pattern). Thirty-six write out the same five-key object - `getSession`, `signJWT`,
+the agent routes' pattern). Thirty-seven write out the same five-key object - `getSession`, `signJWT`,
 `verifyJWT`, `login`, `logout` - down to the same `mock(async () => "mock-token")` for a token
 nothing reads, and one of those thirty-two is `tests/helpers/object-edit-route-harness.ts`, a shared
-harness that could have been the factory and copied the stub instead. The remaining two write a
-shorter stub of their own, one with two keys and one with a single `getSession`.
+harness that could have been the factory and copied the stub instead. The remaining three write a
+shorter stub of their own, one with two keys and two with a single `getSession`
+(`tests/api/connections/user-routes.test.ts`, StorageBase fork). The last one,
+`tests/helpers/auth-mock.ts` (StorageBase fork), is a shared factory: the access-model and Entra tests
+call it instead of copying a sixth stub, and it carries all seven exports.
 
 `src/lib/auth.ts` exports seven names. The two no hand-written stub carries are
 `shouldMarkCookieSecure` and `resetCookieSecurityWarning`:
-`grep -rn 'shouldMarkCookieSecure' tests/` returns exactly one hit, and it is a sentence in a comment
-rather than a stub key, while `resetCookieSecurityWarning` appears only in
+`grep -rn 'shouldMarkCookieSecure' tests/` returns exactly 2 hits: a sentence in a comment, and the
+shared factory above, while `resetCookieSecurityWarning` appears only in
 `tests/unit/lib/auth.test.ts`, which imports the real module.
 `src/app/api/auth/oidc/login/route.ts` imports `shouldMarkCookieSecure` and awaits it to decide the
 auth cookie's `secure` flag, so every one of those stubs is already an export short of the module it

@@ -41,9 +41,10 @@ IDE for blob storage, messaging and key vaults.
 
 ### Resource layer: blobs, queues and key vaults
 
-The resource layer covers ten resource types in three families. They share the database side's
-connection dialog, sidebar tree and audit trail. When a service cannot do something, the UI
-says so up front instead of letting the request fail.
+The resource layer covers ten resource types in three families. Each family has its own page
+(Blob storage, Messaging, Vaults), next to Databases on the section rail, with its own connection
+list and header. They share the database side's audit trail. When a service cannot do something,
+the UI says so up front instead of letting the request fail.
 
 | Family | Types | What you can do |
 | :--- | :--- | :--- |
@@ -71,13 +72,16 @@ Azurite, Kafka, RabbitMQ, LocalStack, Vault, OpenBao) is `resources-compose.yml`
 
 These features are being built for the next release. They are not finished yet.
 
-- **Kafka workbench.** A Kafka connection gets its own entry in the Connections list, with:
+- **Kafka workbench.** A Kafka connection opens a full-page workbench on the Messaging page, with:
   - the cluster and its brokers
   - topics, with partitions and configuration
   - creating and deleting topics
   - browsing messages by partition, offset or timestamp, with key, headers and a JSON view
   - producing messages
   - consumer groups, with lag and offset reset
+- **Separate management pages.** A section rail on the left switches between Databases, Blob
+  storage, Messaging and Vaults. Each page has its own connection list, and its header shows only
+  that page's active connection. `/messaging?connection=<id>` opens a connection directly.
 - **Redis Sentinel connections.** A Redis connection can point at Sentinel and will follow the
   master when a failover happens.
 - **Detailed query audit trail.** Each query records:

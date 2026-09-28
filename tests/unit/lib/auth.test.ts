@@ -151,6 +151,35 @@ describe("auth", () => {
       expect(payload!.role).toBe("admin");
     });
 
+    test("a single-sign-on login carries its claims and its own lifetime, a local one the day default", async () => {
+      await login("user", "alice@example.com", {
+        provider: "entra",
+        appRoles: ["Team.Payments.Read"],
+        oid: "object-id",
+        tid: "tenant-id",
+        lifetimeSeconds: 8 * 60 * 60,
+      });
+      const sso = mockSetCalls[0];
+      const payload = (await verifyJWT(sso.value)) as unknown as Record<string, unknown>;
+      expect(payload).toMatchObject({
+        role: "user",
+        username: "alice@example.com",
+        provider: "entra",
+        appRoles: ["Team.Payments.Read"],
+        oid: "object-id",
+        tid: "tenant-id",
+      });
+      expect((payload.exp as number) - (payload.iat as number)).toBe(8 * 60 * 60);
+      expect(payload).not.toHaveProperty("lifetimeSeconds");
+      expect((sso.opts as { maxAge: number }).maxAge).toBe(8 * 60 * 60);
+
+      await login("user", "user");
+      const local = (await verifyJWT(mockSetCalls[1].value)) as unknown as Record<string, unknown>;
+      expect((local.exp as number) - (local.iat as number)).toBe(24 * 60 * 60);
+      expect(local).not.toHaveProperty("provider");
+      expect((mockSetCalls[1].opts as { maxAge: number }).maxAge).toBe(24 * 60 * 60);
+    });
+
     test("sets auth-token cookie with user role", async () => {
       await login("user", "user");
       expect(mockSetCalls.length).toBeGreaterThan(0);

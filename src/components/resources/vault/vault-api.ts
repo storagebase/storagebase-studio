@@ -1,4 +1,5 @@
 import { appFetch } from "@/lib/config/base-path";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
 import type { ResourceConnection, ResourceOperation } from "@/lib/resources/types";
 import type { VaultObjectType } from "@/lib/resources/operations";
 
@@ -12,7 +13,7 @@ export async function postVault<T>(
   route: string,
   payload: Record<string, unknown> = {},
 ): Promise<T> {
-  return sendJson<T>(`/api/resources/vault/${route}`, "POST", { connection, ...payload });
+  return sendJson<T>(`/api/resources/vault/${route}`, "POST", { ...resourceConnectionBody(connection), ...payload });
 }
 
 export async function sendJson<T>(path: string, method: string, payload?: unknown): Promise<T> {
@@ -27,9 +28,11 @@ export async function sendJson<T>(path: string, method: string, payload?: unknow
 }
 
 export async function readVaultFlags(connection: ResourceConnection): Promise<ReadonlySet<ResourceOperation>> {
-  const meta = await sendJson<{ capabilities: { operations: ResourceOperation[] } }>("/api/resources/meta", "POST", {
-    connection,
-  });
+  const meta = await sendJson<{ capabilities: { operations: ResourceOperation[] } }>(
+    "/api/resources/meta",
+    "POST",
+    resourceConnectionBody(connection),
+  );
   return new Set(meta.capabilities.operations);
 }
 

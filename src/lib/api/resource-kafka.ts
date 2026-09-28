@@ -1,6 +1,7 @@
 import { getOrCreateResourceProvider } from "@/lib/resources/factory";
 import {
   asKafkaAdminOperations,
+  KAFKA_MEASURE_BATCH_LIMIT,
   type KafkaAdminOperations,
   type KafkaOffsetReset,
   type KafkaSeek,
@@ -67,7 +68,7 @@ export async function auditedKafkaWrite<T>(
 
 export function requireTopicName(body: Record<string, unknown>): string {
   const topic = body.topic;
-  if (typeof topic !== "string" || !TOPIC_NAME.test(topic) || topic === "." || topic === "..") {
+  if (typeof topic !== "string" || !isTopicName(topic)) {
     throw new ResourceRouteError(
       '"topic" must be a Kafka topic name (letters, digits, ".", "_", "-"; at most 249)',
       400,
@@ -76,8 +77,39 @@ export function requireTopicName(body: Record<string, unknown>): string {
   return topic;
 }
 
+/**
+ * The names one lazy-measurement call asks about (`topics` for counts,
+ * `groupIds` for lag): a non-empty array of at most `KAFKA_MEASURE_BATCH_LIMIT`
+ * entries, each passing `valid`. The bound is what keeps one request's offset
+ * fan-out small whatever the cluster size.
+ */
+export function requireNameBatch(
+  body: Record<string, unknown>,
+  field: string,
+  valid: (name: string) => boolean,
+): string[] {
+  const value = body[field];
+  if (!Array.isArray(value) || value.length === 0 || value.length > KAFKA_MEASURE_BATCH_LIMIT) {
+    throw new ResourceRouteError(`"${field}" must be an array of 1 to ${KAFKA_MEASURE_BATCH_LIMIT} names`, 400);
+  }
+  for (const entry of value) {
+    if (typeof entry !== "string" || !valid(entry)) {
+      throw new ResourceRouteError(`"${field}" holds an invalid name: ${JSON.stringify(entry)}`, 400);
+    }
+  }
+  return value as string[];
+}
+
+export function isTopicName(name: string): boolean {
+  return TOPIC_NAME.test(name) && name !== "." && name !== "..";
+}
+
+export function isGroupId(name: string): boolean {
+  return name.trim() !== "";
+}
+
 export function requireGroupId(body: Record<string, unknown>): string {
-  if (typeof body.groupId !== "string" || body.groupId.trim() === "") {
+  if (typeof body.groupId !== "string" || !isGroupId(body.groupId)) {
     throw new ResourceRouteError('"groupId" must be a non-empty string', 400);
   }
   return body.groupId;

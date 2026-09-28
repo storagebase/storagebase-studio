@@ -21,13 +21,26 @@ export type Role = "admin" | "user";
 export interface UserPayload {
   role: Role;
   username: string;
+  /**
+   * StorageBase fork, all optional and additive: how the session was established, and the
+   * identity-provider facts the access model reads (src/lib/access/session.ts). A session without
+   * them — every local login, and every token minted before they existed — reads as local with no
+   * app roles.
+   */
+  provider?: "local" | "oidc" | "entra";
+  appRoles?: string[];
+  oid?: string;
+  tid?: string;
 }
 
-export async function signJWT(payload: UserPayload) {
+/** Session lifetime when a caller names none: one day, the product's long-standing default. */
+const DEFAULT_SESSION_SECONDS = 60 * 60 * 24;
+
+export async function signJWT(payload: UserPayload, lifetimeSeconds = DEFAULT_SESSION_SECONDS) {
   return await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime(`${lifetimeSeconds}s`)
     .sign(getJwtSecret());
 }
 
@@ -146,8 +159,15 @@ export async function shouldMarkCookieSecure(): Promise<boolean> {
   }
 }
 
-export async function login(role: Role, username?: string) {
-  const token = await signJWT({ role, username: username || role });
+/** What a single-sign-on login adds to the session (StorageBase fork); a local login passes none. */
+export interface LoginClaims extends Pick<UserPayload, "provider" | "appRoles" | "oid" | "tid"> {
+  /** Session lifetime in seconds; the default is one day. */
+  lifetimeSeconds?: number;
+}
+
+export async function login(role: Role, username?: string, claims: LoginClaims = {}) {
+  const { lifetimeSeconds = DEFAULT_SESSION_SECONDS, ...identity } = claims;
+  const token = await signJWT({ role, username: username || role, ...identity }, lifetimeSeconds);
   const cookieStore = await cookies();
   cookieStore.set("auth-token", token, {
     httpOnly: true,
@@ -157,7 +177,7 @@ export async function login(role: Role, username?: string) {
     // notably a cross-site POST /api/auth/login, where there is no pre-existing cookie to withhold
     // - are covered by the Origin check in src/proxy.ts (src/lib/api/origin-check.ts).
     sameSite: "lax",
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: lifetimeSeconds,
     path: getBasePath() || "/",
   });
 }

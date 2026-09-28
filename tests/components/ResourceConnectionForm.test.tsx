@@ -41,7 +41,6 @@ mock.module("@/components/ui/dialog", () => ({
 }));
 
 import { ResourceConnectionForm } from "@/components/resources/ResourceConnectionForm";
-import { ConnectionModal } from "@/components/ConnectionModal";
 import { registerResourceProviderLoader } from "@/lib/resources/registry";
 import type { ResourceConnection } from "@/lib/resources/types";
 
@@ -170,71 +169,5 @@ describe("ResourceConnectionForm", () => {
     expect(saved.name).toBe("backups");
     expect(saved.type).toBe("s3");
     expect(saved.region).toBe("us-east-1");
-  });
-});
-
-describe("ConnectionModal resource tabs", () => {
-  const modalProps = {
-    isOpen: true,
-    onClose: mock(() => {}),
-    onConnect: mock(() => {}),
-    onConnectResource: mock((_conn: ResourceConnection) => {}),
-  };
-
-  beforeEach(() => {
-    modalProps.onClose.mockClear();
-    modalProps.onConnect.mockClear();
-    modalProps.onConnectResource.mockClear();
-    restoreGlobalFetch();
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
-
-  test("no tabs without a resource save handler — the dialog is unchanged", () => {
-    render(<ConnectionModal isOpen onClose={modalProps.onClose} onConnect={modalProps.onConnect} />);
-
-    expect(screen.queryByRole("tablist")).toBeNull();
-    // The sr-only DialogTitle and the visible header both read "New Connection".
-    expect(screen.queryAllByText("New Connection").length).toBeGreaterThan(0);
-  });
-
-  test("category tabs appear and switch to the resource form", () => {
-    render(<ConnectionModal {...modalProps} />);
-
-    const tablist = screen.getByRole("tablist");
-    expect(within(tablist).getByRole("tab", { name: "Databases" })).toBeDefined();
-    expect(within(tablist).getByRole("tab", { name: "Blob Storage" })).toBeDefined();
-    expect(within(tablist).getByRole("tab", { name: "Messaging" })).toBeDefined();
-
-    // Databases tab by default: the DB type grid, no resource name input.
-    expect(screen.queryByLabelText("Connection Name")).not.toBeNull(); // shared label text exists in DB form too
-    expect(screen.queryByTestId("resource-connection-test-result")).toBeNull();
-
-    fireEvent.click(within(tablist).getByRole("tab", { name: "Blob Storage" }));
-
-    // Resource form: type picker + per-type fields, DB footer gone.
-    expect(screen.getByText("Amazon S3")).toBeDefined();
-    expect(screen.getByLabelText("Region")).toBeDefined();
-    expect(screen.queryByText("Test Connection", { selector: "button" })).not.toBeNull();
-  });
-
-  test("database edits lock the resource tabs", () => {
-    render(
-      <ConnectionModal
-        {...modalProps}
-        editConnection={{
-          id: "db-1",
-          name: "pg",
-          type: "postgres",
-          host: "localhost",
-          createdAt: new Date(),
-        }}
-      />,
-    );
-
-    const blobTab = within(screen.getByRole("tablist")).getByRole("tab", { name: "Blob Storage" });
-    expect(blobTab.getAttribute("disabled")).not.toBeNull();
   });
 });

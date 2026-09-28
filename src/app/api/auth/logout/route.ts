@@ -6,6 +6,7 @@ import { createErrorResponse } from "@/lib/api/errors";
 import { clientAddress } from "@/lib/api/client-address";
 import { emitAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { sessionAuditFields } from "@/lib/access/session";
 
 const ROUTE = "POST /api/auth/logout";
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
           user: session.username,
           result: "success",
           ip: clientAddress(request),
+          ...sessionAuditFields(session), // StorageBase fork: provider, object id, app roles
         });
       } catch (auditError) {
         logger.error("Failed to record logout audit event", auditError, { route: ROUTE });

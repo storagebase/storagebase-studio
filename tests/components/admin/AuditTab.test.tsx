@@ -722,6 +722,13 @@ describe("AuditTab — query_execution events", () => {
     target: "POST /api/auth/login",
     user: "carol",
     result: "success",
+    // StorageBase fork: identity and grant fields.
+    authProvider: "entra",
+    subject: "object-id",
+    appRoles: "Team.Payments.Read",
+    permission: "read",
+    grantedBy: "Team.Payments.Read",
+    accessGroups: "Payments",
   };
 
   let fetchMock: ReturnType<typeof mockGlobalFetch>;
@@ -794,6 +801,9 @@ describe("AuditTab — query_execution events", () => {
     expect(failed.textContent).not.toContain("truncated");
     expect(login.querySelector("pre") === null).toBe(true);
     expect(login.textContent).toContain("carol");
+    for (const text of ["Sign-in", "entra", "object-id", "App Roles", "Granted By", "Access Groups", "Payments"]) {
+      expect(login.textContent).toContain(text);
+    }
   });
 
   test("filters by result", async () => {

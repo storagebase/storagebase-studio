@@ -365,6 +365,52 @@ pairing.
 {{- end }}
 
 {{/*
+The storagebase.entra block, tolerant of the block (or storagebase itself) being
+absent or null in a user's values file. Every Entra field is read through this,
+so an install that never mentions the block renders exactly as one that leaves
+it at its defaults.
+*/}}
+{{- define "storagebase-studio.entraValue" -}}
+{{- $entra := get (.root.Values.storagebase | default dict) "entra" | default dict }}
+{{- get $entra .key | default "" | toString | trim }}
+{{- end }}
+
+{{/*
+The Secret key the Entra client secret lives under: in the chart's own Secret
+when storagebase.entra.clientSecret is set, and in the operator's Secret when
+secrets.existingSecret is. One definition so the key the Secret writes and the
+key the pod references cannot disagree.
+*/}}
+{{- define "storagebase-studio.entraClientSecretKey" -}}
+{{- get (.Values.secrets.existingSecretKeys | default dict) "entraClientSecret" | default "entra-client-secret" }}
+{{- end }}
+
+{{/*
+Whether the Deployment defaults to the Recreate strategy: a single pod whose
+/app/data is a ReadWriteOnce (or ReadWriteOncePod) claim. A RollingUpdate starts
+the new pod before the old one stops, and a ReadWriteOnce volume attaches to one
+node at a time - so whenever the scheduler places the new pod on another node, it
+waits in ContainerCreating on a Multi-Attach error for a volume the old pod will
+never release, because the old pod is only stopped once the new one is Ready.
+The rollout then hangs until progressDeadlineSeconds and never completes.
+ReadWriteOncePod blocks it even on the same node.
+
+"Single pod" is multiReplica's reading, so an effective HPA counts by its
+ceiling: Recreate there would take every replica down on each rollout, and the
+access-mode problem belongs to the storage choice rather than to the strategy.
+With persistence.existingClaim the chart cannot see the claim, so
+persistence.accessModes is taken as its description - set it to match.
+*/}}
+{{- define "storagebase-studio.recreateStrategy" -}}
+{{- if and (include "storagebase-studio.persistenceEnabled" .) (not (include "storagebase-studio.multiReplica" .)) }}
+{{- $modes := .Values.persistence.accessModes | default list }}
+{{- if or (has "ReadWriteOnce" $modes) (has "ReadWriteOncePod" $modes) }}
+{{- true }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Return the full image reference (repository:tag)
 */}}
 {{- define "storagebase-studio.image" -}}

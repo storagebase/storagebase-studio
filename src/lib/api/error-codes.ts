@@ -38,6 +38,14 @@ export const ApiErrorCode = {
   /** The provider declares no such operation (e.g. purge on Kafka, which has none). */
   RESOURCE_OPERATION_UNSUPPORTED: "RESOURCE_OPERATION_UNSUPPORTED",
 
+  // Access model (StorageBase fork): managed connections bound to app roles.
+  /** The caller's grant on a managed connection does not cover this operation. */
+  ACCESS_DENIED: "ACCESS_DENIED",
+  /** A read-only grant refused a statement or route that writes. */
+  ACCESS_READ_ONLY: "ACCESS_READ_ONLY",
+  /** Groups and managed connections need server storage (STORAGE_PROVIDER=sqlite|postgres). */
+  ACCESS_STORE_UNAVAILABLE: "ACCESS_STORE_UNAVAILABLE",
+
   // LLM errors
   LLM_SAFETY: "LLM_SAFETY",
   LLM_AUTH: "LLM_AUTH",

@@ -5,7 +5,10 @@ import { auditedResourceRead } from "@/lib/api/resource-audit";
 
 export const dynamic = "force-dynamic";
 
-/** Every topic, internal ones flagged (the UI filters them). Audited as `kafka.topics.list`. */
+/**
+ * Every topic from metadata alone, internal ones flagged (the UI filters them);
+ * message counts are `topics/counts`. Audited as `kafka.topics.list`.
+ */
 export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
   return handleResourceRequest(req, "api/resources/kafka/topics", async (connection, _body, ctx) => {
     const listing = await auditedResourceRead(
@@ -17,7 +20,7 @@ export async function POST(req: Parameters<typeof handleResourceRequest>[0]) {
         const kafka = await resolveKafkaOperations(connection, "kafka.inspect");
         return kafka.listTopicSummaries();
       },
-      (read) => ({ itemsListed: read.topics.length, truncated: read.countsTruncated }),
+      (read) => ({ itemsListed: read.topics.length }),
     );
     return NextResponse.json(listing);
   });

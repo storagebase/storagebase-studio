@@ -33,9 +33,6 @@ let capturedAgentRailProps: Record<string, unknown> = {};
 let capturedProfilerProps: Record<string, unknown> = {};
 let capturedCodeGenProps: Record<string, unknown> = {};
 let capturedTestDataProps: Record<string, unknown> = {};
-let capturedInspectorProps: Record<string, unknown> = {};
-let capturedKafkaWorkbenchProps: Record<string, unknown> = {};
-let capturedVaultWorkbenchProps: Record<string, unknown> = {};
 let originalFetch: typeof globalThis.fetch;
 let originalMatchMedia: typeof window.matchMedia;
 
@@ -87,19 +84,6 @@ const mockStorageGetFavoriteConnectionIds = mock(() => [] as string[]);
 const mockStorageToggleFavoriteConnection = mock(() => [] as string[]);
 const mockStorageGetConnectionOrder = mock(() => [] as string[]);
 const mockStorageSetConnectionOrder = mock(() => {});
-// Resource connections (StorageBase fork). Backed by an array reset per test,
-// so the real useResourceConnections hook exercises the real read-modify-write.
-let storedResourceConnections: unknown[] = [];
-const mockStorageGetResourceConnections = mock(() => [...storedResourceConnections]);
-const mockStorageSaveResourceConnection = mock((conn: unknown) => {
-  const id = (conn as { id: string }).id;
-  const index = storedResourceConnections.findIndex((s) => (s as { id: string }).id === id);
-  if (index > -1) storedResourceConnections[index] = conn;
-  else storedResourceConnections.push(conn);
-});
-const mockStorageDeleteResourceConnection = mock((id: unknown) => {
-  storedResourceConnections = storedResourceConnections.filter((s) => (s as { id: string }).id !== id);
-});
 // Data Masking
 const mockSaveMaskingConfig = mock(() => {});
 // URL (for export tests)
@@ -263,9 +247,6 @@ mock.module("@/lib/storage", () => ({
     toggleFavoriteConnection: mockStorageToggleFavoriteConnection,
     getConnectionOrder: mockStorageGetConnectionOrder,
     setConnectionOrder: mockStorageSetConnectionOrder,
-    getResourceConnections: mockStorageGetResourceConnections,
-    saveResourceConnection: mockStorageSaveResourceConnection,
-    deleteResourceConnection: mockStorageDeleteResourceConnection,
   },
 }));
 
@@ -438,33 +419,6 @@ mock.module("@/components/CreateTableModal", () => ({
   },
 }));
 
-mock.module("@/components/resources/ResourceInspector", () => ({
-  ResourceInspector: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const React = require("react");
-    capturedInspectorProps = props;
-    return React.createElement("div", { "data-testid": "resource-inspector" }, "ResourceInspector");
-  },
-}));
-
-mock.module("@/components/resources/kafka", () => ({
-  KafkaWorkbench: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const React = require("react");
-    capturedKafkaWorkbenchProps = props;
-    return React.createElement("div", { "data-testid": "kafka-workbench" }, "KafkaWorkbench");
-  },
-}));
-
-mock.module("@/components/resources/vault", () => ({
-  VaultWorkbench: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const React = require("react");
-    capturedVaultWorkbenchProps = props;
-    return React.createElement("div", { "data-testid": "vault-workbench" }, "VaultWorkbench");
-  },
-}));
-
 mock.module("@/components/SaveQueryModal", () => ({
   SaveQueryModal: (props: Record<string, unknown>) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -537,7 +491,6 @@ mock.module("@/components/ui/resizable", () => {
 
 const { default: Studio } = await import("@/components/Studio");
 import type { DatabaseConnection } from "@/lib/types";
-import type { ResourceConnection } from "@/lib/resources/types";
 import type { DatabaseObject } from "@/lib/db/types";
 import type { TreeRowActionHandlers } from "@/components/object-tree/row-actions";
 
@@ -589,9 +542,6 @@ describe("Studio", () => {
     capturedProfilerProps = {};
     capturedCodeGenProps = {};
     capturedTestDataProps = {};
-    capturedInspectorProps = {};
-    capturedKafkaWorkbenchProps = {};
-    capturedVaultWorkbenchProps = {};
 
     // Reset overrides
     connMgrOverride = {};
@@ -640,10 +590,6 @@ describe("Studio", () => {
     mockStorageGetConnectionOrder.mockClear();
     mockStorageGetConnectionOrder.mockReturnValue([]);
     mockStorageSetConnectionOrder.mockClear();
-    storedResourceConnections = [];
-    mockStorageGetResourceConnections.mockClear();
-    mockStorageSaveResourceConnection.mockClear();
-    mockStorageDeleteResourceConnection.mockClear();
     mockSaveMaskingConfig.mockClear();
     // Set rather than restored: one test turns masking on, and `mockRestore` in bun
     // drops the implementation entirely instead of returning it to this default.
@@ -2998,219 +2944,5 @@ describe("Studio", () => {
 
     const rail = await findByTestId("agent-rail");
     expect(rail.closest('[data-testid="resizable-panel"]')).not.toBeNull();
-  });
-
-  // =========================================================================
-  // Resource connections (StorageBase fork)
-  // =========================================================================
-
-  describe("resource connections", () => {
-    const resConn: ResourceConnection = {
-      id: "res-1",
-      name: "backups",
-      type: "s3",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      region: "us-east-1",
-    };
-    const resConn2: ResourceConnection = {
-      id: "res-2",
-      name: "orders",
-      type: "rabbitmq",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    };
-
-    test("passes resource state and handlers to the Sidebar", () => {
-      render(<Studio />);
-      expect(capturedSidebarProps.resourceConnections).toEqual([]);
-      expect(capturedSidebarProps.activeResourceConnection).toBeNull();
-      expect(typeof capturedSidebarProps.onSelectResourceConnection).toBe("function");
-      expect(typeof capturedSidebarProps.onDeleteResourceConnection).toBe("function");
-      expect(typeof capturedSidebarProps.onEditResourceConnection).toBe("function");
-      expect(typeof capturedSidebarProps.onAddResourceConnection).toBe("function");
-    });
-
-    test("passes the resource save handler to the connection modal", () => {
-      render(<Studio />);
-      expect(typeof capturedConnectionModalProps.onConnectResource).toBe("function");
-      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
-    });
-
-    test("modal onConnectResource saves, activates and closes", () => {
-      render(<Studio />);
-      const addFn = capturedSidebarProps.onAddConnection as () => void;
-      act(() => addFn());
-      expect(capturedConnectionModalProps.isOpen).toBe(true);
-
-      const saveFn = capturedConnectionModalProps.onConnectResource as (c: ResourceConnection) => void;
-      act(() => saveFn(resConn));
-
-      expect(mockStorageSaveResourceConnection).toHaveBeenCalledWith(resConn);
-      expect(capturedConnectionModalProps.isOpen).toBe(false);
-      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
-      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn);
-      expect(capturedSidebarProps.resourceConnections).toEqual([resConn]);
-    });
-
-    test("sidebar edit opens the modal pinned to the resource connection", () => {
-      render(<Studio />);
-      const editFn = capturedSidebarProps.onEditResourceConnection as (c: ResourceConnection) => void;
-      act(() => editFn(resConn));
-      expect(capturedConnectionModalProps.isOpen).toBe(true);
-      expect(capturedConnectionModalProps.editResourceConnection).toEqual(resConn);
-    });
-
-    test("modal onClose clears the resource edit target", () => {
-      render(<Studio />);
-      const editFn = capturedSidebarProps.onEditResourceConnection as (c: ResourceConnection) => void;
-      act(() => editFn(resConn));
-      const closeFn = capturedConnectionModalProps.onClose as () => void;
-      act(() => closeFn());
-      expect(capturedConnectionModalProps.isOpen).toBe(false);
-      expect(capturedConnectionModalProps.editResourceConnection).toBeNull();
-    });
-
-    test("deleting the active resource falls back to the first survivor", () => {
-      storedResourceConnections = [resConn, resConn2];
-      render(<Studio />);
-      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn);
-
-      const deleteFn = capturedSidebarProps.onDeleteResourceConnection as (id: string) => void;
-      act(() => deleteFn("res-1"));
-
-      expect(mockStorageDeleteResourceConnection).toHaveBeenCalledWith("res-1");
-      expect(capturedSidebarProps.resourceConnections).toEqual([resConn2]);
-      expect(capturedSidebarProps.activeResourceConnection).toEqual(resConn2);
-    });
-
-    test("clicking a resource tree row opens the inspector for the node", () => {
-      storedResourceConnections = [resConn];
-      const { queryByTestId } = render(<Studio />);
-      expect(queryByTestId("resource-inspector")).toBeNull();
-
-      const node = { id: "bucket/backups", parentId: null, kind: "bucket", name: "backups", hasChildren: true };
-      const clickFn = capturedSidebarProps.onResourceNodeClick as (node: unknown) => void;
-      act(() => clickFn(node));
-
-      expect(queryByTestId("resource-inspector")).not.toBeNull();
-      expect(capturedInspectorProps.node).toEqual(node);
-      expect(capturedInspectorProps.connection).toEqual(resConn);
-    });
-
-    test("inspector change bumps the tree refresh token, close clears the node", () => {
-      storedResourceConnections = [resConn];
-      const { queryByTestId } = render(<Studio />);
-      const node = { id: "bucket/backups", parentId: null, kind: "bucket", name: "backups", hasChildren: true };
-      const clickFn = capturedSidebarProps.onResourceNodeClick as (node: unknown) => void;
-      act(() => clickFn(node));
-      expect(capturedSidebarProps.resourceRefreshToken).toBe(0);
-
-      const changedFn = capturedInspectorProps.onChanged as () => void;
-      act(() => changedFn());
-      expect(capturedSidebarProps.resourceRefreshToken).toBe(1);
-
-      const closeFn = capturedInspectorProps.onClose as () => void;
-      act(() => closeFn());
-      expect(queryByTestId("resource-inspector")).toBeNull();
-    });
-
-    describe("Kafka workbench", () => {
-      const kafkaConn: ResourceConnection = {
-        id: "res-k",
-        name: "events",
-        type: "kafka",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        endpoint: "localhost:9092",
-      };
-
-      test("kafka connections list beside the databases, never under Resources or in the tree", () => {
-        storedResourceConnections = [kafkaConn, resConn];
-        render(<Studio />);
-        expect(capturedSidebarProps.workbenchConnections).toEqual([kafkaConn]);
-        expect(capturedSidebarProps.resourceConnections).toEqual([resConn]);
-        // The first stored connection activates on load; a Kafka one never mounts the tree.
-        expect(capturedSidebarProps.activeResourceConnection).toBeNull();
-        expect(capturedSidebarProps.activeWorkbenchConnection).toBeNull();
-      });
-
-      test("selecting a kafka connection opens the workbench over the editor; selecting a database closes it", () => {
-        storedResourceConnections = [kafkaConn];
-        const { queryByTestId } = render(<Studio />);
-        expect(queryByTestId("kafka-workbench")).toBeNull();
-
-        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(kafkaConn));
-        expect(queryByTestId("kafka-workbench")).not.toBeNull();
-        expect(capturedKafkaWorkbenchProps.connection).toEqual(kafkaConn);
-        expect(capturedSidebarProps.activeWorkbenchConnection).toEqual(kafkaConn);
-        expect(capturedSidebarProps.activeConnection).toBeNull();
-
-        act(() => (capturedSidebarProps.onSelectConnection as (c: DatabaseConnection) => void)(pgConn as never));
-        expect(queryByTestId("kafka-workbench")).toBeNull();
-      });
-
-      test("the workbench closes itself and edits its connection through the modal", () => {
-        storedResourceConnections = [kafkaConn];
-        const { queryByTestId } = render(<Studio />);
-        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(kafkaConn));
-
-        act(() => (capturedKafkaWorkbenchProps.onEditConnection as (c: ResourceConnection) => void)(kafkaConn));
-        expect(capturedConnectionModalProps.isOpen).toBe(true);
-        expect(capturedConnectionModalProps.editResourceConnection).toEqual(kafkaConn);
-
-        act(() => (capturedKafkaWorkbenchProps.onClose as () => void)());
-        expect(queryByTestId("kafka-workbench")).toBeNull();
-      });
-
-      test("saving a kafka connection opens its workbench; deleting it closes the workbench", () => {
-        const { queryByTestId } = render(<Studio />);
-        act(() => (capturedConnectionModalProps.onConnectResource as (c: ResourceConnection) => void)(kafkaConn));
-        expect(queryByTestId("kafka-workbench")).not.toBeNull();
-
-        act(() => (capturedSidebarProps.onDeleteResourceConnection as (id: string) => void)("res-k"));
-        expect(mockStorageDeleteResourceConnection).toHaveBeenCalledWith("res-k");
-        expect(queryByTestId("kafka-workbench")).toBeNull();
-      });
-
-      test("the mobile connection list carries the kafka rows, and picking one opens the workbench", () => {
-        storedResourceConnections = [kafkaConn];
-        const { queryByTestId } = render(<Studio />);
-        act(() => (capturedMobileNavProps.onTabChange as (tab: string) => void)("database"));
-        const rows = capturedConnectionsListProps.trailingItems as React.ReactElement<{
-          onSelect: (c: ResourceConnection) => void;
-          connections: ResourceConnection[];
-        }>;
-        expect(rows.props.connections).toEqual([kafkaConn]);
-        act(() => rows.props.onSelect(kafkaConn));
-        expect(queryByTestId("kafka-workbench")).not.toBeNull();
-      });
-
-      test("a vault connection opens the vault workbench, told whether the user is an admin", () => {
-        const vaultConn: ResourceConnection = {
-          id: "res-vault",
-          name: "secrets",
-          type: "azure-key-vault",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          vaultName: "example",
-        };
-        storedResourceConnections = [vaultConn];
-        const { queryByTestId } = render(<Studio />);
-        expect(capturedSidebarProps.workbenchConnections).toEqual([vaultConn]);
-        act(() => (capturedSidebarProps.onSelectWorkbenchConnection as (c: ResourceConnection) => void)(vaultConn));
-        expect(queryByTestId("vault-workbench")).not.toBeNull();
-        expect(queryByTestId("kafka-workbench")).toBeNull();
-        expect(capturedVaultWorkbenchProps.connection).toEqual(vaultConn);
-        expect(typeof capturedVaultWorkbenchProps.isAdmin).toBe("boolean");
-
-        act(() => (capturedVaultWorkbenchProps.onEditConnection as (c: ResourceConnection) => void)(vaultConn));
-        expect(capturedConnectionModalProps.editResourceConnection).toEqual(vaultConn);
-        act(() => (capturedVaultWorkbenchProps.onClose as () => void)());
-        expect(queryByTestId("vault-workbench")).toBeNull();
-      });
-
-      test("the mobile list carries no rows without kafka connections", () => {
-        render(<Studio />);
-        act(() => (capturedMobileNavProps.onTabChange as (tab: string) => void)("database"));
-        expect(capturedConnectionsListProps.trailingItems).toBeUndefined();
-      });
-    });
   });
 });

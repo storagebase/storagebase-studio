@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { appFetch } from "@/lib/config/base-path";
 import { registerResourceViewer, type ResourceViewerProps } from "@/components/resources/viewer-registry";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
+import { routeRefusal } from "@/components/resources/route-refusal";
 import type { ResourceNode } from "@/lib/resources/types";
 import type { BrowseMessagesPage } from "@/lib/resources/operations";
 
@@ -49,7 +51,7 @@ function metaChips(node: ResourceNode): string[] {
     .map(([name, value]) => `${name}: ${String(value)}`);
 }
 
-export function MessageViewer({ connection, node, onChanged, onClose }: ResourceViewerProps) {
+export function MessageViewer({ connection, node, onChanged, onClose, readOnly = false }: ResourceViewerProps) {
   const [page, setPage] = useState<BrowseMessagesPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,14 +61,14 @@ export function MessageViewer({ connection, node, onChanged, onClose }: Resource
   const [notice, setNotice] = useState<string | null>(null);
 
   const browseable = BROWSEABLE_KINDS.has(node.kind);
-  const basePayload = { connection, destination: node.id };
+  const basePayload = { ...resourceConnectionBody(connection), destination: node.id };
 
   const load = useCallback(async () => {
     if (!browseable) return;
     setError(null);
     try {
       const response = await postMessage("/api/resources/message/browse", { ...basePayload, limit: 50 });
-      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Browse failed");
+      if (!response.ok) throw new Error(await routeRefusal(response, "Browse failed"));
       setPage((await response.json()) as BrowseMessagesPage);
     } catch (loadError) {
       setError(toMessage(loadError));
@@ -97,7 +99,7 @@ export function MessageViewer({ connection, node, onChanged, onClose }: Resource
           ? { attributes: { routingKey: routingKey.trim() } }
           : {}),
       });
-      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Publish failed");
+      if (!response.ok) throw new Error(await routeRefusal(response, "Publish failed"));
       setBody("");
       setNotice("Published.");
       onChanged?.();
@@ -120,7 +122,7 @@ export function MessageViewer({ connection, node, onChanged, onClose }: Resource
     setBusy(true);
     try {
       const response = await postMessage("/api/resources/message/purge", basePayload);
-      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Purge failed");
+      if (!response.ok) throw new Error(await routeRefusal(response, "Purge failed"));
       setNotice("Purged.");
       onChanged?.();
       await load();
@@ -183,43 +185,51 @@ export function MessageViewer({ connection, node, onChanged, onClose }: Resource
         </div>
       ) : (
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Exchanges hold no messages — publish below routes through this exchange instead.
+          {readOnly
+            ? "Exchanges hold no messages to browse."
+            : "Exchanges hold no messages — publish below routes through this exchange instead."}
         </p>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="message-viewer-body" className="text-xs font-mediumr text-fg-muted">
-          Publish a message
-        </Label>
-        <textarea
-          id="message-viewer-body"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Message body"
-          rows={3}
-          className="w-full rounded-md bg-panel border border-hairline focus:border-brand-tint/50 text-xs text-fg-secondary p-2 resize-y placeholder:text-fg-subtle"
-        />
-        {node.kind === "exchange" && (
-          <Input
-            value={routingKey}
-            onChange={(e) => setRoutingKey(e.target.value)}
-            placeholder="Routing key (optional)"
-            aria-label="Routing key"
-            className="h-9 bg-panel border-hairline focus:border-brand-tint/50 text-xs"
-          />
+        {!readOnly && (
+          <>
+            <Label htmlFor="message-viewer-body" className="text-xs font-mediumr text-fg-muted">
+              Publish a message
+            </Label>
+            <textarea
+              id="message-viewer-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Message body"
+              rows={3}
+              className="w-full rounded-md bg-panel border border-hairline focus:border-brand-tint/50 text-xs text-fg-secondary p-2 resize-y placeholder:text-fg-subtle"
+            />
+            {node.kind === "exchange" && (
+              <Input
+                value={routingKey}
+                onChange={(e) => setRoutingKey(e.target.value)}
+                placeholder="Routing key (optional)"
+                aria-label="Routing key"
+                className="h-9 bg-panel border-hairline focus:border-brand-tint/50 text-xs"
+              />
+            )}
+          </>
         )}
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy || body.trim() === ""}
-            onClick={handlePublish}
-            className="text-xs"
-          >
-            <Send strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
-            Publish
-          </Button>
-          {browseable && (
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || body.trim() === ""}
+              onClick={handlePublish}
+              className="text-xs"
+            >
+              <Send strokeWidth={1.5} className="w-3.5 h-3.5 mr-1.5" />
+              Publish
+            </Button>
+          )}
+          {browseable && !readOnly && (
             <Button
               variant="outline"
               size="sm"

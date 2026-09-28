@@ -177,11 +177,10 @@ export function hasSelectableResourceTypes(): boolean {
 }
 
 /**
- * Resource types that open a full workbench in the main area instead of the
- * sidebar tree + inspector dialog (StorageBase fork: Kafka and the vault family). Their
- * connections list beside the database connections, not under "Resources".
- * A set, not a config field: it is a fact about the shell's routing, and the
- * exhaustive table above stays about the type itself.
+ * Resource types that open a full-page workbench on their section page
+ * instead of a tree with a viewer beside it (StorageBase fork: Kafka and the
+ * vault family). A set, not a config field: it is a fact about the pages'
+ * routing, and the exhaustive table above stays about the type itself.
  */
 const WORKBENCH_RESOURCE_TYPES: ReadonlySet<ResourceType> = new Set<ResourceType>([
   "kafka",

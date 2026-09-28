@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateProvider } from "@/lib/db";
 import { createErrorResponse } from "@/lib/api/errors";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
+import { assertManagedStatement } from "@/lib/access/db-guard";
 import { guardRoute } from "@/lib/api/require-session";
 import { readBoundParams } from "@/lib/api/bound-params";
 import { startQueryAudit } from "@/lib/api/query-audit";
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
     const { sql, options = {}, queryId } = body;
 
     const connection = await resolveConnection(body, guard.session);
+    assertManagedStatement(req, guard.session, connection, sql, "POST /api/db/query"); // StorageBase fork: read grants
 
     if (!sql) {
       return NextResponse.json({ error: "Connection and query are required" }, { status: 400 });

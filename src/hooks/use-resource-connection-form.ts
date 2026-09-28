@@ -11,6 +11,9 @@ import {
   takesResourceConnectionField,
   type ResourceConnectionField,
 } from "@/lib/resources/ui-config";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
+import { UserConnectionRequestError } from "@/lib/user-connections/client";
+import { useServerHeldSecrets } from "@/lib/user-connections/use-server-held-secrets";
 import type { ResourceCategory, ResourceConnection, ResourceType } from "@/lib/resources/types";
 
 /**
@@ -63,6 +66,8 @@ const FIELD_OWNERSHIP: Record<keyof ResourceConnection, FieldOwnership> = {
   // tunnel belongs to the families (see above). Carried, never cleared.
   group: "preserved",
   sshTunnel: "preserved",
+  // Written by the server alone (src/lib/user-connections), for the database form's reason.
+  savedSecrets: "edited",
 };
 
 /** What survives an edit untouched. Empty for a new connection, which has no past. */
@@ -150,6 +155,13 @@ export function useResourceConnectionForm({
   const [degradedSaveAcknowledged, setDegradedSaveAcknowledged] = useState(false);
 
   const isEditMode = !!editConnection;
+  // Where the credentials typed here live (src/lib/user-connections).
+  const secrets = useServerHeldSecrets({
+    kind: "resource",
+    editConnection,
+    isOpen,
+    hostManaged: !!onTestConnection,
+  });
 
   // Keep the selected type inside the served category (see the `category` prop
   // docblock). Adjusted while rendering, like the edit blocks below: the setter
@@ -290,15 +302,18 @@ export function useResourceConnectionForm({
     async (conn: ResourceConnection): Promise<TestOutcome> => {
       if (onTestConnection) return await onTestConnection(conn);
 
-      const response = await appFetch("/api/resources/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connection: conn }),
-      });
+      // An edit of a server-held connection is tested with its stored secrets filled in there.
+      return secrets.probe<TestOutcome>(conn, async () => {
+        const response = await appFetch("/api/resources/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resourceConnectionBody(conn)),
+        });
 
-      return (await response.json()) as TestOutcome;
+        return (await response.json()) as TestOutcome;
+      });
     },
-    [onTestConnection],
+    [onTestConnection, secrets],
   );
 
   const handleTestConnection = useCallback(async () => {
@@ -352,18 +367,22 @@ export function useResourceConnectionForm({
         return;
       }
 
-      onConnect(conn);
+      // With server storage the save goes to the server first; the caller keeps its secret-free answer.
+      onConnect(await secrets.persist(conn));
       setName("");
       setEnvironment("local");
       for (const setter of Object.values(fieldSetters)) setter("");
       setTestResult(null);
-    } catch {
-      setTestResult({ tone: "error", message: "Network error - could not reach server" });
+    } catch (error) {
+      setTestResult({
+        tone: "error",
+        message: error instanceof UserConnectionRequestError ? error.message : "Network error - could not reach server",
+      });
     } finally {
       setIsTesting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildConnection, degradedSaveAcknowledged, isEditMode, onConnect, probeConnection]);
+  }, [buildConnection, degradedSaveAcknowledged, isEditMode, onConnect, probeConnection, secrets]);
 
   return {
     type,
@@ -380,6 +399,8 @@ export function useResourceConnectionForm({
     testResult,
     setTestResult,
     isEditMode,
+    /** Saved-secret hints and the credential-storage notice. */
+    secrets,
     handleTestConnection,
     handleConnect,
     /** Types the picker may offer, optionally narrowed to one category. */

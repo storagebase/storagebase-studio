@@ -67,6 +67,17 @@ export type AuditEventType =
    * closed set both map to.
    */
   | "resource_operation"
+  /**
+   * An administrator changed the access model (StorageBase fork): a connection group or a role
+   * binding was created, changed or deleted (src/lib/access/**). The event carries the record
+   * before and after in `details` — groups and bindings are configuration, never secret material.
+   * Managed-connection changes and uses are `managed_connection` events.
+   */
+  | "access_config"
+  /** An administrator changed the sign-in switch: Entra on/off, the local-login policy (StorageBase fork). */
+  | "auth_settings_changed"
+  /** A user's connection secrets moved into the server's write-only store; a count, never a value (StorageBase fork). */
+  | "connection_secrets_migrated"
   // Phase 1 auth events
   | "login_success"
   | "login_failure"
@@ -182,7 +193,22 @@ export type AuditReason =
   // reads them differently: the first is the user's own choice, the second the engine's limit.
   | "query_failed"
   | "query_cancelled"
-  | "query_timeout";
+  | "query_timeout"
+  // The access model (StorageBase fork). `access_not_granted`: a managed connection the caller's
+  // roles grant nothing on (answered as not found, so the caller learns nothing). `access_insufficient`:
+  // the grant is real but lower than the operation needs. `access_read_only`: a read grant refused
+  // a statement that is not read-only.
+  | "access_not_granted"
+  | "access_insufficient"
+  | "access_read_only"
+  // Sign-in with Microsoft Entra ID (StorageBase fork), beside the generic `oidc_*` engine codes the
+  // Entra flow shares. `entra_disabled`: the switch is off. `entra_tenant_mismatch`: a token from
+  // another tenant. `entra_role_not_allowed`: STORAGEBASE_ENTRA_ALLOWED_ROLES refused the user.
+  // `local_login_disabled`: the local-login policy refused email/password sign-in outright.
+  | "entra_disabled"
+  | "entra_tenant_mismatch"
+  | "entra_role_not_allowed"
+  | "local_login_disabled";
 
 /**
  * What kind of statement a `query_execution` event recorded: the query limiter's own vocabulary
@@ -260,6 +286,21 @@ export interface AuditEvent {
    * free-text field. Anything else is dropped by sanitizeAuditInput.
    */
   counts?: Record<string, number | boolean>;
+  /**
+   * Identity (StorageBase fork), on login, logout and access events: how the session was
+   * established (`local`, `oidc`, `entra`), the directory object id it names, and its app-role
+   * values joined with commas. Identifiers and role names, never tokens or raw claims.
+   */
+  authProvider?: string;
+  subject?: string;
+  appRoles?: string;
+  /**
+   * The grant a managed-connection action ran under (StorageBase fork): the effective permission,
+   * what granted it (the binding app-role values, or `admin-bypass`) and through which groups.
+   */
+  permission?: string;
+  grantedBy?: string;
+  accessGroups?: string;
 }
 
 const MAX_EVENTS = 1000;
@@ -619,6 +660,12 @@ interface AuditLogLine {
   error?: string;
   query_id?: string;
   counts?: Record<string, number | boolean>;
+  auth_provider?: string;
+  subject?: string;
+  app_roles?: string;
+  permission?: string;
+  granted_by?: string;
+  access_groups?: string;
 }
 
 /** A count that may reach the line: finite, so the field's JSON type never flips to null. */
@@ -656,6 +703,12 @@ function toAuditLine(event: AuditEvent): AuditLogLine {
     ...(event.error ? { error: event.error } : {}),
     ...(event.queryId ? { query_id: event.queryId } : {}),
     ...(event.counts ? { counts: event.counts } : {}),
+    ...(event.authProvider ? { auth_provider: event.authProvider } : {}),
+    ...(event.subject ? { subject: event.subject } : {}),
+    ...(event.appRoles ? { app_roles: event.appRoles } : {}),
+    ...(event.permission ? { permission: event.permission } : {}),
+    ...(event.grantedBy ? { granted_by: event.grantedBy } : {}),
+    ...(event.accessGroups ? { access_groups: event.accessGroups } : {}),
     // Number.isFinite excludes NaN and +/-Infinity: JSON.stringify(NaN) silently produces `null`,
     // which would flip duration_ms from a number to null for that one line in a contract parsers
     // depend on. Omitting it entirely keeps the field's type stable instead.

@@ -16,6 +16,7 @@ import {
   planExecutableLength,
 } from "@/lib/db/object-edit";
 import { connectionFingerprint } from "@/lib/db/connection-fingerprint";
+import { requireManagedPermission } from "@/lib/access/db-guard";
 import { requireEditableKind } from "@/lib/db/object-kinds";
 import { emitAuditEvent } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
     req,
     ROUTE,
     async (provider, body, context) => {
+      requireManagedPermission(req, context.session, context.connection, "write", `POST /${ROUTE}`); // StorageBase fork
       // 1. THE SHAPE, BEFORE THE SEAL. The seal's own refusal emits an audit event that reads
       //    `plan.kind`, `plan.path` and `plan.planId`, and a body that is not a plan has none of
       //    them, so checking the seal first would write `undefined:undefined:undefined` into an
