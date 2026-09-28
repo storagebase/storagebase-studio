@@ -15,7 +15,16 @@ import { formatDate, postVault } from "./vault-api";
  * purges it, with Recover and a typed-name Purge. Purge is the only
  * irreversible action in the workbench, and says so.
  */
-export function VaultDeletedList({ connection, type }: { connection: ResourceConnection; type: VaultObjectType }) {
+export function VaultDeletedList({
+  connection,
+  type,
+  readOnly = false,
+}: {
+  connection: ResourceConnection;
+  type: VaultObjectType;
+  /** Lists only: recover and purge are writes. */
+  readOnly?: boolean;
+}) {
   const read = useCallback(
     () => postVault<{ deleted: VaultDeletedObject[] }>(connection, "deleted", { type }),
     [connection, type],
@@ -53,7 +62,7 @@ export function VaultDeletedList({ connection, type }: { connection: ResourceCon
               <TableHead>Name</TableHead>
               <TableHead>Deleted</TableHead>
               <TableHead>Scheduled purge</TableHead>
-              <TableHead />
+              {!readOnly && <TableHead />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -62,35 +71,39 @@ export function VaultDeletedList({ connection, type }: { connection: ResourceCon
                 <TableCell className="font-mono break-all">{item.name}</TableCell>
                 <TableCell className="font-mono">{formatDate(item.deletedOn)}</TableCell>
                 <TableCell className="font-mono">{formatDate(item.scheduledPurgeDate)}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">
-                  {purging === item.name ? (
-                    <ConfirmByName
-                      name={item.name}
-                      action="Purge"
-                      consequence={`Purging permanently deletes ${item.name} and cannot be undone.`}
-                      onConfirm={() => act("deleted/purge", item.name, `Purged ${item.name}.`, { confirm: item.name })}
-                    />
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => void act("deleted/recover", item.name, `Recovered ${item.name}.`)}
-                      >
-                        Recover
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-danger"
-                        onClick={() => setPurging(item.name)}
-                      >
-                        Purge…
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
+                {!readOnly && (
+                  <TableCell className="text-right whitespace-nowrap">
+                    {purging === item.name ? (
+                      <ConfirmByName
+                        name={item.name}
+                        action="Purge"
+                        consequence={`Purging permanently deletes ${item.name} and cannot be undone.`}
+                        onConfirm={() =>
+                          act("deleted/purge", item.name, `Purged ${item.name}.`, { confirm: item.name })
+                        }
+                      />
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => void act("deleted/recover", item.name, `Recovered ${item.name}.`)}
+                        >
+                          Recover
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-danger"
+                          onClick={() => setPurging(item.name)}
+                        >
+                          Purge…
+                        </Button>
+                      </>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

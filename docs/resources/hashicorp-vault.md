@@ -36,16 +36,19 @@ Capabilities: vault category, port 8200, no SSH tunnel. Labels: Mounts/Secrets.
 
 ## Vault workbench
 
-Opens in the main area from the Connections list (`opensWorkbench()`),
+Opens full-page on the Vaults page (`/vaults`, `opensWorkbench()`),
 served by the generic `BasicVaultWorkbench` over this provider's
 `VaultOperations` (src/lib/resources/providers/vaults/basic-workbench.ts):
 the tree is flattened into one bounded list (1000 objects, 200 levels) whose
 names are the by-name addresses. Declared flags: `vault.secrets`, `vault.secret.reveal`, `vault.secret.write`, `vault.delete` (no properties, keys or certificates). There is no soft
 delete here, so the workbench's delete asks for the typed name and says it is
 permanent (a metadata delete destroys every version). Details come from the listing, never from a value read;
-Reveal is the only call that reads one. Admin exclusion rules apply exactly
-as for Azure Key Vault (docs/resources/azure-key-vault.md, "Exclusion
-rules"), keyed by the endpoint plus namespace; rules match the full `<mount>/<path>`.
+Reveal is the only call that reads one. Admin exclusion rules (one global
+list, Admin → Access → Vault exclusions) apply exactly as for Azure Key Vault
+(docs/resources/azure-key-vault.md, "Exclusion rules"); a rule's vault pattern
+is matched on the server against this connection's endpoint host, endpoint URL
+and `<url>#<namespace>` (when a namespace is set), and object patterns match
+the full `<mount>/<path>`.
 
 ## Testing
 

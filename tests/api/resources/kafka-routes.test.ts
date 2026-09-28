@@ -28,7 +28,10 @@ mock.module("@/lib/audit", () => ({
 
 const kafka = {
   describeCluster: mock(async () => ({ clusterId: "c", controllerId: 1, brokers: [] })),
-  listTopicSummaries: mock(async () => ({ topics: [], countsTruncated: false })),
+  listTopicSummaries: mock(async () => ({ topics: [] })),
+  countTopicMessages: mock(async (topics: readonly string[]) =>
+    Object.fromEntries(topics.map((topic) => [topic, { messageCount: 1, countError: null }])),
+  ),
   describeTopic: mock(async (_topic: string) => ({ name: "t", internal: false, partitions: [], configs: [] })),
   createTopic: mock(async (_input: unknown) => undefined),
   deleteTopic: mock(async (_topic: string) => undefined),
@@ -36,7 +39,10 @@ const kafka = {
   alterTopicConfigs: mock(async (_topic: string, _changes: unknown) => undefined),
   readMessages: mock(async (_topic: string, _query: unknown) => ({ messages: [], truncated: false })),
   produceMessage: mock(async (_topic: string, _input: unknown) => ({ partition: 0, offset: "7" })),
-  listConsumerGroups: mock(async () => ({ groups: [], lagTruncated: false })),
+  listConsumerGroups: mock(async () => ({ groups: [] })),
+  measureGroupLag: mock(async (groupIds: readonly string[]) =>
+    Object.fromEntries(groupIds.map((groupId) => [groupId, { totalLag: 0, lagError: null, topics: 1 }])),
+  ),
   describeConsumerGroup: mock(async (_groupId: string) => ({
     groupId: "g",
     state: "Empty",
@@ -79,6 +85,7 @@ mock.module("@/lib/resources/factory", () => ({
 const routes = {
   cluster: (await import("@/app/api/resources/kafka/cluster/route")).POST,
   topics: (await import("@/app/api/resources/kafka/topics/route")).POST,
+  "topics/counts": (await import("@/app/api/resources/kafka/topics/counts/route")).POST,
   topic: (await import("@/app/api/resources/kafka/topic/route")).POST,
   "topic/create": (await import("@/app/api/resources/kafka/topic/create/route")).POST,
   "topic/delete": (await import("@/app/api/resources/kafka/topic/delete/route")).POST,
@@ -87,6 +94,7 @@ const routes = {
   messages: (await import("@/app/api/resources/kafka/messages/route")).POST,
   produce: (await import("@/app/api/resources/kafka/produce/route")).POST,
   groups: (await import("@/app/api/resources/kafka/groups/route")).POST,
+  "groups/lag": (await import("@/app/api/resources/kafka/groups/lag/route")).POST,
   group: (await import("@/app/api/resources/kafka/group/route")).POST,
   "group/reset-offsets": (await import("@/app/api/resources/kafka/group/reset-offsets/route")).POST,
   "group/delete": (await import("@/app/api/resources/kafka/group/delete/route")).POST,
@@ -146,6 +154,44 @@ describe("kafka workbench routes", () => {
       "kafka.groups.list",
       "kafka.group.read",
     ]);
+  });
+
+  test("counts and lag answer a bounded batch and refuse a malformed or oversized one", async () => {
+    const counted = await call("topics/counts", { topics: ["orders", "payments"] });
+    expect(counted.status).toBe(200);
+    expect(await parseResponseJSON<unknown>(counted)).toEqual({
+      counts: {
+        orders: { messageCount: 1, countError: null },
+        payments: { messageCount: 1, countError: null },
+      },
+    });
+    expect(kafka.countTopicMessages).toHaveBeenCalledWith(["orders", "payments"]);
+    const lagged = await call("groups/lag", { groupIds: ["billing"] });
+    expect(await parseResponseJSON<unknown>(lagged)).toEqual({
+      lags: { billing: { totalLag: 0, lagError: null, topics: 1 } },
+    });
+    expect(auditEvents().map((event) => [event.action, event.counts])).toEqual([
+      ["kafka.topics.counts", { itemsListed: 2, unreadable: 0 }],
+      ["kafka.groups.lag", { itemsListed: 1, unreadable: 0 }],
+    ]);
+
+    const fifty = Array.from({ length: 50 }, (_, index) => `t-${index}`);
+    expect((await call("topics/counts", { topics: fifty })).status).toBe(200);
+    for (const body of [
+      {},
+      { topics: [] },
+      { topics: "orders" },
+      { topics: [...fifty, "one-more"] },
+      { topics: ["bad topic!"] },
+      { topics: [7] },
+    ]) {
+      expect((await call("topics/counts", body)).status).toBe(400);
+    }
+    for (const body of [{ groupIds: [] }, { groupIds: [" "] }, { groupIds: [...fifty, "g"] }]) {
+      expect((await call("groups/lag", body)).status).toBe(400);
+    }
+    expect(kafka.countTopicMessages).toHaveBeenCalledTimes(2);
+    expect(kafka.measureGroupLag).toHaveBeenCalledTimes(1);
   });
 
   test("messages validate the seek and pass limit and partition through", async () => {

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import {
   auditEvents,
-  EXCLUSION_KEY,
+  excludeRules,
   factory,
   fakeProvider,
   flags,
@@ -9,7 +9,6 @@ import {
   request,
   resetHarness,
   session,
-  settings,
   store,
 } from "./vault-route-harness";
 import { parseResponseJSON } from "../../helpers/mock-next";
@@ -34,9 +33,7 @@ async function call(route: Route, body: Record<string, unknown>) {
 }
 
 function excludeHidden() {
-  settings.set(EXCLUSION_KEY, {
-    rules: [{ pattern: "hidden-*", kind: "glob", objectType: "any", note: "" }],
-  });
+  excludeRules([{ objectPattern: "hidden-*" }]);
 }
 
 const PEM = Buffer.from("-----BEGIN CERTIFICATE-----").toString("base64");

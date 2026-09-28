@@ -117,20 +117,30 @@ export interface KafkaTopicSummary {
   readonly partitions: number;
   readonly replicationFactor: number;
   readonly underReplicatedPartitions: number;
-  /** Sum of high minus low watermarks — approximate (compaction, transaction markers); null past the count bound. */
-  readonly messageCount: number | null;
-  /**
-   * Why `messageCount` is null for a topic that was inside the count bound:
-   * its offsets could not be read (no leader, mid-deletion, a broker that
-   * answered short). Null when the count was read or never attempted.
-   */
-  readonly countError: string | null;
 }
 
+/**
+ * The topic listing is metadata only — one round trip, whatever the topic
+ * count. Message counts cost two ListOffsets calls per topic, so they are
+ * asked for separately (`countTopicMessages`), a bounded batch at a time, for
+ * the rows a viewer can actually see.
+ */
 export interface KafkaTopicListing {
   readonly topics: readonly KafkaTopicSummary[];
-  /** True when message counts were skipped for some topics (the count bound). */
-  readonly countsTruncated: boolean;
+}
+
+/** Names per lazy-measurement call (`countTopicMessages`, `measureGroupLag`); the routes refuse more. */
+export const KAFKA_MEASURE_BATCH_LIMIT = 50;
+
+export interface KafkaTopicCount {
+  /** Sum of high minus low watermarks — approximate (compaction, transaction markers); null when unreadable. */
+  readonly messageCount: number | null;
+  /**
+   * Why `messageCount` is null: the topic does not exist, or its offsets
+   * could not be read (no leader, mid-deletion, a broker that answered
+   * short). Null when the count was read.
+   */
+  readonly countError: string | null;
 }
 
 export interface KafkaPartitionDetail {
@@ -222,17 +232,28 @@ export interface KafkaConsumerGroupSummary {
   readonly protocolType: string;
   readonly protocol: string;
   readonly members: number;
-  /** Null when lag was not measured (the lag bound, the studio's own peek groups) or could not be (`lagError`). */
-  readonly totalLag: number | null;
-  /** Why lag could not be measured for a group inside the bound; null otherwise. */
-  readonly lagError: string | null;
+  /**
+   * The coordinator broker's id, derived the way Kafka assigns it: the leader of the
+   * `__consumer_offsets` partition the group id hashes to. Null when that metadata was unreadable
+   * or the partition has no leader.
+   */
+  readonly coordinator: number | null;
   /** The studio's own throwaway peek groups — hidden by default in the UI. */
   readonly internal: boolean;
 }
 
+/** State and members only; lag is measured separately (`measureGroupLag`), like topic counts. */
 export interface KafkaConsumerGroupListing {
   readonly groups: readonly KafkaConsumerGroupSummary[];
-  readonly lagTruncated: boolean;
+}
+
+export interface KafkaGroupLag {
+  /** Sum of per-partition lag; null when any of the group's topics could not be read (`lagError`). */
+  readonly totalLag: number | null;
+  /** Why lag could not be measured; null when it was. */
+  readonly lagError: string | null;
+  /** Distinct topics the group has committed offsets on; null when its offsets could not be fetched. */
+  readonly topics: number | null;
 }
 
 export interface KafkaGroupMember {
@@ -279,6 +300,8 @@ export interface KafkaResetOffsetsInput {
 export interface KafkaAdminOperations {
   describeCluster(): Promise<KafkaClusterOverview>;
   listTopicSummaries(): Promise<KafkaTopicListing>;
+  /** Best effort per topic, keyed by name; at most `KAFKA_MEASURE_BATCH_LIMIT` names. */
+  countTopicMessages(topics: readonly string[]): Promise<Record<string, KafkaTopicCount>>;
   describeTopic(topic: string): Promise<KafkaTopicDetail>;
   createTopic(input: KafkaCreateTopicInput): Promise<void>;
   deleteTopic(topic: string): Promise<void>;
@@ -289,6 +312,8 @@ export interface KafkaAdminOperations {
   readMessages(topic: string, query: KafkaReadQuery): Promise<KafkaMessagesPage>;
   produceMessage(topic: string, input: KafkaProduceInput): Promise<KafkaProduceResult>;
   listConsumerGroups(): Promise<KafkaConsumerGroupListing>;
+  /** Best effort per group, keyed by id; at most `KAFKA_MEASURE_BATCH_LIMIT` ids. */
+  measureGroupLag(groupIds: readonly string[]): Promise<Record<string, KafkaGroupLag>>;
   describeConsumerGroup(groupId: string): Promise<KafkaConsumerGroupDetail>;
   resetConsumerGroupOffsets(input: KafkaResetOffsetsInput): Promise<readonly KafkaGroupOffset[]>;
   deleteConsumerGroup(groupId: string): Promise<void>;

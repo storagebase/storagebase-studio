@@ -15,6 +15,7 @@ import {
   planExecutableLength,
 } from "@/lib/db/object-edit";
 import { connectionFingerprint } from "@/lib/db/connection-fingerprint";
+import { requireManagedPermission } from "@/lib/access/db-guard";
 import { requireEditableKind } from "@/lib/db/object-kinds";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     req,
     "api/db/objects/edit-plan",
     async (provider, body, context) => {
+      requireManagedPermission(req, context.session, context.connection, "write", "POST /api/db/objects/edit-plan"); // StorageBase fork
       const path = requireObjectPath(body);
       const kind = requireString(body, "kind");
       const partId = requireString(body, "partId");

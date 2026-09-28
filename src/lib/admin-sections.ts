@@ -1,4 +1,5 @@
-export const ADMIN_SECTIONS = ["overview", "operations", "monitoring", "security", "audit"] as const;
+// "access" is the StorageBase fork's (connection groups, role bindings, managed connections, sign-in).
+export const ADMIN_SECTIONS = ["overview", "operations", "monitoring", "security", "audit", "access"] as const;
 
 export type AdminSection = (typeof ADMIN_SECTIONS)[number];
 

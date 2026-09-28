@@ -2,7 +2,8 @@ import { describe, test, expect, beforeEach } from "bun:test";
 import {
   auditEvents,
   connection,
-  EXCLUSION_KEY,
+  excludeRules,
+  EXCLUSIONS_KEY,
   factory,
   fakeProvider,
   providerCalls,
@@ -13,86 +14,132 @@ import {
   store,
 } from "./vault-route-harness";
 import { createMockRequest, parseResponseJSON } from "../../helpers/mock-next";
-import { normalizedVaultAddress } from "@/lib/resources/vault-exclusions";
 
-const { GET, PUT } = await import("@/app/api/resources/admin/vault-exclusions/route");
+const { GET, POST, PUT, DELETE } = await import("@/app/api/resources/admin/vault-exclusions/route");
 const { POST: preview } = await import("@/app/api/resources/admin/vault-exclusions/preview/route");
+const { POST: applicable } = await import("@/app/api/resources/admin/vault-exclusions/applicable/route");
 const { POST: legacyRead } = await import("@/app/api/resources/secret/read/route");
 const { POST: legacyWrite } = await import("@/app/api/resources/secret/write/route");
 const { POST: legacyDelete } = await import("@/app/api/resources/secret/delete/route");
 const { POST: tree } = await import("@/app/api/resources/tree/route");
+const { POST: objects } = await import("@/app/api/resources/vault/objects/route");
 
-const address = normalizedVaultAddress(connection as never);
-const RULE = { pattern: "hidden-*", kind: "glob", objectType: "any", note: "compliance" };
+const RULE = {
+  vaultType: "azure-key-vault",
+  vaultPattern: "exam*",
+  vaultPatternKind: "glob",
+  objectPattern: "hidden-*",
+  objectPatternKind: "glob",
+  objectType: "any",
+  note: "compliance",
+};
 
-function get(query: Record<string, string>) {
-  return GET(createMockRequest(`/api/resources/admin/vault-exclusions?${new URLSearchParams(query)}`) as never);
+type Body = Record<string, unknown>;
+
+function send(method: "POST" | "PUT", body: unknown) {
+  const req = createMockRequest("/api/resources/admin/vault-exclusions", {
+    method,
+    body,
+    headers: { "user-agent": "vault-test-agent" },
+  }) as never;
+  return method === "POST" ? POST(req) : PUT(req);
 }
 
-function put(body: unknown) {
-  return PUT(
-    createMockRequest("/api/resources/admin/vault-exclusions", {
-      method: "PUT",
-      body,
-      headers: { "user-agent": "vault-test-agent" },
+function remove(id: string) {
+  return DELETE(
+    createMockRequest(`/api/resources/admin/vault-exclusions?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
     }) as never,
   );
+}
+
+async function list() {
+  return parseResponseJSON<Body>(await GET(createMockRequest("/api/resources/admin/vault-exclusions") as never));
+}
+
+async function names(body: Body = {}) {
+  const res = await objects(request("/api/resources/vault/objects", { type: "secret", ...body }));
+  return (await parseResponseJSON<{ objects: Array<{ name: string }> }>(res)).objects.map((object) => object.name);
 }
 
 describe("admin vault exclusion API", () => {
   beforeEach(() => resetHarness());
 
-  test("admins read and replace a vault's rules; the change is audited before/after", async () => {
-    const empty = await get({ type: "azure-key-vault", address });
-    expect(await parseResponseJSON<Record<string, unknown>>(empty)).toEqual({ rules: [] });
+  test("admins create, update, toggle and delete global rules; each change is audited before/after", async () => {
+    expect(await list()).toEqual({ rules: [], storeAvailable: true });
+    expect(auditEvents.at(-1)).toMatchObject({ action: "vault.exclusions.read", user: "admin" });
 
-    const saved = await put({ type: "azure-key-vault", address, rules: [RULE] });
-    expect(saved.status).toBe(200);
-    expect(settings.get(EXCLUSION_KEY)).toEqual({ rules: [RULE] });
-    const update = auditEvents.find((event) => event.action === "vault.exclusions.update");
-    expect(update).toMatchObject({ result: "success", user: "admin", target: `azure-key-vault:${address}` });
-    expect(JSON.parse(update?.details as string)).toEqual({ before: [], after: [RULE] });
-    expect(auditEvents.find((event) => event.action === "vault.exclusions.read")).toBeDefined();
-
-    expect(await parseResponseJSON<Record<string, unknown>>(await get({ type: "azure-key-vault", address }))).toEqual({
-      rules: [RULE],
-    });
-  });
-
-  test("non-admins are refused, anonymous callers are not authenticated", async () => {
-    session.current = { role: "user", username: "alice" };
-    expect((await get({ type: "azure-key-vault", address })).status).toBe(403);
-    expect((await put({ type: "azure-key-vault", address, rules: [] })).status).toBe(403);
-    expect((await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: [] }))).status).toBe(403);
-    session.current = null;
-    expect((await get({ type: "azure-key-vault", address })).status).toBe(401);
-    expect((await put({ type: "azure-key-vault", address, rules: [] })).status).toBe(401);
-  });
-
-  test("bad vaults and bad rules are 400s, audited as failed updates", async () => {
-    expect((await get({ type: "s3", address })).status).toBe(400);
-    expect((await get({ type: "azure-key-vault", address: "" })).status).toBe(400);
-    expect(
-      (await put({ type: "azure-key-vault", address, rules: [{ ...RULE, kind: "regex", pattern: "(a+)+" }] })).status,
-    ).toBe(400);
+    const created = await send("POST", RULE);
+    expect(created.status).toBe(201);
+    const { rule } = await parseResponseJSON<{ rule: Body }>(created);
+    expect(rule).toMatchObject({ ...RULE, enabled: true, updatedBy: "admin" });
     expect(auditEvents.at(-1)).toMatchObject({
-      action: "vault.exclusions.update",
-      result: "failure",
-      target: `azure-key-vault:${address}`,
+      action: "vault.exclusions.create",
+      result: "success",
+      target: `vault-exclusion:${rule.id}`,
     });
-    const unparsable = await PUT(
-      new Request("http://localhost:3000/api/resources/admin/vault-exclusions", { method: "PUT", body: "{" }) as never,
+    expect(JSON.parse(auditEvents.at(-1)?.details as string)).toEqual({ before: null, after: rule });
+    // Applied at once, on the vault the SERVER derives from the connection.
+    expect(await names()).toEqual(["db-password"]);
+
+    const updated = await send("PUT", { ...RULE, id: rule.id, enabled: false });
+    expect(updated.status).toBe(200);
+    expect(JSON.parse(auditEvents.at(-1)?.details as string)).toMatchObject({
+      before: { enabled: true },
+      after: { enabled: false },
+    });
+    expect(await names()).toEqual(["db-password", "hidden-secret"]);
+
+    const deleted = await remove(rule.id as string);
+    expect(deleted.status).toBe(200);
+    expect(auditEvents.at(-1)).toMatchObject({
+      action: "vault.exclusions.delete",
+      target: `vault-exclusion:${rule.id}`,
+    });
+    expect(((await list()).rules as unknown[]).length).toBe(0);
+  });
+
+  test("non-admins are refused and anonymous callers are not authenticated, on every method", async () => {
+    session.current = { role: "user", username: "alice" };
+    expect((await GET(createMockRequest("/api/resources/admin/vault-exclusions") as never)).status).toBe(403);
+    expect((await send("POST", RULE)).status).toBe(403);
+    expect((await send("PUT", { ...RULE, id: "x" })).status).toBe(403);
+    expect((await remove("x")).status).toBe(403);
+    expect((await preview(request("/api/resources/admin/vault-exclusions/preview", {}))).status).toBe(403);
+    expect((await applicable(request("/api/resources/admin/vault-exclusions/applicable", {}))).status).toBe(403);
+    session.current = null;
+    expect((await GET(createMockRequest("/api/resources/admin/vault-exclusions") as never)).status).toBe(401);
+    expect((await send("POST", RULE)).status).toBe(401);
+    expect(settings.size).toBe(0);
+  });
+
+  test("bad rules, bodies and ids are 400s or 404s with the server's sentence, audited as failures", async () => {
+    const unsafe = await send("POST", { ...RULE, vaultPattern: "(a+)+", vaultPatternKind: "regex" });
+    expect(unsafe.status).toBe(400);
+    expect((await parseResponseJSON<{ error: string }>(unsafe)).error).toContain("repeated group");
+    expect(auditEvents.at(-1)).toMatchObject({ action: "vault.exclusions.create", result: "failure" });
+    const unparsable = await POST(
+      new Request("http://localhost:3000/api/resources/admin/vault-exclusions", { method: "POST", body: "{" }) as never,
     );
     expect(unparsable.status).toBe(400);
-    expect(auditEvents.at(-1)).toMatchObject({ target: "vault:unknown" });
+    expect((await send("PUT", { ...RULE })).status).toBe(400);
+    expect((await send("PUT", { ...RULE, id: "missing" })).status).toBe(404);
+    expect((await remove("missing")).status).toBe(404);
+    expect(
+      (await DELETE(createMockRequest("/api/resources/admin/vault-exclusions", { method: "DELETE" }) as never)).status,
+    ).toBe(400);
   });
 
-  test("without a durable store, saving is refused and the prior read is tolerated", async () => {
+  test("without a durable store, the list says so and saving is refused; a broken store is a failure", async () => {
     store.mode = "none";
-    const res = await put({ type: "azure-key-vault", address, rules: [RULE] });
-    expect(res.status).toBe(409);
+    expect(await list()).toMatchObject({
+      rules: [],
+      storeAvailable: false,
+      message: expect.stringContaining("STORAGE"),
+    });
+    expect((await send("POST", RULE)).status).toBe(409);
     store.mode = "broken";
-    expect((await put({ type: "azure-key-vault", address, rules: [] })).status).toBe(500);
+    expect((await GET(createMockRequest("/api/resources/admin/vault-exclusions") as never)).status).toBe(502);
   });
 
   test("an audit sink failure never fails the admin call", async () => {
@@ -100,33 +147,81 @@ describe("admin vault exclusion API", () => {
     (emitAuditEvent as unknown as { mockImplementationOnce(fn: () => never): void }).mockImplementationOnce(() => {
       throw new Error("sink down");
     });
-    expect((await get({ type: "azure-key-vault", address })).status).toBe(200);
-  });
-
-  test("preview answers counts per declared type, never names", async () => {
-    const res = await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: [RULE] }));
-    const body = await parseResponseJSON<{ counts: Record<string, { total: number; hidden: number }> }>(res);
-    expect(body.counts).toEqual({
-      secret: { total: 2, hidden: 1 },
-      key: { total: 1, hidden: 0 },
-      certificate: { total: 1, hidden: 0 },
-    });
-    expect(JSON.stringify(body)).not.toContain("hidden-secret");
-    expect(auditEvents.at(-1)).toMatchObject({ action: "vault.exclusions.preview" });
-    // Existing rules do not narrow the preview: it reads unfiltered.
-    settings.set(EXCLUSION_KEY, { rules: [{ ...RULE, pattern: "*" }] });
-    const again = await parseResponseJSON<{ counts: Record<string, { total: number }> }>(
-      await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: [] })),
-    );
-    expect(again.counts.secret.total).toBe(2);
-    expect((await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: "x" }))).status).toBe(400);
+    expect((await GET(createMockRequest("/api/resources/admin/vault-exclusions") as never)).status).toBe(200);
   });
 });
 
-describe("the legacy secret and tree routes honour the same rules", () => {
+describe("preview and the applicable-rule count", () => {
+  beforeEach(() => resetHarness());
+
+  test("preview answers the saved rules' counts per declared type, never names", async () => {
+    excludeRules([{ objectPattern: "hidden-*" }, { vaultPattern: "other-vault", vaultPatternKind: "exact" }]);
+    const res = await preview(request("/api/resources/admin/vault-exclusions/preview", {}));
+    const body = await parseResponseJSON<{ applicableRules: number; counts: Record<string, unknown> }>(res);
+    expect(body).toEqual({
+      applicableRules: 1,
+      counts: {
+        secret: { total: 2, hidden: 1 },
+        key: { total: 1, hidden: 0 },
+        certificate: { total: 1, hidden: 0 },
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain("hidden-secret");
+    expect(auditEvents.at(-1)).toMatchObject({ action: "vault.exclusions.preview" });
+  });
+
+  test("preview of drafts reads unfiltered and validates them", async () => {
+    excludeRules([{ objectPattern: "*" }]);
+    const drafts = await parseResponseJSON<{ applicableRules: number; counts: Record<string, { total: number }> }>(
+      await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: [] })),
+    );
+    expect(drafts.applicableRules).toBe(0);
+    expect(drafts.counts.secret.total).toBe(2);
+    expect((await preview(request("/api/resources/admin/vault-exclusions/preview", { rules: "x" }))).status).toBe(400);
+    const invalid = await preview(
+      request("/api/resources/admin/vault-exclusions/preview", { rules: [{ ...RULE, objectType: "blob" }] }),
+    );
+    expect((await parseResponseJSON<{ error: string }>(invalid)).error).toContain("Rule 1");
+  });
+
+  test("preview refuses a non-vault connection", async () => {
+    const blob = createMockRequest("/api/resources/admin/vault-exclusions/preview", {
+      method: "POST",
+      body: { connection: { ...connection, type: "s3" } },
+    });
+    expect((await preview(blob as never)).status).toBe(400);
+  });
+
+  test("the workbench notice counts the enabled rules that apply to this vault", async () => {
+    excludeRules([
+      {},
+      { enabled: false },
+      { vaultType: "openbao" },
+      { vaultPattern: "^exa", vaultPatternKind: "regex" },
+    ]);
+    const res = await applicable(request("/api/resources/admin/vault-exclusions/applicable", {}));
+    expect(await parseResponseJSON<Body>(res)).toEqual({ applicableRules: 2 });
+  });
+});
+
+describe("enforcement follows the connection the server runs, and the legacy routes honour it", () => {
   beforeEach(() => {
     resetHarness();
-    settings.set(EXCLUSION_KEY, { rules: [RULE] });
+    excludeRules([
+      { vaultType: "azure-key-vault", vaultPattern: "example", vaultPatternKind: "exact", objectPattern: "hidden-*" },
+    ]);
+  });
+
+  test("an Azure endpoint wins over vaultName, exactly as the provider connects", async () => {
+    // The request names vault "example" but connects to another vault: that vault's rules apply, not these.
+    expect(await names({ connection: { ...connection, endpoint: "https://elsewhere.vault.azure.net" } })).toEqual([
+      "db-password",
+      "hidden-secret",
+    ]);
+    // And the other way: the endpoint IS the ruled vault, whatever vaultName says.
+    expect(
+      await names({ connection: { ...connection, vaultName: "decoy", endpoint: "https://EXAMPLE.vault.azure.net/" } }),
+    ).toEqual(["db-password"]);
   });
 
   test("read, write and delete of an excluded path are 404s the provider never sees", async () => {
@@ -141,8 +236,8 @@ describe("the legacy secret and tree routes honour the same rules", () => {
     expect((await legacyRead(request("/api/resources/secret/read", { path: "secret/db-password" }))).status).toBe(200);
   });
 
-  test("KMS paths are matched as keys", async () => {
-    settings.set("vault-exclusions:aws-kms:eu-west-1", { rules: [{ ...RULE, objectType: "key" }] });
+  test("KMS paths are matched as keys, by region", async () => {
+    excludeRules([{ vaultType: "aws-kms", vaultPattern: "eu-*", objectType: "key", objectPattern: "hidden-*" }]);
     const kms = { ...connection, type: "aws-kms", region: "eu-west-1" };
     const req = createMockRequest("/api/resources/secret/read", {
       method: "POST",
@@ -169,5 +264,9 @@ describe("the legacy secret and tree routes honour the same rules", () => {
   test("non-vault connections pass the secret guard untouched", async () => {
     const { requireVisibleSecret } = await import("@/lib/api/resource-vault-workbench");
     await requireVisibleSecret({ ...connection, type: "s3" } as never, "hidden-secret");
+  });
+
+  test("the rules live in one global setting", () => {
+    expect([...settings.keys()]).toEqual([EXCLUSIONS_KEY]);
   });
 });

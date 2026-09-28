@@ -45,6 +45,28 @@ spec:
   {{- if not (include "storagebase-studio.autoscalingEnabled" .) }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- /* An explicit `strategy` value always wins, verbatim. Unset, a single pod on a
+         ReadWriteOnce data volume gets Recreate: a RollingUpdate starts the new pod
+         before stopping the old one, and when the new pod lands on another node it
+         waits forever on a Multi-Attach error for a volume the old pod never releases
+         (the reasoning in full is on the recreateStrategy helper). Anything else omits
+         the field and keeps the Kubernetes default, RollingUpdate.
+
+         `rollingUpdate: null` is for the upgrade path. A Deployment first created
+         without a strategy carries the API server's defaulted rollingUpdate block, and
+         a client-side three-way merge that only changes `type` leaves it in place - which
+         the API server rejects ("may not be specified when strategy type is
+         'Recreate'"). The explicit null removes it. */}}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- else }}
+  {{- if include "storagebase-studio.recreateStrategy" . }}
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  {{- end }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "storagebase-studio.selectorLabels" . | nindent 6 }}
@@ -223,6 +245,18 @@ spec:
                 secretKeyRef:
                   name: {{ include "storagebase-studio.secretName" . }}
                   key: {{ .Values.secrets.existingSecretKeys.oidcClientSecret }}
+                  optional: true
+            {{- end }}
+            {{- /* StorageBase fork: the Entra client secret, on the same rule as the OIDC one
+                   above - referenced when the chart wrote it or an existingSecret may carry
+                   it, and always optional, because Entra sign-in is opt-in and the app keeps
+                   it switched off while the secret is missing. */}}
+            {{- if or (include "storagebase-studio.entraValue" (dict "root" . "key" "clientSecret")) .Values.secrets.existingSecret }}
+            - name: STORAGEBASE_ENTRA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "storagebase-studio.secretName" . }}
+                  key: {{ include "storagebase-studio.entraClientSecretKey" . }}
                   optional: true
             {{- end }}
             {{- if .Values.postgresql.enabled }}

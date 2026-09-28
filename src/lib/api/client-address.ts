@@ -7,7 +7,7 @@ import { readTrustProxyHeaders } from "@/lib/security/config";
  * READ THIS BEFORE USING IT FOR ANYTHING ELSE. The result is a BUCKETING HINT, never an identity.
  * X-Forwarded-For is attacker-controlled, and this codebase already has the right precedent for
  * refusing to make a security decision from a forwarded header: shouldMarkCookieSecure()
- * (src/lib/auth.ts:131) will not read x-forwarded-proto to drop the Secure flag. The rule here is
+ * (src/lib/auth.ts:144) will not read x-forwarded-proto to drop the Secure flag. The rule here is
  * the same with one sharper distinction - forwarded headers are used for bucketing, never for
  * authorization, and never as evidence in an audit record beyond a labelled hint.
  *

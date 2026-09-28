@@ -5,6 +5,7 @@ import { resolveSqlGrammar } from "@/lib/sql/grammar";
 import { isSelectQuery } from "@/lib/db/utils/query-limiter";
 import { createErrorResponse } from "@/lib/api/errors";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
+import { assertManagedStatement } from "@/lib/access/db-guard";
 import { guardRoute } from "@/lib/api/require-session";
 import type { DatabaseType, QueryWarning } from "@/lib/types";
 import { endsOpenQueryTransactions, newQueryCallScope } from "@/lib/db/types";
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
     const { sql, options = {} } = body;
 
     const connection = await resolveConnection(body, guard.session);
+    assertManagedStatement(req, guard.session, connection, sql, "POST /api/db/multi-query"); // StorageBase fork: read grants
 
     if (!sql) {
       return NextResponse.json({ error: "Connection and query are required" }, { status: 400 });

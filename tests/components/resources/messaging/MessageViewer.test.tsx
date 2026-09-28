@@ -204,4 +204,22 @@ describe("MessageViewer", () => {
     });
     expect(props.onChanged).not.toHaveBeenCalled();
   });
+
+  test("read-only browses and offers no publish or purge", async () => {
+    mockRoutes();
+    const { unmount } = render(<MessageViewer {...props} node={topicNode} readOnly />);
+    await waitFor(() => {
+      expect(screen.getByTestId("message-viewer-message")).toBeDefined();
+    });
+    expect(screen.queryByLabelText("Publish a message")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Publish" })).toBeNull();
+    expect(screen.queryByTestId("message-viewer-purge")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+    unmount();
+
+    render(<MessageViewer {...props} node={exchangeNode} readOnly />);
+    expect(screen.getByText("Exchanges hold no messages to browse.")).toBeDefined();
+    expect(screen.queryByLabelText("Routing key")).toBeNull();
+  });
 });

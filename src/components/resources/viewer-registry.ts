@@ -23,6 +23,12 @@ export interface ResourceViewerProps {
   onChanged?: () => void;
   /** The viewer calls this after a delete: the node it showed is gone. */
   onClose?: () => void;
+  /**
+   * The connection is managed and granted read only: every write control
+   * (upload, delete, publish, purge) is withheld, not merely disabled. Reads —
+   * browse, preview, download — stay.
+   */
+  readOnly?: boolean;
 }
 
 export type ResourceViewer = ComponentType<ResourceViewerProps>;

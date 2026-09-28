@@ -18,8 +18,10 @@ const SSLConfigSchema = z
 
 const ConnectionEnvironmentSchema = z.enum(["production", "staging", "development", "local", "other"]);
 
-// Allowed roles in current iteration (matches JWT role: 'admin' | 'user' + wildcard)
-const AllowedRoleSchema = z.enum(["*", "admin", "user"]);
+// Allowed roles: the JWT role ('admin' | 'user'), the wildcard, or (StorageBase fork) an identity-provider
+// app-role value such as `Team.Payments.Read`, matched against the session's app roles (docs/ENTRA.md).
+// An app-role value has no whitespace, comma or `*`, so a typo cannot widen a seed to everyone.
+const AllowedRoleSchema = z.union([z.enum(["*", "admin", "user"]), z.string().regex(/^[^\s,*]{1,128}$/)]);
 
 // Kept in step with DatabaseType in src/lib/types.ts BY HAND: a zod enum is a value,
 // so a type-id missing here is not a compile error - it is a seed file the server

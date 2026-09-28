@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { BaseResourceProvider } from "./base-provider";
 import { getResourceProviderLoader } from "./registry";
 import type { ResourceConnection } from "./types";
@@ -21,6 +22,8 @@ import type { ResourceConnection } from "./types";
 interface CacheEntry {
   provider: BaseResourceProvider;
   connectionId: string;
+  /** A digest of what the provider was opened with (see `resourceConfigKey`). */
+  configKey: string;
   connectedAt: number;
   lastUsedAt: number;
 }
@@ -48,9 +51,37 @@ export async function createResourceProvider(connection: ResourceConnection): Pr
   return new loaded.default(connection);
 }
 
+/**
+ * What a cached provider was OPENED with, as a digest: the connection minus its presentation
+ * fields. The cache is keyed by connection id, and an id is a string the caller chose — so without
+ * this, an edited endpoint or credential kept being served the old client, and two different
+ * connections sent under one id shared one client. The upstream database factory made the same
+ * fix for the same reason (`providerConfigKey` in src/lib/db/factory.ts). Hashed because it covers
+ * the credentials, and a process-lifetime map should not hold one.
+ */
+const PRESENTATION_FIELDS: ReadonlySet<string> = new Set(["name", "color", "environment", "group", "createdAt"]);
+
+/** JSON with object keys sorted, so key order never changes the digest. Connection fields hold no arrays. */
+function stableJson(value: unknown): string {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort();
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function resourceConfigKey(connection: ResourceConnection): string {
+  const relevant = Object.fromEntries(Object.entries(connection).filter(([key]) => !PRESENTATION_FIELDS.has(key)));
+  return createHash("sha256").update(stableJson(relevant)).digest("hex");
+}
+
 export async function getOrCreateResourceProvider(connection: ResourceConnection): Promise<BaseResourceProvider> {
+  const configKey = resourceConfigKey(connection);
   const entry = providerCache.get(connection.id);
-  if (entry && entry.provider.isConnected()) {
+  if (entry && entry.configKey === configKey && entry.provider.isConnected()) {
     entry.lastUsedAt = clock();
     return entry.provider;
   }
@@ -62,7 +93,13 @@ export async function getOrCreateResourceProvider(connection: ResourceConnection
   const provider = await createResourceProvider(connection);
   await provider.connect();
   const now = clock();
-  providerCache.set(connection.id, { provider, connectionId: connection.id, connectedAt: now, lastUsedAt: now });
+  providerCache.set(connection.id, {
+    provider,
+    connectionId: connection.id,
+    configKey,
+    connectedAt: now,
+    lastUsedAt: now,
+  });
   scheduleSweep();
   return provider;
 }

@@ -1,9 +1,10 @@
 import { appFetch } from "@/lib/config/base-path";
+import { resourceConnectionBody } from "@/lib/resources/connection-body";
 import type { ResourceConnection } from "@/lib/resources/types";
 
 /**
  * The workbench's one door to its routes (`/api/resources/kafka/<route>`).
- * Every route takes `{ connection, ...args }` and answers JSON; a refusal
+ * Every route takes the connection (`resourceConnectionBody`) plus its args and answers JSON; a refusal
  * answers `{ error }`, which this turns into a thrown Error carrying the
  * server's sentence — the panels show that sentence, never a generic one.
  */
@@ -15,7 +16,7 @@ export async function postKafka<T>(
   const response = await appFetch(`/api/resources/kafka/${route}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ connection, ...payload }),
+    body: JSON.stringify({ ...resourceConnectionBody(connection), ...payload }),
   });
   const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(body?.error ?? `Request failed (${response.status})`);

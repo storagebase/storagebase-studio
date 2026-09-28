@@ -350,10 +350,12 @@ const {
   allocateReadQuotas,
   KAFKA_PEEK_GROUP_PREFIX,
   KAFKA_READ_BYTE_BUDGET,
-  KAFKA_TOPIC_COUNT_LIMIT,
-  KAFKA_GROUP_LAG_LIMIT,
   KAFKA_VALUE_MAX_BYTES,
+  groupOffsetsPartition,
+  javaStringHash,
+  setKafkaMeasureTimingForTest,
 } = await import("@/lib/resources/providers/messaging/kafka");
+const { KAFKA_MEASURE_BATCH_LIMIT } = await import("@/lib/resources/operations");
 
 const connection: ResourceConnection = {
   id: "res-1",
@@ -543,10 +545,9 @@ describe("KafkaProvider workbench", () => {
     ]);
   });
 
-  test("lists topic summaries with internals flagged, replication and message counts", async () => {
+  test("lists topic summaries from metadata alone: internals flagged, replication, no offset reads", async () => {
     const provider = new KafkaProvider(connection);
     const listing = await provider.listTopicSummaries();
-    expect(listing.countsTruncated).toBe(false);
     expect(listing.topics.map((topic) => topic.name)).toEqual(["__consumer_offsets", "fixture-events"]);
     expect(listing.topics[0]).toMatchObject({ internal: true, partitions: 1, replicationFactor: 1 });
     expect(listing.topics[1]).toEqual({
@@ -555,19 +556,70 @@ describe("KafkaProvider workbench", () => {
       partitions: 2,
       replicationFactor: 2,
       underReplicatedPartitions: 1,
-      messageCount: 3,
-      countError: null,
     });
+    expect(adminCalls.fetchTopicOffsets).toBeUndefined();
   });
 
-  test("message counts stop at the count bound and say so", async () => {
-    for (let index = 0; index < KAFKA_TOPIC_COUNT_LIMIT; index += 1) {
-      store[`t-${String(index).padStart(4, "0")}`] = [[]];
+  test("5,000 topics list in one metadata round trip without a single offset call", async () => {
+    for (let index = 0; index < 5000; index += 1) {
+      store[`t-${String(index).padStart(5, "0")}`] = [[], []];
     }
     const provider = new KafkaProvider(connection);
+    const started = performance.now();
     const listing = await provider.listTopicSummaries();
-    expect(listing.countsTruncated).toBe(true);
-    expect(listing.topics.filter((topic) => topic.messageCount === null)).toHaveLength(2);
+    const elapsed = performance.now() - started;
+    expect(listing.topics).toHaveLength(5002);
+    expect(adminCalls.fetchTopicMetadata).toHaveLength(1);
+    expect(adminCalls.fetchTopicOffsets).toBeUndefined();
+    // Generous: the point is "no per-topic work", not a benchmark.
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  test("counts messages for a batch: one metadata read, offsets per named topic only", async () => {
+    store.other = [[{ key: null, value: "a" }], []];
+    const provider = new KafkaProvider(connection);
+    const counts = await provider.countTopicMessages(["fixture-events", "gone", "fixture-events"]);
+    expect(counts).toEqual({
+      "fixture-events": { messageCount: 3, countError: null },
+      gone: { messageCount: null, countError: "topic does not exist" },
+    });
+    expect(adminCalls.fetchTopicMetadata).toEqual([null]);
+    expect(adminCalls.fetchTopicOffsets).toEqual(["fixture-events"]);
+    expect(await provider.countTopicMessages([])).toEqual({});
+  });
+
+  test("count and lag batches refuse more than the batch bound before connecting", async () => {
+    const provider = new KafkaProvider(connection);
+    const tooMany = Array.from({ length: KAFKA_MEASURE_BATCH_LIMIT + 1 }, (_, index) => `t-${index}`);
+    await expect(provider.countTopicMessages(tooMany)).rejects.toBeInstanceOf(ResourceInvalidRequestError);
+    await expect(provider.measureGroupLag(tooMany)).rejects.toBeInstanceOf(ResourceInvalidRequestError);
+    expect(adminCalls.fetchTopicMetadata).toBeUndefined();
+    // Exactly at the bound is fine, and duplicates count once.
+    const atBound = Array.from({ length: KAFKA_MEASURE_BATCH_LIMIT }, (_, index) => `t-${index}`);
+    const counts = await provider.countTopicMessages([...atBound, ...atBound]);
+    expect(Object.keys(counts)).toHaveLength(KAFKA_MEASURE_BATCH_LIMIT);
+  });
+
+  test("count offset reads never exceed the concurrency cap", async () => {
+    const names = Array.from({ length: KAFKA_MEASURE_BATCH_LIMIT }, (_, index) => `c-${index}`);
+    for (const name of names) store[name] = [[{ key: null, value: "x" }]];
+    let inFlight = 0;
+    let peak = 0;
+    const original = FakeAdmin.prototype.fetchTopicOffsets;
+    FakeAdmin.prototype.fetchTopicOffsets = async function (topic: string) {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlight -= 1;
+      return original.call(this, topic);
+    };
+    try {
+      const counts = await new KafkaProvider(connection).countTopicMessages(names);
+      expect(Object.values(counts).every((count) => count.messageCount === 1)).toBe(true);
+      expect(peak).toBe(4);
+    } finally {
+      FakeAdmin.prototype.fetchTopicOffsets = original;
+    }
   });
 
   test("describes one topic: partitions with offsets, configs by name with sources", async () => {
@@ -1074,11 +1126,10 @@ describe("KafkaProvider workbench", () => {
       ];
     }
 
-    test("lists groups with state, members and total lag; peek groups are flagged, not measured", async () => {
+    test("lists groups with state and members, peek groups flagged, no offset reads", async () => {
       seedGroups();
       const provider = new KafkaProvider(connection);
       const listing = await provider.listConsumerGroups();
-      expect(listing.lagTruncated).toBe(false);
       expect(listing.groups).toEqual([
         {
           groupId: "archiver",
@@ -1086,8 +1137,7 @@ describe("KafkaProvider workbench", () => {
           protocolType: "consumer",
           protocol: "",
           members: 0,
-          totalLag: 3,
-          lagError: null,
+          coordinator: 1,
           internal: false,
         },
         {
@@ -1096,8 +1146,7 @@ describe("KafkaProvider workbench", () => {
           protocolType: "consumer",
           protocol: "range",
           members: 3,
-          totalLag: 2,
-          lagError: null,
+          coordinator: 1,
           internal: false,
         },
         {
@@ -1106,43 +1155,157 @@ describe("KafkaProvider workbench", () => {
           protocolType: "consumer",
           protocol: "",
           members: 0,
-          totalLag: null,
-          lagError: null,
+          coordinator: 1,
           internal: true,
         },
       ]);
-      // End offsets are read once per topic across all groups.
-      expect((adminCalls.fetchTopicOffsets as string[]).filter((topic) => topic === "fixture-events")).toHaveLength(1);
+      // One metadata read (the offsets topic) answers every coordinator.
+      expect(adminCalls.fetchTopicMetadata).toEqual([{ topics: ["__consumer_offsets"] }]);
+      expect(adminCalls.fetchOffsets).toBeUndefined();
+      expect(adminCalls.fetchTopicOffsets).toBeUndefined();
     });
 
-    test("an empty cluster lists no groups; lag stops at the bound; unknown descriptions default", async () => {
+    test("measures lag for a batch, reading each topic's end offsets once across groups", async () => {
+      seedGroups();
       const provider = new KafkaProvider(connection);
-      expect(await provider.listConsumerGroups()).toEqual({ groups: [], lagTruncated: false });
+      const lags = await provider.measureGroupLag(["archiver", "billing", "archiver"]);
+      expect(lags).toEqual({
+        archiver: { totalLag: 3, lagError: null, topics: 1 },
+        // "fixture-events" (one partition never committed) and "other".
+        billing: { totalLag: 2, lagError: null, topics: 2 },
+      });
+      expect((adminCalls.fetchTopicOffsets as string[]).filter((topic) => topic === "fixture-events")).toHaveLength(1);
+      expect(await provider.measureGroupLag([])).toEqual({});
+    });
 
-      for (let index = 0; index <= KAFKA_GROUP_LAG_LIMIT; index += 1) {
-        groups[`g-${String(index).padStart(3, "0")}`] = {
-          state: "Empty",
-          protocolType: "consumer",
-          protocol: "",
-          members: [],
-          offsets: {},
-        };
-      }
+    test("an empty cluster lists no groups; unknown descriptions default", async () => {
+      const provider = new KafkaProvider(connection);
+      expect(await provider.listConsumerGroups()).toEqual({ groups: [] });
+
+      groups["g-1"] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
       const original = FakeAdmin.prototype.describeGroups;
       FakeAdmin.prototype.describeGroups = async () => ({ groups: [] });
       try {
         const listing = await provider.listConsumerGroups();
-        expect(listing.lagTruncated).toBe(true);
-        expect(listing.groups.at(-1)).toMatchObject({
-          totalLag: null,
-          lagError: null,
+        expect(listing.groups.at(-1)).toEqual({
+          groupId: "g-1",
           state: "Unknown",
           members: 0,
           protocol: "",
           protocolType: "",
+          coordinator: 1,
+          internal: false,
         });
       } finally {
         FakeAdmin.prototype.describeGroups = original;
+      }
+    });
+
+    test("coordinators follow Kafka's partitioning of the offsets topic; unreadable metadata is null", async () => {
+      // Java's own values: "hello".hashCode() and a MIN_VALUE hash ("polygenelubricants").
+      expect(javaStringHash("hello")).toBe(99162322);
+      expect(javaStringHash("polygenelubricants")).toBe(-2147483648);
+      expect(groupOffsetsPartition("polygenelubricants", 50)).toBe(0);
+      expect(groupOffsetsPartition("hello", 50)).toBe(99162322 % 50);
+      expect(groupOffsetsPartition("", 3)).toBe(0);
+
+      groups.billing = { state: "Stable", protocolType: "consumer", protocol: "", members: [], offsets: {} };
+      groups.archiver = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
+      store.__consumer_offsets = Array.from({ length: 50 }, () => [] as StoredMessage[]);
+      const original = FakeAdmin.prototype.fetchTopicMetadata;
+      FakeAdmin.prototype.fetchTopicMetadata = async function (options?: { topics: string[] }) {
+        const answer = await original.call(this, options);
+        // Leader = partition id + 100, and the billing group's partition is leaderless.
+        const leaderless = groupOffsetsPartition("billing", 50);
+        return {
+          topics: answer.topics.map((topic) => ({
+            ...topic,
+            partitions: topic.partitions.map((partition) => ({
+              ...partition,
+              leader: partition.partitionId === leaderless ? -1 : partition.partitionId + 100,
+            })),
+          })),
+        };
+      };
+      try {
+        const provider = new KafkaProvider(connection);
+        const byId = Object.fromEntries(
+          (await provider.listConsumerGroups()).groups.map((group) => [group.groupId, group.coordinator]),
+        );
+        expect(byId).toEqual({ archiver: groupOffsetsPartition("archiver", 50) + 100, billing: null });
+
+        FakeAdmin.prototype.fetchTopicMetadata = async () => ({ topics: [] });
+        expect((await provider.listConsumerGroups()).groups.map((group) => group.coordinator)).toEqual([null, null]);
+        FakeAdmin.prototype.fetchTopicMetadata = async () => {
+          throw new Error("metadata refused");
+        };
+        const listing = await provider.listConsumerGroups();
+        expect(listing.groups.map((group) => group.coordinator)).toEqual([null, null]);
+        expect(listing.groups.map((group) => group.state)).toEqual(["Empty", "Stable"]);
+      } finally {
+        FakeAdmin.prototype.fetchTopicMetadata = original;
+      }
+    });
+
+    test("lag batches share end offsets across calls for the TTL, then read again", async () => {
+      seedGroups();
+      const provider = new KafkaProvider(connection);
+      const reads = () => (adminCalls.fetchTopicOffsets as string[]).filter((topic) => topic === "fixture-events");
+      await provider.measureGroupLag(["archiver"]);
+      await provider.measureGroupLag(["billing"]);
+      expect(reads()).toHaveLength(1);
+      setKafkaMeasureTimingForTest({ endOffsetTtlMs: 0 });
+      try {
+        await provider.measureGroupLag(["archiver"]);
+        expect(reads()).toHaveLength(2);
+      } finally {
+        setKafkaMeasureTimingForTest({});
+      }
+    });
+
+    test("a batch past its deadline answers a timeout for what is still pending, and returns", async () => {
+      seedGroups();
+      store.slow = [[{ key: null, value: "s" }]];
+      for (const id of ["g-1", "g-2", "g-3"]) {
+        groups[id] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
+      }
+      const original = FakeAdmin.prototype.fetchOffsets;
+      const originalOffsets = FakeAdmin.prototype.fetchTopicOffsets;
+      FakeAdmin.prototype.fetchOffsets = async function (options: { groupId: string }) {
+        if (options.groupId === "billing") await new Promise((resolve) => setTimeout(resolve, 200));
+        return original.call(this, options);
+      };
+      FakeAdmin.prototype.fetchTopicOffsets = async function (topic: string) {
+        if (topic === "slow") await new Promise((resolve) => setTimeout(resolve, 200));
+        return originalOffsets.call(this, topic);
+      };
+      setKafkaMeasureTimingForTest({ deadlineMs: 40 });
+      try {
+        const provider = new KafkaProvider(connection);
+        const started = Date.now();
+        const lags = await provider.measureGroupLag(["billing", "g-1", "g-2", "g-3", "archiver"]);
+        expect(Date.now() - started).toBeLessThan(180);
+        expect(lags.billing).toEqual({ totalLag: null, lagError: "not measured within 0.04s", topics: null });
+        expect(lags["g-1"]).toEqual({ totalLag: 0, lagError: null, topics: 0 });
+        expect(lags.archiver.totalLag).toBe(3);
+
+        const counts = await provider.countTopicMessages(["slow", "fixture-events"]);
+        expect(counts.slow).toEqual({ messageCount: null, countError: "not measured within 0.04s" });
+        expect(counts["fixture-events"].messageCount).toBe(3);
+
+        // A lane that frees up only after the deadline answers the timeout without starting its item.
+        const five = ["slow", "slow2", "slow3", "slow4", "fixture-events"];
+        for (const name of five.slice(1, 4)) store[name] = [[]];
+        FakeAdmin.prototype.fetchTopicOffsets = async function (topic: string) {
+          await new Promise((resolve) => setTimeout(resolve, 60));
+          return originalOffsets.call(this, topic);
+        };
+        const late = await provider.countTopicMessages(five);
+        expect(late["fixture-events"]).toEqual({ messageCount: null, countError: "not measured within 0.04s" });
+      } finally {
+        FakeAdmin.prototype.fetchOffsets = original;
+        FakeAdmin.prototype.fetchTopicOffsets = originalOffsets;
+        setKafkaMeasureTimingForTest({});
       }
     });
 
@@ -1349,23 +1512,26 @@ describe("KafkaProvider offset reads are best effort per topic", () => {
 
   test("one unreadable topic answers null with its reason; every other topic is counted", async () => {
     const provider = new KafkaProvider(connection);
-    const listing = await provider.listTopicSummaries();
-    const byName = Object.fromEntries(listing.topics.map((topic) => [topic.name, topic]));
-    expect(listing.topics).toHaveLength(5);
-    expect(byName["topic-broken"]).toMatchObject({ partitions: 2, messageCount: null });
-    expect(byName["topic-broken"].countError).toContain("Cannot destructure property 'partitions'");
-    expect(byName["topic-a"]).toMatchObject({ messageCount: 1, countError: null });
-    expect(byName["topic-c"]).toMatchObject({ messageCount: 2, countError: null });
-    expect(byName["fixture-events"]).toMatchObject({ messageCount: 3, countError: null });
+    const counts = await provider.countTopicMessages(["topic-a", "topic-broken", "topic-c", "fixture-events"]);
+    expect(counts["topic-broken"].messageCount).toBeNull();
+    expect(counts["topic-broken"].countError).toContain("Cannot destructure property 'partitions'");
+    expect(counts["topic-a"]).toEqual({ messageCount: 1, countError: null });
+    expect(counts["topic-c"]).toEqual({ messageCount: 2, countError: null });
+    expect(counts["fixture-events"]).toEqual({ messageCount: 3, countError: null });
   });
 
   test("a leaderless topic is not asked for offsets at all", async () => {
     leaders["topic-c"] = -1;
     const provider = new KafkaProvider(connection);
-    const listing = await provider.listTopicSummaries();
-    const leaderless = listing.topics.find((topic) => topic.name === "topic-c");
-    expect(leaderless).toMatchObject({ messageCount: null, countError: "partition 0 has no leader" });
-    expect(adminCalls.fetchTopicOffsets).not.toContain("topic-c");
+    const counts = await provider.countTopicMessages(["topic-c"]);
+    expect(counts["topic-c"]).toEqual({ messageCount: null, countError: "partition 0 has no leader" });
+    expect(adminCalls.fetchTopicOffsets).toBeUndefined();
+  });
+
+  test("a metadata failure fails the count batch as a connection error", async () => {
+    adminFailures.fetchTopicMetadata = new Error("broker gone");
+    const provider = new KafkaProvider(connection);
+    await expect(provider.countTopicMessages(["topic-a"])).rejects.toBeInstanceOf(ResourceConnectionError);
   });
 
   test("topic detail keeps partitions and configs when the offsets cannot be read", async () => {
@@ -1387,7 +1553,7 @@ describe("KafkaProvider offset reads are best effort per topic", () => {
     expect(detail.configs.map((entry) => entry.name)).toEqual(["retention.ms"]);
   });
 
-  test("a group committed on an unreadable topic loses its lag, not the listing", async () => {
+  test("a group committed on an unreadable topic loses its lag, not the batch", async () => {
     groups["group-mixed"] = {
       state: "Empty",
       protocolType: "consumer",
@@ -1410,9 +1576,10 @@ describe("KafkaProvider offset reads are best effort per topic", () => {
       offsets: { "topic-c": { 0: "1" } },
     };
     const provider = new KafkaProvider(connection);
-    const listing = await provider.listConsumerGroups();
-    const byId = Object.fromEntries(listing.groups.map((group) => [group.groupId, group]));
-    expect(byId["group-healthy"]).toMatchObject({ totalLag: 1, lagError: null });
+    const byId = await provider.measureGroupLag(["group-healthy", "group-mixed", "group-also-broken"]);
+    expect(byId["group-healthy"]).toEqual({ totalLag: 1, lagError: null, topics: 1 });
+    // Lag is lost, the topic count is not: the committed offsets were read.
+    expect(byId["group-mixed"].topics).toBe(2);
     expect(byId["group-mixed"].totalLag).toBeNull();
     expect(byId["group-mixed"].lagError).toContain("topic-broken: Cannot destructure");
     expect(byId["group-also-broken"].totalLag).toBeNull();
@@ -1420,7 +1587,7 @@ describe("KafkaProvider offset reads are best effort per topic", () => {
     expect((adminCalls.fetchTopicOffsets as string[]).filter((topic) => topic === "topic-broken")).toHaveLength(1);
   });
 
-  test("a group whose committed offsets cannot be fetched answers its reason, the listing still answers", async () => {
+  test("a group whose committed offsets cannot be fetched answers its reason, the batch still answers", async () => {
     groups["group-x"] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
     groups["group-y"] = { state: "Empty", protocolType: "consumer", protocol: "", members: [], offsets: {} };
     const original = FakeAdmin.prototype.fetchOffsets;
@@ -1430,13 +1597,10 @@ describe("KafkaProvider offset reads are best effort per topic", () => {
     };
     try {
       const provider = new KafkaProvider(connection);
-      const listing = await provider.listConsumerGroups();
-      expect(listing.groups.find((group) => group.groupId === "group-x")).toMatchObject({ totalLag: null });
-      expect(listing.groups.find((group) => group.groupId === "group-x")?.lagError).toContain("Cannot destructure");
-      expect(listing.groups.find((group) => group.groupId === "group-y")).toMatchObject({
-        totalLag: 0,
-        lagError: null,
-      });
+      const lags = await provider.measureGroupLag(["group-x", "group-y"]);
+      expect(lags["group-x"]).toMatchObject({ totalLag: null, topics: null });
+      expect(lags["group-x"].lagError).toContain("Cannot destructure");
+      expect(lags["group-y"]).toEqual({ totalLag: 0, lagError: null, topics: 0 });
     } finally {
       FakeAdmin.prototype.fetchOffsets = original;
     }

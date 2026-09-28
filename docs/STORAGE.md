@@ -451,13 +451,14 @@ version column. A row that is never written again stays plaintext — which is w
 ## Durable audit trail
 
 StorageBase fork. With `STORAGE_PROVIDER=sqlite` or `postgres`, every audit event is also written
-to the same storage database, in two fork-owned tables that are created on first use
+to the same storage database, in fork-owned tables that are created on first use
 (`CREATE TABLE IF NOT EXISTS`, so the privileges above cover them):
 
 | Table | Columns | Indexes |
 |---|---|---|
 | `storagebase_audit_events` | `id` (PK), `ts` (ISO-8601 UTC), `type`, `action`, `result`, `user_name`, `user_text`, `engine`, `address_text`, `search_text`, `event` (the whole event as JSON) | `ts`; `(type, ts)`; `(user_name, ts)` |
 | `storagebase_settings` | `key` (PK), `value` (JSON), `updated_at`, `updated_by` | — |
+| `storagebase_access_records` | `kind`, `id` (PK together), `value` (JSON), `updated_at`, `updated_by` — connection groups, role bindings and managed connections ([`ENTRA.md`](ENTRA.md)); a managed connection's credentials are sealed with the same `STORAGE_ENCRYPTION_KEY`-derived key as saved connections | — |
 
 - **What it is for.** The in-process ring buffer the admin Audit tab used to read holds the last
   1000 events and is empty after every restart. `GET /api/admin/audit` now reads this table

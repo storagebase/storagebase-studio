@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createErrorResponse } from "@/lib/api/errors";
 import { guardRoute } from "@/lib/api/require-session";
 import { isResourceType, type ResourceConnection } from "@/lib/resources/types";
+import { MANAGED_RESOURCE_PREFIX, resolveManagedResource } from "@/lib/access/resolve";
+import { requireResourcePermission } from "@/lib/access/resource-guard";
+import { parseUserConnectionId } from "@/lib/user-connections/ids";
+import { resolveUserConnection } from "@/lib/user-connections/server";
 // Family provider registration (server side): every resource route runs
 // through this handler, so one import covers the whole namespace.
 import "@/lib/resources/providers";
@@ -18,11 +22,17 @@ export function isResourceConnection(value: unknown): value is ResourceConnectio
  * the same reason `handleObjectRequest` gives: the guard-before-parse ordering
  * below is a security property, and copies of it are chances for one to drift.
  *
- * The body carries the resource connection INLINE as `connection` — the same
- * contract user-owned database connections use, because resource connections
- * live in the same write-through localStorage store. Managed `seed:`-style
- * resource ids are M6; when they land they resolve here, beside the parse, and
- * nowhere else.
+ * The body carries a user-owned resource connection INLINE as `connection` —
+ * the same contract user-owned database connections use, because resource
+ * connections live in the same write-through localStorage store. A MANAGED
+ * connection (src/lib/access) arrives as `{ connectionId: "managed:<id>" }`
+ * instead and resolves here, beside the parse, and nowhere else: the server
+ * loads and decrypts it, answers 404 when the caller's roles grant nothing on
+ * it (exactly as for an id that does not exist), and 403 when the grant is
+ * lower than this route needs. Its credentials never reach the browser. A
+ * user's OWN connection saved with server storage arrives as
+ * `{ connectionId: "user:<id>" }` and resolves from that user's store
+ * (src/lib/user-connections) — another user's id is a 404 like any unknown one.
  */
 export async function handleResourceRequest(
   req: NextRequest,
@@ -40,19 +50,45 @@ export async function handleResourceRequest(
 
   try {
     const body = await readResourceBody(req);
-    if (!isResourceConnection(body.connection)) {
-      return NextResponse.json(
-        { error: "A resource connection with a valid resource type is required" },
-        { status: 400 },
-      );
-    }
-    return await run(body.connection, body, { session: guard.session, route, connection: body.connection });
+    const connection = await resolveResourceConnection(req, body, guard.session, route);
+    return await run(connection, body, { session: guard.session, route, connection });
   } catch (error) {
     if (error instanceof ResourceRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     return createErrorResponse(error, { route });
   }
+}
+
+/**
+ * The connection a request runs against: a managed one by id, or the caller's own inline one. An
+ * inline connection may not claim a managed id — the provider cache is keyed by id, so one that
+ * could would be asking to be handed the managed connection's open client.
+ */
+async function resolveResourceConnection(
+  req: NextRequest,
+  body: Record<string, unknown>,
+  session: ResourceRequestContext["session"],
+  route: string,
+): Promise<ResourceConnection> {
+  if (parseUserConnectionId(body.connectionId) !== null) {
+    const owned = await resolveUserConnection(session.username, "resource", body.connectionId);
+    if (!owned || !isResourceConnection(owned)) throw new ResourceRouteError("Resource connection not found", 404);
+    return owned;
+  }
+  if (typeof body.connectionId === "string") {
+    const managed = await resolveManagedResource(body.connectionId, session);
+    if (!managed) throw new ResourceRouteError("Resource connection not found", 404);
+    requireResourcePermission(req, session, managed, route);
+    return managed;
+  }
+  if (!isResourceConnection(body.connection)) {
+    throw new ResourceRouteError("A resource connection with a valid resource type is required", 400);
+  }
+  if (typeof body.connection.id === "string" && body.connection.id.startsWith(MANAGED_RESOURCE_PREFIX)) {
+    throw new ResourceRouteError(`Connection ids starting with "${MANAGED_RESOURCE_PREFIX}" are reserved`, 400);
+  }
+  return body.connection;
 }
 
 /**
@@ -81,8 +117,9 @@ async function readResourceBody(req: NextRequest): Promise<Record<string, unknow
 }
 
 /**
- * A refusal this layer decides for itself. 400 only: a caller mistake the
- * provider must never be asked to interpret. Kept parallel to
+ * A refusal this layer decides for itself: a caller mistake the provider must
+ * never be asked to interpret (400), or a managed connection that is not there
+ * for this caller (404). Kept parallel to
  * `ObjectRouteError` rather than importing it, so the fork's status vocabulary
  * lives in the fork's files.
  */

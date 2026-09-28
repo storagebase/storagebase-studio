@@ -9,7 +9,7 @@ import {
 
 describe("admin-sections", () => {
   test("lists five canonical sections", () => {
-    expect([...ADMIN_SECTIONS]).toEqual(["overview", "operations", "monitoring", "security", "audit"]);
+    expect([...ADMIN_SECTIONS]).toEqual(["overview", "operations", "monitoring", "security", "audit", "access"]);
   });
 
   test("isAdminSection validates known ids", () => {

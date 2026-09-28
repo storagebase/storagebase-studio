@@ -14,6 +14,8 @@ import { ConnectionSignature } from "@/components/login/connection-signature";
 import { DatabaseShowcase } from "@/components/login/database-showcase";
 import { HeroProof, HERO_CLAIMS } from "@/components/login/hero-proof";
 import { WireCompatibleLine } from "@/components/login/wire-compatible-line";
+import { EntraSignIn } from "@/components/login/entra-sign-in";
+import type { LoginProviders } from "@/lib/access/auth-settings";
 import type { AuditReason } from "@/lib/audit";
 
 /**
@@ -41,8 +43,11 @@ function oidcErrorMessage(code: string): string {
   }
 }
 
-function LoginFormInner({ authProvider }: { authProvider: string }) {
+function LoginFormInner({ authProvider, providers }: { authProvider: string; providers?: LoginProviders }) {
   const isOIDC = authProvider === "oidc";
+  // StorageBase fork: the sign-in switch decides, at request time, whether Microsoft Entra is
+  // offered and whether email/password still is (src/lib/access/auth-settings.ts).
+  const showLocal = providers?.local ?? true;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
@@ -298,90 +303,95 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                 </>
               ) : (
                 <>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                        <Input
-                          id="email"
-                          type="email"
-                          autoComplete="username"
-                          placeholder="Enter your email"
-                          className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
-                          value={email}
-                          onChange={(e) => {
-                            setEmail(e.target.value);
-                            resetMfa();
-                          }}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                        <Input
-                          id="password"
-                          type="password"
-                          autoComplete="current-password"
-                          placeholder="Enter your password"
-                          className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
-                          value={password}
-                          onChange={(e) => {
-                            setPassword(e.target.value);
-                            resetMfa();
-                          }}
-                          required
-                        />
-                      </div>
-                    </div>
-                    {mfaRequired && (
+                  {providers?.entra && (
+                    <EntraSignIn error={oidcError} localBelow={showLocal} adminOnly={providers.localAdminOnly} />
+                  )}
+                  {showLocal && (
+                    <form onSubmit={handleLogin} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="totp">Authentication code</Label>
+                        <Label htmlFor="email">Email</Label>
                         <div className="relative group">
-                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                           <Input
-                            id="totp"
-                            name="totp"
-                            /*
-                             * `text` with an explicit numeric inputMode, not `number`: a number
-                             * input strips a leading zero, and one in six codes starts with one.
-                             * `one-time-code` is what lets iOS and macOS offer the code from the
-                             * paired authenticator without the user leaving the page.
-                             */
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            pattern="[0-9]*"
-                            maxLength={6}
-                            /*
-                             * The field appears mid-flow in response to the user's own submit, so
-                             * moving focus to it is what a sighted user expects and what tells a
-                             * screen-reader user the form grew a step.
-                             */
-                            autoFocus
-                            placeholder="123456"
-                            className="pl-10 h-11 tracking-[0.4em] font-mono transition-all focus:ring-2 focus:ring-primary/20"
-                            value={totp}
-                            onChange={(e) => setTotp(e.target.value)}
+                            id="email"
+                            type="email"
+                            autoComplete="username"
+                            placeholder="Enter your email"
+                            className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              resetMfa();
+                            }}
                             required
                           />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Open your authenticator app and enter the current 6-digit code for this account.
-                        </p>
                       </div>
-                    )}
-                    <Button
-                      className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
-                      type="submit"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Authenticating..." : mfaRequired ? "Verify code" : "Sign in"}
-                    </Button>
-                  </form>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                          <Input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="Enter your password"
+                            className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                            value={password}
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              resetMfa();
+                            }}
+                            required
+                          />
+                        </div>
+                      </div>
+                      {mfaRequired && (
+                        <div className="space-y-2">
+                          <Label htmlFor="totp">Authentication code</Label>
+                          <div className="relative group">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                            <Input
+                              id="totp"
+                              name="totp"
+                              /*
+                               * `text` with an explicit numeric inputMode, not `number`: a number
+                               * input strips a leading zero, and one in six codes starts with one.
+                               * `one-time-code` is what lets iOS and macOS offer the code from the
+                               * paired authenticator without the user leaving the page.
+                               */
+                              type="text"
+                              inputMode="numeric"
+                              autoComplete="one-time-code"
+                              pattern="[0-9]*"
+                              maxLength={6}
+                              /*
+                               * The field appears mid-flow in response to the user's own submit, so
+                               * moving focus to it is what a sighted user expects and what tells a
+                               * screen-reader user the form grew a step.
+                               */
+                              autoFocus
+                              placeholder="123456"
+                              className="pl-10 h-11 tracking-[0.4em] font-mono transition-all focus:ring-2 focus:ring-primary/20"
+                              value={totp}
+                              onChange={(e) => setTotp(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Open your authenticator app and enter the current 6-digit code for this account.
+                          </p>
+                        </div>
+                      )}
+                      <Button
+                        className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
+                        type="submit"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Authenticating..." : mfaRequired ? "Verify code" : "Sign in"}
+                      </Button>
+                    </form>
+                  )}
                 </>
               )}
             </CardContent>
@@ -422,10 +432,10 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
   );
 }
 
-export default function LoginForm({ authProvider }: { authProvider: string }) {
+export default function LoginForm({ authProvider, providers }: { authProvider: string; providers?: LoginProviders }) {
   return (
     <Suspense>
-      <LoginFormInner authProvider={authProvider} />
+      <LoginFormInner authProvider={authProvider} providers={providers} />
     </Suspense>
   );
 }

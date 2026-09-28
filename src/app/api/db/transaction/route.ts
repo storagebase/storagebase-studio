@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateProvider } from "@/lib/db";
 import { createErrorResponse } from "@/lib/api/errors";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
+import { requireManagedPermission } from "@/lib/access/db-guard";
 import { guardRoute } from "@/lib/api/require-session";
 import { readBoundParams } from "@/lib/api/bound-params";
 import {
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest) {
     const { action, sql, options = {} } = body;
 
     const connection = await resolveConnection(body, guard.session);
+    // StorageBase fork: a transaction on a shared managed connection is a write, whatever it runs.
+    requireManagedPermission(
+      req,
+      guard.session,
+      connection,
+      action === "status" ? "read" : "write",
+      "POST /api/db/transaction",
+    );
 
     if (!action) {
       return NextResponse.json({ error: "Connection and action are required" }, { status: 400 });

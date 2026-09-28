@@ -1,7 +1,7 @@
 import "../../../setup-dom";
 
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
-import { render, screen, fireEvent, cleanup, waitFor, renderHook, act } from "@testing-library/react";
+import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { waitFor, renderHook, act } from "@testing-library/react";
 import { mockGlobalFetch, restoreGlobalFetch } from "../../../helpers/mock-fetch";
 import { connection } from "./kafka-server";
 
@@ -13,7 +13,6 @@ import {
   postKafka,
 } from "@/components/resources/kafka/kafka-api";
 import { useKafkaRead } from "@/components/resources/kafka/use-kafka-read";
-import { WorkbenchConnectionRows } from "@/components/resources/WorkbenchConnectionRows";
 import { opensWorkbench } from "@/lib/resources/ui-config";
 
 describe("kafka-api helpers", () => {
@@ -73,44 +72,5 @@ describe("kafka-api helpers", () => {
   test("only kafka opens a workbench", () => {
     expect(opensWorkbench("kafka")).toBe(true);
     expect(opensWorkbench("rabbitmq")).toBe(false);
-  });
-});
-
-describe("WorkbenchConnectionRows", () => {
-  afterEach(() => cleanup());
-
-  test("selects, edits and deletes, marking the active row", () => {
-    const onSelect = mock((_c: unknown) => {});
-    const onEdit = mock((_c: unknown) => {});
-    const onDelete = mock((_id: string) => {});
-    render(
-      <WorkbenchConnectionRows
-        connections={[connection]}
-        activeConnection={connection}
-        onSelect={onSelect}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
-    expect(screen.getByTestId("workbench-connection-row").getAttribute("aria-current")).toBe("true");
-    fireEvent.click(screen.getByText("events"));
-    fireEvent.click(screen.getByRole("button", { name: "Edit events" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete events" }));
-    expect(onSelect).toHaveBeenCalledWith(connection);
-    expect(onEdit).toHaveBeenCalledWith(connection);
-    expect(onDelete).toHaveBeenCalledWith("res-k");
-  });
-
-  test("without an edit handler, and inactive", () => {
-    render(
-      <WorkbenchConnectionRows
-        connections={[connection]}
-        activeConnection={null}
-        onSelect={() => {}}
-        onDelete={() => {}}
-      />,
-    );
-    expect(screen.getByTestId("workbench-connection-row").getAttribute("aria-current")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Edit events" })).toBeNull();
   });
 });

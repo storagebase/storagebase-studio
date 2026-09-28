@@ -1377,6 +1377,8 @@ change how a connection is opened — are the coordinates and credentials (`id`,
 `authSource` (MongoDB), `sentinels`, `sentinelMasterName` and `sentinelPassword` (Redis Sentinel),
 `queryTimeout`, `agentUser`, and `agentPassword`. `color`, `environment`, `group`,
 `managed`, `seedId`, and `createdAt` are client-side bookkeeping that travel in the same object.
+`savedSecrets` (StorageBase fork) lists the secret paths the server holds for the connection,
+never a value; such a connection carries no secret in the browser.
 
 ```typescript
 interface DatabaseConnection {
@@ -1409,6 +1411,7 @@ interface DatabaseConnection {
   seedId?: string;         // stable reference to seed config ID
   agentUser?: string;      // optional least-privilege role for the agent read-only execution profile (#328)
   agentPassword?: string;  // password for agentUser; secret-classified, sealed at rest by connection-secrets
+  savedSecrets?: string[]; // StorageBase fork: names of the secret paths the server holds, never values
 }
 
 type DatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'libsql' | 'duckdb' | 'mongodb' | 'redis' | 'oracle' | 'mssql' | 'libredb' | 'couchbase' | 'clickhouse' | 'druid' | 'elasticsearch' | 'opensearch' | 'trino' | 'cassandra';

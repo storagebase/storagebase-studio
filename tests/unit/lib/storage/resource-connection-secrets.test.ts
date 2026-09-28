@@ -38,6 +38,8 @@ describe("resource connection credential classification", () => {
       accountKey: "k",
       vaultName: "v",
       namespace: "n",
+      // The names of the secret fields the server holds, never a value.
+      savedSecrets: ["token"],
       sshTunnel: {
         enabled: true,
         host: "bastion",

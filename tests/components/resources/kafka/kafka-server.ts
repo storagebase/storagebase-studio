@@ -16,7 +16,7 @@ export const connection: ResourceConnection = {
   endpoint: "localhost:9092",
 };
 
-export type Handler = (body: Record<string, unknown>) => MockFetchResponse;
+export type Handler = (body: Record<string, unknown>) => MockFetchResponse | Promise<MockFetchResponse>;
 
 export const defaultHandlers: Record<string, Handler> = {
   cluster: () => ({
@@ -38,8 +38,6 @@ export const defaultHandlers: Record<string, Handler> = {
           partitions: 50,
           replicationFactor: 1,
           underReplicatedPartitions: 0,
-          messageCount: 5,
-          countError: null,
         },
         {
           name: "orders",
@@ -47,8 +45,6 @@ export const defaultHandlers: Record<string, Handler> = {
           partitions: 2,
           replicationFactor: 2,
           underReplicatedPartitions: 1,
-          messageCount: 3,
-          countError: null,
         },
         {
           name: "payments",
@@ -56,11 +52,20 @@ export const defaultHandlers: Record<string, Handler> = {
           partitions: 1,
           replicationFactor: 1,
           underReplicatedPartitions: 0,
-          messageCount: null,
-          countError: null,
         },
       ],
-      countsTruncated: false,
+    },
+  }),
+  "topics/counts": (body) => ({
+    json: {
+      counts: Object.fromEntries(
+        (body.topics as string[]).map((topic) => [
+          topic,
+          topic === "payments"
+            ? { messageCount: null, countError: "partition 0 has no leader" }
+            : { messageCount: topic === "orders" ? 3 : 5, countError: null },
+        ]),
+      ),
     },
   }),
   topic: (body) => ({
@@ -158,8 +163,7 @@ export const defaultHandlers: Record<string, Handler> = {
           protocolType: "consumer",
           protocol: "range",
           members: 2,
-          totalLag: 7,
-          lagError: null,
+          coordinator: 2,
           internal: false,
         },
         {
@@ -168,8 +172,7 @@ export const defaultHandlers: Record<string, Handler> = {
           protocolType: "consumer",
           protocol: "",
           members: 0,
-          totalLag: null,
-          lagError: null,
+          coordinator: 1,
           internal: false,
         },
         {
@@ -178,12 +181,22 @@ export const defaultHandlers: Record<string, Handler> = {
           protocolType: "",
           protocol: "",
           members: 0,
-          totalLag: null,
-          lagError: null,
+          coordinator: null,
           internal: true,
         },
       ],
-      lagTruncated: false,
+    },
+  }),
+  "groups/lag": (body) => ({
+    json: {
+      lags: Object.fromEntries(
+        (body.groupIds as string[]).map((groupId) => [
+          groupId,
+          groupId === "archiver"
+            ? { totalLag: null, lagError: "orders: topic offsets unavailable", topics: 1 }
+            : { totalLag: groupId === "billing" ? 7 : 0, lagError: null, topics: groupId === "billing" ? 2 : 0 },
+        ]),
+      ),
     },
   }),
   group: (body) => ({
@@ -265,3 +278,25 @@ export function installKafkaServer(overrides: Record<string, Handler> = {}) {
 export const refuse =
   (status: number, error: string): Handler =>
   () => ({ status, json: { error } });
+
+/**
+ * happy-dom lays nothing out, so every element measures 0x0 and the list
+ * virtualizer would window zero rows. This gives elements a viewport-sized
+ * box (`height` px tall) so the real virtualizer windows as it does in a
+ * browser: about height / 33 rows plus its overscan. Returns the restore.
+ */
+export function installLayout(height = 400): () => void {
+  const proto = HTMLElement.prototype;
+  const saved = {
+    offsetHeight: Object.getOwnPropertyDescriptor(proto, "offsetHeight"),
+    offsetWidth: Object.getOwnPropertyDescriptor(proto, "offsetWidth"),
+  };
+  Object.defineProperty(proto, "offsetHeight", { configurable: true, get: () => height });
+  Object.defineProperty(proto, "offsetWidth", { configurable: true, get: () => 800 });
+  return () => {
+    for (const [name, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(proto, name, descriptor);
+      else delete (proto as unknown as Record<string, unknown>)[name];
+    }
+  };
+}

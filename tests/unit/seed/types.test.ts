@@ -55,9 +55,17 @@ describe("SeedConnectionSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects unknown roles like data-team", () => {
-    const result = SeedConnectionSchema.safeParse({ ...validConn, roles: ["data-team"] });
-    expect(result.success).toBe(false);
+  // StorageBase fork: a role that is not a Studio role is an identity-provider app-role value,
+  // matched against the session's app roles (docs/ENTRA.md) — but never one a typo could widen.
+  it("accepts app-role values like Team.Payments.Read", () => {
+    const result = SeedConnectionSchema.safeParse({ ...validConn, roles: ["data-team", "Team.Payments.Read"] });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects role values with whitespace, commas, an embedded wildcard, or past 128 characters", () => {
+    for (const role of ["data team", "a,b", "Team.*", "", "x".repeat(129)]) {
+      expect(SeedConnectionSchema.safeParse({ ...validConn, roles: [role] }).success).toBe(false);
+    }
   });
 
   it("accepts combined admin and user roles", () => {

@@ -26,6 +26,22 @@ global:
 # "Agent Runtime" in the chart README.
 replicaCount: 1
 
+# -- Deployment update strategy, rendered verbatim when set (e.g. `{type: RollingUpdate,
+# rollingUpdate: {maxSurge: 0, maxUnavailable: 1}}`). Empty (the default) lets the chart
+# choose: a single pod whose /app/data is a ReadWriteOnce or ReadWriteOncePod claim
+# (persistence.enabled, or storageProvider=sqlite, which turns persistence on) gets
+# `type: Recreate`, and everything else keeps the Kubernetes default, RollingUpdate.
+# The reason is the volume: a RollingUpdate starts the new pod before stopping the old
+# one, and a ReadWriteOnce volume attaches to one node at a time, so a new pod scheduled
+# onto another node waits on a Multi-Attach error for a volume the old pod never releases
+# and the rollout hangs. Recreate stops the old pod first, at the cost of a short gap in
+# service on each rollout. With persistence.existingClaim the chart cannot see the claim,
+# so persistence.accessModes is read as its access mode - set it to match. Setting
+# `type: Recreate` yourself on an existing release? Add `rollingUpdate: null` beside it:
+# a client-side merge otherwise leaves the API server's defaulted rollingUpdate block on
+# the live Deployment, and the upgrade fails validation.
+strategy: {}
+
 image:
   # -- Container image repository
   repository: ghcr.io/storagebase/storagebase-studio
@@ -62,6 +78,8 @@ secrets:
     oidcClientId: oidc-client-id
     oidcClientSecret: oidc-client-secret
     storagePostgresUrl: storage-postgres-url
+    # StorageBase fork: storagebase.entra.clientSecret (STORAGEBASE_ENTRA_CLIENT_SECRET)
+    entraClientSecret: entra-client-secret
   # -- JWT signing secret (min 32 chars). Required in strict mode (config.authBootstrap=off);
   # otherwise generated on first start.
   jwtSecret: ""
@@ -171,6 +189,59 @@ config:
   oidcRoleClaim: ""
   # -- OIDC admin role values (comma-separated)
   oidcAdminRoles: "admin"
+
+# =============================================================================
+# StorageBase — fork-only settings (STORAGEBASE_* variables)
+# =============================================================================
+# Every field maps to a STORAGEBASE_* variable the app reads on the server at
+# runtime, so a change needs a rollout (the ConfigMap/Secret checksums trigger
+# one) and never a rebuild. Every field is empty by default, and an empty field
+# writes NOTHING: the app then applies its own default, so an install that sets
+# none of this renders exactly as it did before the block existed.
+storagebase:
+  # Microsoft Entra ID sign-in ("Sign in with Microsoft"), beside the local
+  # email/password form and independent of authProvider. It needs an app
+  # registration in your directory whose web redirect URI is
+  # https://<studio host>/api/auth/entra/callback, plus app roles for the people
+  # who should get in. The app keeps Entra switched off, whatever `enabled` says,
+  # until tenantId, clientId and clientSecret are all present.
+  entra:
+    # -- Initial position of the sign-in switch (STORAGEBASE_ENTRA_ENABLED). Only
+    # `true` writes the variable; false and unset mean the same thing to the app.
+    # Once an administrator saves the switch in Studio, the saved value wins.
+    enabled: false
+    # -- Directory (tenant) id, a GUID such as 00000000-0000-0000-0000-000000000000 -
+    # not a domain name (STORAGEBASE_ENTRA_TENANT_ID)
+    tenantId: ""
+    # -- Application (client) id of the app registration (STORAGEBASE_ENTRA_CLIENT_ID)
+    clientId: ""
+    # -- Client secret of the app registration (STORAGEBASE_ENTRA_CLIENT_SECRET).
+    # Written to the chart's Secret under secrets.existingSecretKeys.entraClientSecret
+    # (key `entra-client-secret` by default) and referenced from the pod - never
+    # written to the ConfigMap or the Deployment. Ignored when secrets.existingSecret
+    # is set: put the value under that key in your own Secret instead.
+    clientSecret: ""
+    # -- Comma-separated app-role values that make a user a Studio admin
+    # (STORAGEBASE_ENTRA_ADMIN_ROLES). Empty writes nothing and the app's own
+    # default applies, which is the single role value StorageBase.Admin.
+    adminRoles: ""
+    # -- Comma-separated app-role values allowed to sign in at all
+    # (STORAGEBASE_ENTRA_ALLOWED_ROLES); an admin role always is. Empty admits every
+    # user of the tenant the app registration lets through.
+    allowedRoles: ""
+    # -- Explicit callback URL, e.g. https://studio.example.com/api/auth/entra/callback
+    # (STORAGEBASE_ENTRA_REDIRECT_URI). Empty lets the app derive it from the
+    # request; set it when a proxy hides the public origin.
+    redirectUri: ""
+    # -- Entra session length in hours, 1-168 (STORAGEBASE_ENTRA_SESSION_HOURS).
+    # Unset writes nothing and the app's default of 8 applies.
+    sessionHours: null
+  # -- Who may still sign in with email/password (STORAGEBASE_LOCAL_LOGIN):
+  # "enabled", "admin-only" (break-glass for the admin account) or "disabled". Empty
+  # writes nothing and the app's default, "enabled", applies. Like entra.enabled it
+  # only seeds the runtime switch, and the app reads "disabled" as "admin-only" while
+  # Entra is off, so it cannot lock everyone out.
+  localLogin: ""
 
 # =============================================================================
 # Agent Runtime

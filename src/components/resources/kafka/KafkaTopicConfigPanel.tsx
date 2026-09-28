@@ -21,11 +21,14 @@ export function KafkaTopicConfigPanel({
   topic,
   configs,
   onChanged,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
   topic: string;
   configs: readonly KafkaConfigEntry[];
   onChanged: () => Promise<void>;
+  /** Withholds edit, reset and add override: the table reads only. */
+  readOnly?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [overridesOnly, setOverridesOnly] = useState(false);
@@ -117,6 +120,7 @@ export function KafkaTopicConfigPanel({
                     </Button>
                   </>
                 ) : (
+                  !readOnly &&
                   !entry.readOnly &&
                   !entry.isSensitive && (
                     <>
@@ -151,37 +155,39 @@ export function KafkaTopicConfigPanel({
           ))}
         </TableBody>
       </Table>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          aria-label="New config name"
-          placeholder="config.name"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className={`${fieldClass} w-56`}
-        />
-        <Input
-          aria-label="New config value"
-          placeholder="value"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          className={`${fieldClass} w-40`}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs"
-          disabled={newName.trim() === ""}
-          onClick={() => {
-            const name = newName.trim();
-            void apply({ [name]: newValue }, `Set ${name}.`).then(() => {
-              setNewName("");
-              setNewValue("");
-            });
-          }}
-        >
-          Add override
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            aria-label="New config name"
+            placeholder="config.name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className={`${fieldClass} w-56`}
+          />
+          <Input
+            aria-label="New config value"
+            placeholder="value"
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            className={`${fieldClass} w-40`}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            disabled={newName.trim() === ""}
+            onClick={() => {
+              const name = newName.trim();
+              void apply({ [name]: newValue }, `Set ${name}.`).then(() => {
+                setNewName("");
+                setNewValue("");
+              });
+            }}
+          >
+            Add override
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

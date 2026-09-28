@@ -40,7 +40,7 @@ helm install storagebase storagebase/storagebase-studio \
 
 ```bash
 helm install storagebase oci://ghcr.io/storagebase/charts/storagebase-studio \
-  --version 0.1.64 \
+  --version 0.1.65 \
   --set secrets.jwtSecret=$(openssl rand -base64 32) \
   --set secrets.adminPassword=MyAdmin123
 ```
@@ -65,6 +65,18 @@ helm install storagebase storagebase/storagebase-studio \
 > **Note:** SQLite is single-writer. Do not use with multiple replicas.
 > With SQLite storage `autoscaling.enabled` is ignored: the HPA is not rendered
 > (a warning appears in the install notes) and the deployment stays at `replicaCount`.
+
+### Update strategy with a persistent volume
+
+A single pod whose `/app/data` is a `ReadWriteOnce` (or `ReadWriteOncePod`) claim - SQLite
+storage, or `persistence.enabled=true` with the default access mode - is rolled out with
+`strategy.type: Recreate`. A RollingUpdate would start the new pod before stopping the old one,
+and when the scheduler puts the new pod on another node it waits forever on a Multi-Attach error
+for a volume the old pod never releases. Recreate stops the old pod first, so each rollout has a
+short gap in service instead of a hung one. Everything else (no volume, `ReadWriteMany`, more than
+one replica, an HPA that can scale past one pod) keeps the Kubernetes default, and an explicit
+`strategy` value always wins, rendered verbatim. With `persistence.existingClaim` the chart cannot
+see the claim, so it reads `persistence.accessModes` as the claim's access mode - set it to match.
 
 ### PostgreSQL (built-in subchart)
 
@@ -189,6 +201,53 @@ helm install storagebase storagebase/storagebase-studio \
 ```
 
 `secrets.adminPassword` is not part of an OIDC install: the issuer authenticates every user, and the app still signs its own session cookie with `secrets.jwtSecret`. Strict mode (`config.authBootstrap=off`) therefore requires only the JWT secret here.
+
+## Microsoft Entra ID Sign-In
+
+"Sign in with Microsoft" sits beside the local email/password form and does not depend on
+`authProvider`. It needs an app registration in your directory with a **web** redirect URI of
+`https://<studio host>/api/auth/entra/callback` and app roles for the people who should get in:
+the app reads the `roles` claim, never group claims.
+
+```yaml
+# values.yaml - placeholders only; use your own directory's ids
+storagebase:
+  entra:
+    enabled: true                                     # initial position of the sign-in switch
+    tenantId: 00000000-0000-0000-0000-000000000000    # directory (tenant) id GUID, not a domain
+    clientId: 00000000-0000-0000-0000-000000000000    # application (client) id
+    clientSecret: ""                                  # prefer --set or secrets.existingSecret
+    adminRoles: ""        # empty keeps the app default, StorageBase.Admin
+    allowedRoles: ""      # e.g. "StorageBase.Admin,StorageBase.User" to gate sign-in by role
+    redirectUri: ""       # set when a proxy hides the public origin
+    sessionHours: null    # 1-168; unset keeps the app default of 8
+  localLogin: ""          # enabled | admin-only | disabled; empty keeps "enabled"
+```
+
+```bash
+helm upgrade --install storagebase storagebase/storagebase-studio \
+  -f values.yaml \
+  --set secrets.jwtSecret=$(openssl rand -base64 32) \
+  --set storagebase.entra.clientSecret="$ENTRA_CLIENT_SECRET"
+```
+
+- **Every field is optional and an empty one writes nothing**, so the app's own default applies.
+  The chart never writes an admin role you did not name: leave `adminRoles` empty and the app's
+  default, `StorageBase.Admin`, decides who is a Studio admin.
+- **The client secret travels as a Secret.** It is written to the chart's Secret under
+  `entra-client-secret` (renamed through `secrets.existingSecretKeys.entraClientSecret`) and
+  referenced from the pod, never written to the ConfigMap or the Deployment. With
+  `secrets.existingSecret`, put it under that key in your own Secret; the reference is optional,
+  so a Secret without it still starts the pod.
+- **`enabled` and `localLogin` only seed the runtime switch.** Once an administrator saves the
+  sign-in settings in Studio, the saved values win. The app keeps Entra off until the tenant id,
+  client id and client secret are all present, and reads `localLogin: disabled` as `admin-only`
+  while Entra is off, so no combination locks everyone out.
+- The role lists are comma-separated. `--set` splits on commas, so set them in a values file as
+  above, or escape the comma: `--set 'storagebase.entra.adminRoles=StorageBase.Admin\,Other.Role'`.
+- `values.schema.json` refuses a tenant id that is not a GUID, a `redirectUri` that is not an
+  absolute `http(s)://` URL, a `sessionHours` outside 1-168 and an unknown `localLogin`, which are
+  the values the app would refuse at sign-in.
 
 ## AI Configuration
 
@@ -572,7 +631,7 @@ helm install storagebase storagebase/storagebase-studio \
 
 Your external secret is referenced with these keys (customizable via `secrets.existingSecretKeys`):
 - `jwt-secret`, `admin-password` — required in strict mode (the pod waits for them); in zero-config mode missing ones are generated at first start
-- Optional: `admin-email`, `user-email`, `user-password` (the non-admin account exists only when `user-password` is set), `admin-totp-secret`, `user-totp-secret`, `llm-api-key`, `oidc-client-id`, `oidc-client-secret`, `storage-postgres-url`
+- Optional: `admin-email`, `user-email`, `user-password` (the non-admin account exists only when `user-password` is set), `admin-totp-secret`, `user-totp-secret`, `llm-api-key`, `oidc-client-id`, `oidc-client-secret`, `storage-postgres-url`, `entra-client-secret`
 
 ## Upgrading
 
@@ -605,6 +664,7 @@ helm uninstall storagebase
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `replicaCount` | Number of replicas | `1` |
+| `strategy` | Deployment update strategy, rendered verbatim when set. Empty lets the chart choose: `Recreate` for a single pod on a `ReadWriteOnce`/`ReadWriteOncePod` data volume (a RollingUpdate hangs on a Multi-Attach error there), otherwise no field and the Kubernetes default | `{}` |
 | `image.repository` | Container image | `ghcr.io/storagebase/storagebase-studio` |
 | `image.tag` | Image tag | `""` (Chart appVersion) |
 | `image.pullPolicy` | Pull policy | `IfNotPresent` |
@@ -619,6 +679,15 @@ helm uninstall storagebase
 | `secrets.adminTotpSecret` | Base32 TOTP secret for the admin account (optional second factor) | `""` |
 | `secrets.userTotpSecret` | Base32 TOTP secret for the user account (optional second factor) | `""` |
 | `secrets.existingSecret` | Use existing Secret | `""` |
+| `storagebase.entra.enabled` | Initial position of the Microsoft Entra sign-in switch (`STORAGEBASE_ENTRA_ENABLED`); only `true` writes it, and a value saved in Studio wins | `false` |
+| `storagebase.entra.tenantId` | Directory (tenant) id GUID, not a domain (`STORAGEBASE_ENTRA_TENANT_ID`; schema-enforced) | `""` |
+| `storagebase.entra.clientId` | Application (client) id of the app registration (`STORAGEBASE_ENTRA_CLIENT_ID`) | `""` |
+| `storagebase.entra.clientSecret` | Client secret (`STORAGEBASE_ENTRA_CLIENT_SECRET`), written to the chart Secret under `secrets.existingSecretKeys.entraClientSecret` (`entra-client-secret`), never to the ConfigMap; ignored with `secrets.existingSecret` | `""` |
+| `storagebase.entra.adminRoles` | Comma-separated app-role values granting Studio admin (`STORAGEBASE_ENTRA_ADMIN_ROLES`); empty writes nothing and the app default `StorageBase.Admin` applies | `""` |
+| `storagebase.entra.allowedRoles` | Comma-separated app-role values allowed to sign in (`STORAGEBASE_ENTRA_ALLOWED_ROLES`); empty admits every user of the tenant | `""` |
+| `storagebase.entra.redirectUri` | Explicit callback URL, e.g. `https://studio.example.com/api/auth/entra/callback` (`STORAGEBASE_ENTRA_REDIRECT_URI`); empty derives it from the request | `""` |
+| `storagebase.entra.sessionHours` | Entra session length in hours, 1-168 (`STORAGEBASE_ENTRA_SESSION_HOURS`); unset keeps the app default of 8 | unset |
+| `storagebase.localLogin` | Email/password sign-in policy (`STORAGEBASE_LOCAL_LOGIN`): `enabled`, `admin-only` or `disabled`; empty keeps the app default, `enabled` | `""` |
 | `config.bindAddress` | Container bind address (`HOSTNAME`): empty lets the image resolve one, preferring a verified dual-stack `::`; `::` forces it; `0.0.0.0` pins IPv4 | `""` |
 | `config.storageProvider` | Storage: local, sqlite, postgres | `local` |
 | `config.llmProvider` | AI provider | `""` |

@@ -26,7 +26,7 @@ describe("useResourceConnections", () => {
     localStorage.clear();
   });
 
-  test("starts empty until storage is ready, then loads and activates the first", () => {
+  test("starts empty until storage is ready, then loads every category", () => {
     storage.saveResourceConnection(s3);
     storage.saveResourceConnection(kafka);
 
@@ -35,15 +35,13 @@ describe("useResourceConnections", () => {
     });
 
     expect(result.current.connections).toEqual([]);
-    expect(result.current.activeConnection).toBeNull();
 
     rerender({ ready: true });
 
     expect(result.current.connections.map((c) => c.id)).toEqual(["res-1", "res-2"]);
-    expect(result.current.activeConnection?.id).toBe("res-1");
   });
 
-  test("save persists, refreshes the list and activates", () => {
+  test("save persists and refreshes the list, in place for an existing id", () => {
     const { result } = renderHook(() => useResourceConnections(true));
 
     act(() => {
@@ -51,7 +49,7 @@ describe("useResourceConnections", () => {
     });
 
     expect(storage.getResourceConnections().map((c) => c.id)).toEqual(["res-2"]);
-    expect(result.current.activeConnection?.id).toBe("res-2");
+    expect(result.current.connections.map((c) => c.id)).toEqual(["res-2"]);
 
     act(() => {
       result.current.saveResourceConnection({ ...kafka, name: "renamed" });
@@ -61,46 +59,16 @@ describe("useResourceConnections", () => {
     expect(result.current.connections[0].name).toBe("renamed");
   });
 
-  test("deleting the active connection falls back to the first survivor", () => {
+  test("delete removes from storage and the list", () => {
     storage.saveResourceConnection(s3);
     storage.saveResourceConnection(kafka);
     const { result } = renderHook(() => useResourceConnections(true));
-
-    expect(result.current.activeConnection?.id).toBe("res-1");
 
     act(() => {
       result.current.deleteResourceConnection("res-1");
     });
 
     expect(result.current.connections.map((c) => c.id)).toEqual(["res-2"]);
-    expect(result.current.activeConnection?.id).toBe("res-2");
     expect(storage.getResourceConnections().map((c) => c.id)).toEqual(["res-2"]);
-  });
-
-  test("deleting an inactive connection keeps the active one", () => {
-    storage.saveResourceConnection(s3);
-    storage.saveResourceConnection(kafka);
-    const { result } = renderHook(() => useResourceConnections(true));
-
-    act(() => {
-      result.current.setActiveConnection(kafka);
-    });
-    act(() => {
-      result.current.deleteResourceConnection("res-1");
-    });
-
-    expect(result.current.activeConnection?.id).toBe("res-2");
-  });
-
-  test("deleting the last connection clears the active one", () => {
-    storage.saveResourceConnection(s3);
-    const { result } = renderHook(() => useResourceConnections(true));
-
-    act(() => {
-      result.current.deleteResourceConnection("res-1");
-    });
-
-    expect(result.current.connections).toEqual([]);
-    expect(result.current.activeConnection).toBeNull();
   });
 });

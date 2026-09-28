@@ -6,6 +6,11 @@ import React from "react";
 mock.module("@/components/Studio", () => ({
   default: () => React.createElement("div", { "data-testid": "studio" }, "Studio Mock"),
 }));
+// The section rail beside it (StorageBase fork) is tested on its own.
+mock.module("@/components/sections/SectionShell", () => ({
+  SectionShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", { "data-testid": "section-shell" }, children),
+}));
 
 const { default: Page } = await import("@/app/page");
 
@@ -20,6 +25,11 @@ describe("Page", () => {
   test("renders Studio component", () => {
     const { getByTestId } = render(<Page />);
     expect(getByTestId("studio")).not.toBeNull();
+  });
+
+  test("mounts Studio inside the section shell", () => {
+    const { getByTestId } = render(<Page />);
+    expect(getByTestId("section-shell").contains(getByTestId("studio"))).toBe(true);
   });
 
   test("renders Studio content", () => {

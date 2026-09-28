@@ -12,7 +12,13 @@ export type ResourceErrorCode =
   | "RESOURCE_OPERATION_UNSUPPORTED"
   | "RESOURCE_NOT_FOUND"
   | "RESOURCE_INVALID_REQUEST"
-  | "RESOURCE_CONFLICT";
+  | "RESOURCE_CONFLICT"
+  // The access model (src/lib/access/errors.ts): a managed connection the caller may see but not
+  // act on at this level, a read-only grant refusing a write, and a deployment with no server
+  // storage to hold groups and managed connections in.
+  | "ACCESS_DENIED"
+  | "ACCESS_READ_ONLY"
+  | "ACCESS_STORE_UNAVAILABLE";
 
 export class ResourceError extends Error {
   public readonly code: ResourceErrorCode;

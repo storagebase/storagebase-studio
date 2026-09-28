@@ -149,7 +149,14 @@ describe("factory: getStorageProvider", () => {
 
     const written = JSON.stringify(mockSQLiteInstance.setCollection.mock.calls);
     expect(written).not.toContain("FACTORY-CANARY");
-    expect(written).toContain("v1:");
+    // StorageBase fork: withServerHeldSecrets wraps the encryption layer, so the
+    // password is absorbed into the fork store (sealed, never plaintext) and the
+    // backend sees a stripped row with no inline v1: envelope.
+    const { getForkStore } = await import("@/lib/fork-store");
+    const { loadSecretRecords } = await import("@/lib/user-connections/store");
+    const record = (await loadSecretRecords((await getForkStore())!, "u@example.org", "database")).get("c1");
+    expect(record).toBeDefined();
+    expect(JSON.stringify(record)).not.toContain("FACTORY-CANARY");
   });
 });
 

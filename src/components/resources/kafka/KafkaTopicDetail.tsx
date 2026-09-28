@@ -31,11 +31,14 @@ export function KafkaTopicDetail({
   topic,
   onBack,
   onDeleted,
+  readOnly = false,
 }: {
   connection: ResourceConnection;
   topic: string;
   onBack: () => void;
   onDeleted: () => void;
+  /** Withholds add partitions, delete, config edits and produce. */
+  readOnly?: boolean;
 }) {
   const [tab, setTab] = useState<TopicTab>("messages");
   const read = useCallback(() => postKafka<TopicDetail>(connection, "topic", { topic }), [connection, topic]);
@@ -95,6 +98,7 @@ export function KafkaTopicDetail({
           connection={connection}
           topic={topic}
           partitions={detail.partitions.map((partition) => partition.partition)}
+          readOnly={readOnly}
         />
       ) : tab === "partitions" ? (
         <div className="space-y-4">
@@ -131,36 +135,46 @@ export function KafkaTopicDetail({
               ))}
             </TableBody>
           </Table>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <label htmlFor="kafka-partition-count" className="text-xs text-fg-muted block">
-                New partition total
-              </label>
-              <Input
-                id="kafka-partition-count"
-                type="number"
-                min={detail.partitions.length + 1}
-                value={partitionCount}
-                onChange={(e) => setPartitionCount(e.target.value)}
-                className={`${fieldClass} w-28`}
-              />
+          {!readOnly && (
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <label htmlFor="kafka-partition-count" className="text-xs text-fg-muted block">
+                  New partition total
+                </label>
+                <Input
+                  id="kafka-partition-count"
+                  type="number"
+                  min={detail.partitions.length + 1}
+                  value={partitionCount}
+                  onChange={(e) => setPartitionCount(e.target.value)}
+                  className={`${fieldClass} w-28`}
+                />
+              </div>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => void addPartitions()}>
+                Add partitions
+              </Button>
+              <p className="text-xs text-fg-subtle basis-full">
+                Partitions can only be added. Keyed records may map to a different partition afterwards.
+              </p>
             </div>
-            <Button variant="outline" size="sm" className="text-xs" onClick={() => void addPartitions()}>
-              Add partitions
-            </Button>
-            <p className="text-xs text-fg-subtle basis-full">
-              Partitions can only be added. Keyed records may map to a different partition afterwards.
-            </p>
-          </div>
-          <ConfirmByName
-            name={topic}
-            action="Delete topic"
-            consequence="Deleting a topic removes every message and every consumer offset on it."
-            onConfirm={deleteTopic}
-          />
+          )}
+          {!readOnly && (
+            <ConfirmByName
+              name={topic}
+              action="Delete topic"
+              consequence="Deleting a topic removes every message and every consumer offset on it."
+              onConfirm={deleteTopic}
+            />
+          )}
         </div>
       ) : (
-        <KafkaTopicConfigPanel connection={connection} topic={topic} configs={detail.configs} onChanged={load} />
+        <KafkaTopicConfigPanel
+          connection={connection}
+          topic={topic}
+          configs={detail.configs}
+          onChanged={load}
+          readOnly={readOnly}
+        />
       )}
     </div>
   );

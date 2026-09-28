@@ -4,6 +4,7 @@ import { emitAuditEvent, type AuditEvent, type AuditReason } from "@/lib/audit";
 import { auditRequestFields } from "@/lib/api/audit-request";
 import { ResourceRouteError, type ResourceRequestContext } from "@/lib/api/resource-route";
 import { logger } from "@/lib/logger";
+import { accessAuditFields } from "@/lib/access/grant";
 import {
   ResourceConflictError,
   ResourceInvalidRequestError,
@@ -46,9 +47,15 @@ function reasonForResourceError(error: unknown): AuditReason {
   return "resource_failed";
 }
 
+/** The connection's id, name and type, and — for a managed connection — the grant the action ran under. */
 function connectionFields(connection: ResourceAuditConnection | undefined): Partial<AuditEvent> {
   if (connection === undefined) return {};
-  return { connectionId: connection.id, connectionName: connection.name, engine: connection.type };
+  return {
+    connectionId: connection.id,
+    connectionName: connection.name,
+    engine: connection.type,
+    ...accessAuditFields(connection),
+  };
 }
 
 /**

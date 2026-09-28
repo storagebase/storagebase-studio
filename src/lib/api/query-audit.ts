@@ -3,6 +3,7 @@ import { classifyAuditStatement, maskAuditErrorText, maskAuditStatement } from "
 import { auditRequestFields } from "@/lib/api/audit-request";
 import { QueryCancelledError, TimeoutError } from "@/lib/db/errors";
 import { logger } from "@/lib/logger";
+import { accessAuditFields } from "@/lib/access/grant";
 import type { DatabaseConnection, QueryResult } from "@/lib/types";
 
 /**
@@ -103,6 +104,8 @@ export function startQueryAudit(request: { headers: Headers }, session: QueryAud
             connectionId: connection.id,
             connectionName: connection.name,
             engine: connection.type,
+            // The grant a managed connection resolved with; nothing for a user-owned one.
+            ...accessAuditFields(connection),
             host: hostOf(connection),
             database: connection.database,
             statement: masked.text,

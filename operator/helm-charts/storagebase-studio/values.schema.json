@@ -37,6 +37,21 @@
       "minimum": 1,
       "description": "Number of replicas"
     },
+    "strategy": {
+      "type": "object",
+      "description": "Deployment update strategy, rendered verbatim when set. Empty lets the chart choose: Recreate for a single pod on a ReadWriteOnce or ReadWriteOncePod data volume (a RollingUpdate would wait on a Multi-Attach error), otherwise the Kubernetes default",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Recreate", "RollingUpdate"],
+          "description": "Deployment strategy type"
+        },
+        "rollingUpdate": {
+          "type": ["object", "null"],
+          "description": "RollingUpdate parameters (maxSurge, maxUnavailable); null alongside type Recreate clears a defaulted block on an existing Deployment"
+        }
+      }
+    },
     "image": {
       "type": "object",
       "properties": {
@@ -195,6 +210,59 @@
         "oidcAdminRoles": {
           "type": "string",
           "description": "OIDC admin role values"
+        }
+      }
+    },
+    "storagebase": {
+      "type": "object",
+      "description": "StorageBase fork settings, each mapped to a STORAGEBASE_* variable. An empty field writes nothing and leaves the app's own default in place",
+      "properties": {
+        "entra": {
+          "type": "object",
+          "description": "Microsoft Entra ID sign-in",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Initial position of the Entra sign-in switch (STORAGEBASE_ENTRA_ENABLED); only true writes the variable, and a value an administrator saves in Studio wins"
+            },
+            "tenantId": {
+              "type": "string",
+              "pattern": "^$|^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
+              "description": "Directory (tenant) id GUID (STORAGEBASE_ENTRA_TENANT_ID); the app refuses a domain name, so the schema does too"
+            },
+            "clientId": {
+              "type": "string",
+              "description": "Application (client) id of the app registration (STORAGEBASE_ENTRA_CLIENT_ID)"
+            },
+            "clientSecret": {
+              "type": "string",
+              "description": "Client secret of the app registration (STORAGEBASE_ENTRA_CLIENT_SECRET), written to the chart Secret; ignored when secrets.existingSecret is set"
+            },
+            "adminRoles": {
+              "type": "string",
+              "description": "Comma-separated app-role values granting Studio admin (STORAGEBASE_ENTRA_ADMIN_ROLES); empty leaves the app default"
+            },
+            "allowedRoles": {
+              "type": "string",
+              "description": "Comma-separated app-role values allowed to sign in (STORAGEBASE_ENTRA_ALLOWED_ROLES); empty admits every user of the tenant"
+            },
+            "redirectUri": {
+              "type": "string",
+              "pattern": "^$|^[Hh][Tt][Tt][Pp][Ss]?://\\S+$",
+              "description": "Explicit absolute http(s) callback URL (STORAGEBASE_ENTRA_REDIRECT_URI); empty lets the app derive it from the request"
+            },
+            "sessionHours": {
+              "type": ["integer", "null"],
+              "minimum": 1,
+              "maximum": 168,
+              "description": "Entra session length in hours (STORAGEBASE_ENTRA_SESSION_HOURS); null leaves the app default of 8"
+            }
+          }
+        },
+        "localLogin": {
+          "type": "string",
+          "enum": ["", "enabled", "admin-only", "disabled"],
+          "description": "Email/password sign-in policy (STORAGEBASE_LOCAL_LOGIN): enabled, admin-only or disabled; empty leaves the app default, enabled"
         }
       }
     },

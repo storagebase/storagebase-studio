@@ -10,6 +10,7 @@ import {
   STORAGE_COLLECTIONS,
 } from "@/lib/storage";
 import { logger } from "@/lib/logger";
+import { migrateBrowserConnections } from "@/lib/user-connections/client"; // StorageBase fork
 
 const MIGRATION_FLAG = "libredb_server_migrated";
 const DEBOUNCE_MS = 500;
@@ -269,6 +270,7 @@ export function useStorageSync(): StorageSyncState {
 
           // Migration first, then pull
           await migrateToServer();
+          await migrateBrowserConnections().catch(() => 0); // StorageBase fork: secrets to the server, once
           if (!cancelled) {
             await pullFromServer();
           }

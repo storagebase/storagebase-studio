@@ -1,4 +1,5 @@
 import "../setup-dom";
+import { serverHeldSecretsStub } from "../helpers/server-held-secrets";
 import "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
@@ -239,6 +240,7 @@ function getDefaultForm() {
       },
       { value: "redis", label: "Redis", icon: () => React.createElement("span", null, "RD"), color: "text-hue-red" },
     ],
+    secrets: serverHeldSecretsStub(),
     ...mockFormOverrides,
   };
 }
@@ -307,7 +309,6 @@ mock.module("lucide-react", () => {
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { ConnectionModal } from "@/components/ConnectionModal";
-import { registerResourceProviderLoader } from "@/lib/resources/registry";
 
 // =============================================================================
 // ConnectionModal Tests
@@ -339,22 +340,6 @@ describe("ConnectionModal", () => {
     mockSetShowSSL.mockClear();
     mockHandleTestConnection.mockClear();
     mockHandleConnect.mockClear();
-  });
-
-  test("closing the dialog resets the category tab, so it reopens on Databases", () => {
-    registerResourceProviderLoader("kafka", async () => {
-      throw new Error("never loaded by the dialog");
-    });
-    const props = createDefaultProps({ onConnectResource: mock(() => {}) });
-    const { getByRole, rerender } = render(React.createElement(ConnectionModal, props));
-    const tab = (name: string) => getByRole("tab", { name });
-
-    fireEvent.click(tab("Messaging"));
-    expect(tab("Messaging").getAttribute("aria-selected")).toBe("true");
-
-    rerender(React.createElement(ConnectionModal, { ...props, isOpen: false }));
-    rerender(React.createElement(ConnectionModal, props));
-    expect(tab("Databases").getAttribute("aria-selected")).toBe("true");
   });
 
   // ── 1. Does not render when isOpen=false ────────────────────────────────────

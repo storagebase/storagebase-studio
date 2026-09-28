@@ -1,19 +1,23 @@
 import "../../../setup-dom";
 
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { restoreGlobalFetch } from "../../../helpers/mock-fetch";
-import { connection, installKafkaServer, refuse } from "./kafka-server";
+import { connection, installKafkaServer, refuse, installLayout } from "./kafka-server";
+import { clearMeasureCacheForTest } from "@/components/resources/kafka/use-lazy-measure";
 
 import { KafkaWorkbench } from "@/components/resources/kafka";
 
-describe("KafkaWorkbench", () => {
-  const onClose = mock(() => {});
-  const onEditConnection = mock((_c: unknown) => {});
+// The real virtualizer windows rows off the scroll box's size; give it one.
+let restoreLayout: () => void;
+beforeAll(() => {
+  restoreLayout = installLayout();
+});
+afterAll(() => restoreLayout());
+beforeEach(() => clearMeasureCacheForTest());
 
+describe("KafkaWorkbench", () => {
   beforeEach(() => {
-    onClose.mockClear();
-    onEditConnection.mockClear();
     restoreGlobalFetch();
   });
 
@@ -21,28 +25,46 @@ describe("KafkaWorkbench", () => {
     cleanup();
   });
 
-  test("opens on the topic list with the connection named in the header", async () => {
+  test("opens on the topic list, with the write controls a full connection has", async () => {
     installKafkaServer();
-    render(<KafkaWorkbench connection={connection} onClose={onClose} onEditConnection={onEditConnection} />);
-    expect(screen.getByText("events")).toBeDefined();
-    expect(screen.getByText("localhost:9092")).toBeDefined();
+    render(<KafkaWorkbench connection={connection} />);
     await waitFor(() => expect(screen.getAllByTestId("kafka-topic-row")).toHaveLength(2));
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit connection" }));
-    expect(onEditConnection).toHaveBeenCalledWith(connection);
-    fireEvent.click(screen.getByRole("button", { name: "Close workbench" }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    // The page header names the connection; the workbench carries no header of its own.
+    expect(screen.queryByText("localhost:9092")).toBeNull();
+    expect(screen.getByRole("button", { name: "Create topic" })).toBeDefined();
   });
 
-  test("without an edit handler there is no edit button", () => {
-    installKafkaServer();
-    render(<KafkaWorkbench connection={connection} onClose={onClose} />);
-    expect(screen.queryByRole("button", { name: "Edit connection" })).toBeNull();
+  test("read-only withholds every write and keeps every read", async () => {
+    const server = installKafkaServer();
+    render(<KafkaWorkbench connection={connection} readOnly />);
+    await waitFor(() => screen.getByRole("button", { name: "orders" }));
+    expect(screen.queryByRole("button", { name: "Create topic" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "orders" }));
+    await waitFor(() => screen.getByTestId("kafka-messages"));
+    expect(screen.queryByRole("button", { name: "Produce" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Partitions" }));
+    await waitFor(() => screen.getAllByTestId("kafka-partition-row"));
+    expect(screen.queryByRole("button", { name: "Add partitions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete topic" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Configuration" }));
+    await waitFor(() => screen.getAllByTestId("kafka-config-row"));
+    expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Reset / })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add override" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Consumer groups" }));
+    await waitFor(() => screen.getByRole("button", { name: "archiver" }));
+    fireEvent.click(screen.getByRole("button", { name: "archiver" }));
+    await waitFor(() => screen.getAllByTestId("kafka-offset-row"));
+    expect(screen.queryByTestId("kafka-reset-offsets")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete group" })).toBeNull();
+    expect(server.count("topic/create") + server.count("produce")).toBe(0);
   });
 
   test("a topic opens its detail; back and delete both return to the list", async () => {
     const server = installKafkaServer();
-    render(<KafkaWorkbench connection={connection} onClose={onClose} />);
+    render(<KafkaWorkbench connection={connection} />);
     await waitFor(() => screen.getByRole("button", { name: "orders" }));
     fireEvent.click(screen.getByRole("button", { name: "orders" }));
     await waitFor(() => screen.getByTestId("kafka-topic-detail"));
@@ -61,7 +83,7 @@ describe("KafkaWorkbench", () => {
 
   test("consumer groups open their detail; back and delete both return to the list", async () => {
     const server = installKafkaServer();
-    render(<KafkaWorkbench connection={connection} onClose={onClose} />);
+    render(<KafkaWorkbench connection={connection} />);
     fireEvent.click(screen.getByRole("tab", { name: "Consumer groups" }));
     await waitFor(() => screen.getByRole("button", { name: "archiver" }));
     fireEvent.click(screen.getByRole("button", { name: "archiver" }));
@@ -80,7 +102,7 @@ describe("KafkaWorkbench", () => {
 
   test("the broker tab lists brokers with the controller named, and refreshes", async () => {
     const server = installKafkaServer();
-    render(<KafkaWorkbench connection={connection} onClose={onClose} />);
+    render(<KafkaWorkbench connection={connection} />);
     fireEvent.click(screen.getByRole("tab", { name: "Brokers" }));
     await waitFor(() => expect(screen.getAllByTestId("kafka-broker-row")).toHaveLength(2));
     expect(screen.getByText("cluster-abc")).toBeDefined();
@@ -92,7 +114,7 @@ describe("KafkaWorkbench", () => {
 
   test("an unreachable cluster says so in the broker tab", async () => {
     installKafkaServer({ cluster: refuse(502, "Kafka describe cluster failed: ECONNREFUSED") });
-    render(<KafkaWorkbench connection={connection} onClose={onClose} />);
+    render(<KafkaWorkbench connection={connection} />);
     fireEvent.click(screen.getByRole("tab", { name: "Brokers" }));
     await waitFor(() => screen.getByText("Kafka describe cluster failed: ECONNREFUSED"));
     expect(screen.queryByTestId("kafka-broker-row")).toBeNull();

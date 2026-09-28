@@ -110,6 +110,9 @@ describe("the classification is exhaustive by construction", () => {
         "password",
         "port",
         "queryTimeout",
+        // The NAMES of the secret fields the server holds (StorageBase fork,
+        // src/lib/user-connections), never a value: `["password"]` unlocks nothing.
+        "savedSecrets",
         "seedId",
         // Redis Sentinel: node addresses and a group name every sentinel answers to anyone,
         // so `public`; the sentinel password is the credential and is sealed.

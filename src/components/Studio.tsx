@@ -12,6 +12,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { SchemaExplorer } from "@/components/schema-explorer";
 import { ConnectionModal } from "@/components/ConnectionModal";
 import { CommandPalette } from "@/components/CommandPalette";
+import { RedisKeyBrowserDock } from "@/components/redis/RedisKeyBrowserDock"; // StorageBase fork (see STORAGEBASE.md)
 import { QueryEditor, QueryEditorRef } from "@/components/QueryEditor";
 import { ShortcutsDialog, type ShortcutsDialogRef } from "@/components/ShortcutsDialog";
 import { DataImportModal } from "@/components/DataImportModal";
@@ -46,6 +47,7 @@ import { downloadText } from "@/lib/export/download";
 import { writeToClipboard } from "@/components/copy-button";
 import { newLocalId } from "@/lib/ids";
 import { resolveAgentRunConnectionId } from "@/hooks/use-connection-payload";
+import { forgetServerHeldConnection } from "@/lib/user-connections/client"; // StorageBase fork
 import { isMobileViewport, useIsMobile } from "@/hooks/use-mobile";
 import { useAgentCapability } from "@/hooks/use-agent-capability";
 import type { AgentArtifactHydration } from "@/components/agent/hydration";
@@ -56,20 +58,6 @@ import { useProviderMetadata } from "@/hooks/use-provider-metadata";
 import { useConnectionOrder } from "@/hooks/use-connection-order";
 import { useAuth } from "@/hooks/use-auth";
 import { useConnectionManager } from "@/hooks/use-connection-manager";
-import { useResourceConnections } from "@/hooks/use-resource-connections";
-import { RESOURCE_CATEGORY_OF, type ResourceConnection } from "@/lib/resources/types";
-// Family provider registration (client side): the standalone shell composes
-// the build's families, so the picker's offers match what the server answers.
-// Presentational components never import this barrel — unit tests start from
-// an empty registry and register fakes explicitly, and the embedded workspace
-// (which carries no routes) must never offer tiles that would answer 501.
-import "@/lib/resources/providers";
-import type { ResourceNode } from "@/lib/resources/types";
-import { ResourceInspector } from "@/components/resources/ResourceInspector";
-import { useResourceWorkbench } from "@/hooks/use-resource-workbench";
-import { KafkaWorkbench } from "@/components/resources/kafka";
-import { VaultWorkbench } from "@/components/resources/vault";
-import { WorkbenchConnectionRows } from "@/components/resources/WorkbenchConnectionRows";
 import { useTabManager } from "@/hooks/use-tab-manager";
 import { useTransactionControl } from "@/hooks/use-transaction-control";
 import { useQueryExecution } from "@/hooks/use-query-execution";
@@ -130,12 +118,6 @@ export default function Studio() {
   const { metadata, error: metadataError, retry: retryMetadata } = useProviderMetadata(conn.activeConnection);
   const { favoriteIds, toggleFavorite } = useFavoriteConnections(storageReady);
   const { order: connectionOrder, setOrder: setConnectionOrder } = useConnectionOrder(storageReady);
-  // 2.5. Resource connections (StorageBase fork). Same storage-ready gate as
-  // the database manager; no seeds, catalogs or polling (see the hook).
-  const res = useResourceConnections(storageReady);
-  // Workbench resource types (Kafka) list beside the databases and open in the
-  // main area; the rest keep the Resources section (see the hook).
-  const workbench = useResourceWorkbench(res);
 
   // 3. Tab Manager
   const tabMgr = useTabManager({
@@ -491,13 +473,6 @@ export default function Studio() {
   // === Modal state ===
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<DatabaseConnection | null>(null);
-  // Resource edit target (StorageBase fork). Cleared wherever the database
-  // edit target is cleared, so the two halves never disagree about edit mode.
-  const [editingResourceConnection, setEditingResourceConnection] = useState<ResourceConnection | null>(null);
-  // The resource tree row under inspection, if any, and the token that
-  // re-reads the tree after a viewer write lands behind it.
-  const [resourceNode, setResourceNode] = useState<ResourceNode | null>(null);
-  const [resourceRefreshToken, setResourceRefreshToken] = useState(0);
   const handleDuplicateConnection = (source: DatabaseConnection) => {
     setEditingConnection({
       ...structuredClone(source),
@@ -507,6 +482,8 @@ export default function Studio() {
       // A new local connection must not be merged back into its source seed on reload.
       seedId: undefined,
       managed: false,
+      // StorageBase fork: a copy is a NEW connection; the server holds no secret for it yet.
+      savedSecrets: undefined,
     });
     setIsConnectionModalOpen(true);
   };
@@ -868,6 +845,8 @@ export default function Studio() {
       /* best-effort cleanup */
     });
 
+    const deleted = conn.connections.find((c) => c.id === id);
+    if (deleted) forgetServerHeldConnection("database", deleted); // StorageBase fork
     storage.deleteConnection(id);
     // Preserve managed (seed) connections that aren't in localStorage
     const userConns = storage.getConnections();
@@ -943,13 +922,8 @@ export default function Studio() {
             <ResizablePanel id="studio-sidebar" defaultSize="22" minSize="15" maxSize="35">
               <Sidebar
                 connections={conn.connections}
-                // An open workbench owns the main area, so no database row
-                // reads as active and no object tree offers clicks behind it.
-                activeConnection={workbench.activeWorkbench ? null : conn.activeConnection}
-                onSelectConnection={(c) => {
-                  workbench.closeWorkbench();
-                  conn.setActiveConnection(c);
-                }}
+                activeConnection={conn.activeConnection}
+                onSelectConnection={conn.setActiveConnection}
                 onDeleteConnection={requestDeleteConnection}
                 onEditConnection={(c) => {
                   setEditingConnection(c);
@@ -966,20 +940,6 @@ export default function Studio() {
                 onShowDiagram={() => setShowDiagram(true)}
                 onHideDiagram={() => setShowDiagram(false)}
                 isDiagramOpen={showDiagram}
-                resourceConnections={workbench.treeConnections}
-                activeResourceConnection={workbench.activeTreeConnection}
-                onSelectResourceConnection={res.setActiveConnection}
-                onDeleteResourceConnection={workbench.deleteConnection}
-                workbenchConnections={workbench.workbenchConnections}
-                activeWorkbenchConnection={workbench.activeWorkbench}
-                onSelectWorkbenchConnection={workbench.openWorkbench}
-                onEditResourceConnection={(c) => {
-                  setEditingResourceConnection(c);
-                  setIsConnectionModalOpen(true);
-                }}
-                onAddResourceConnection={() => setIsConnectionModalOpen(true)}
-                onResourceNodeClick={(node) => setResourceNode(node)}
-                resourceRefreshToken={resourceRefreshToken}
                 metadata={metadata}
                 metadataError={metadataError}
                 onRetryMetadata={retryMetadata}
@@ -1054,37 +1014,13 @@ export default function Studio() {
             />
 
             <main className="flex-1 overflow-hidden relative">
-              {/*
-                The resource workbench (StorageBase fork: Kafka or a vault) covers the editor rather than
-                replacing it: the editor, its tabs and results stay mounted underneath,
-                so closing the workbench returns to exactly where the user was.
-              */}
-              {workbench.activeWorkbench && (
-                <div className="absolute inset-0 z-30 bg-surface">
-                  {RESOURCE_CATEGORY_OF[workbench.activeWorkbench.type] === "vault" ? (
-                    <VaultWorkbench
-                      key={workbench.activeWorkbench.id}
-                      connection={workbench.activeWorkbench}
-                      isAdmin={isAdmin}
-                      onClose={workbench.closeWorkbench}
-                      onEditConnection={(c) => {
-                        setEditingResourceConnection(c);
-                        setIsConnectionModalOpen(true);
-                      }}
-                    />
-                  ) : (
-                    <KafkaWorkbench
-                      key={workbench.activeWorkbench.id}
-                      connection={workbench.activeWorkbench}
-                      onClose={workbench.closeWorkbench}
-                      onEditConnection={(c) => {
-                        setEditingResourceConnection(c);
-                        setIsConnectionModalOpen(true);
-                      }}
-                    />
-                  )}
-                </div>
-              )}
+              <RedisKeyBrowserDock
+                connection={conn.activeConnection}
+                capabilities={metadata?.capabilities}
+                tabs={tabMgr}
+                runQuery={queryExec.executeQuery}
+              />{" "}
+              {/* StorageBase fork (see STORAGEBASE.md) */}
               <AnimatePresence>
                 {showDiagram && (
                   /*
@@ -1106,7 +1042,6 @@ export default function Studio() {
                   </ChunkBoundary>
                 )}
               </AnimatePresence>
-
               {/* Mobile: Database Tab */}
               {activeMobileTab === "database" && (
                 <div className="md:hidden h-full bg-sunken overflow-auto p-4">
@@ -1135,23 +1070,9 @@ export default function Studio() {
                     connectionOrder={connectionOrder}
                     onReorderConnections={setConnectionOrder}
                     onAddConnection={() => setIsConnectionModalOpen(true)}
-                    trailingItems={
-                      workbench.workbenchConnections.length > 0 ? (
-                        <WorkbenchConnectionRows
-                          connections={workbench.workbenchConnections}
-                          activeConnection={workbench.activeWorkbench}
-                          onSelect={(c) => {
-                            workbench.openWorkbench(c);
-                            setActiveMobileTab("editor");
-                          }}
-                          onDelete={workbench.deleteConnection}
-                        />
-                      ) : undefined
-                    }
                   />
                 </div>
               )}
-
               {/* Mobile: Schema Tab */}
               {activeMobileTab === "schema" && (
                 <div className="md:hidden h-full bg-sunken overflow-auto p-4">
@@ -1185,7 +1106,6 @@ export default function Studio() {
                   )}
                 </div>
               )}
-
               {/* Desktop & Mobile Editor Tab */}
               <div className={cn("h-full", activeMobileTab !== "editor" && "hidden md:block")}>
                 <div className="h-full">
@@ -1401,7 +1321,6 @@ export default function Studio() {
         onClose={() => {
           setIsConnectionModalOpen(false);
           setEditingConnection(null);
-          setEditingResourceConnection(null);
         }}
         onConnect={(c) => {
           storage.saveConnection(c);
@@ -1413,13 +1332,6 @@ export default function Studio() {
           setEditingConnection(null);
         }}
         editConnection={editingConnection}
-        onConnectResource={(c) => {
-          res.saveResourceConnection(c);
-          workbench.handleSaved(c);
-          setIsConnectionModalOpen(false);
-          setEditingResourceConnection(null);
-        }}
-        editResourceConnection={editingResourceConnection}
       />
       <CreateTableModal
         isOpen={isCreateTableModalOpen}
@@ -1427,14 +1339,6 @@ export default function Studio() {
         onTableCreated={(sql) => queryExec.executeQuery(sql)}
         dbType={conn.activeConnection?.type}
       />
-      {resourceNode && res.activeConnection && (
-        <ResourceInspector
-          connection={res.activeConnection}
-          node={resourceNode}
-          onClose={() => setResourceNode(null)}
-          onChanged={() => setResourceRefreshToken((token) => token + 1)}
-        />
-      )}
       <SaveQueryModal
         isOpen={isSaveQueryModalOpen}
         onClose={() => setIsSaveQueryModalOpen(false)}

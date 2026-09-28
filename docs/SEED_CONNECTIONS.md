@@ -158,7 +158,7 @@ connections:
 | `connections[].user` | No | — | Username |
 | `connections[].password` | No | — | Password (use `${ENV_VAR}` syntax) |
 | `connections[].connectionString` | No | — | Full connection string (use `${ENV_VAR}`). Druid and Trino have no URI form this build parses — those connections need `host` and are addressed by host and port only |
-| `connections[].roles` | Yes | — | Access control: `["*"]`, `["admin"]`, `["user"]`, `["admin", "user"]` |
+| `connections[].roles` | Yes | — | Access control: `["*"]`, `["admin"]`, `["user"]`, `["admin", "user"]`, or identity-provider app-role values such as `["Team.Payments.Read"]` (StorageBase fork) |
 | `connections[].managed` | No | from defaults | `true` = read-only, `false` = editable copy |
 | `connections[].environment` | No | from defaults | Environment badge |
 | `connections[].group` | No | — | Group label |
@@ -238,7 +238,19 @@ Each connection has a `roles` field that controls which users can see it:
 
 Roles are matched against the JWT session's `role` field. The role is extracted server-side from the JWT token — never from client input.
 
-**Current limitation:** The system supports `admin` and `user` roles only (matching the JWT `role` claim). Custom roles (e.g., `data-team`, `backend`) are planned for a future release with expanded OIDC role claim support.
+**App-role values (StorageBase fork).** Any other value is an identity-provider app-role value
+(no whitespace, comma or `*`, at most 128 characters) and matches a session that carries that app
+role: Microsoft Entra sign-ins carry their `roles` claim, generic OIDC sign-ins the values of
+`OIDC_ROLE_CLAIM` ([`ENTRA.md`](ENTRA.md) §5). `roles: ["Team.Payments.Read"]` serves the seed to
+holders of that app role; local sign-ins carry no app roles, so for them only `*`, `admin` and `user`
+match.
+
+**Admin-managed connections (StorageBase fork).** Besides the seed file, administrators create
+managed connections at runtime in Admin → Access, grant them through connection groups and role
+bindings, and those are served by this same endpoint as `managed: true` rows with a `seedId` of
+`m_<id>` and a `permission` (`read`/`write`/`admin`) — without host, user or credentials. Seed ids
+cannot collide with them (seed ids never contain `_`). See [`ENTRA.md`](ENTRA.md). The endpoint now
+also strips `sentinelPassword` and `ssl.clientKey` from `managed: true` seed rows.
 
 ### How Role Filtering Works
 

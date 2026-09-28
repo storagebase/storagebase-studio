@@ -7,6 +7,7 @@ import {
   getResourceProviderCacheStats,
   getOrCreateResourceProvider,
   removeResourceProvider,
+  resourceConfigKey,
   setResourceFactoryClockForTest,
   testResourceConnection,
 } from "@/lib/resources/factory";
@@ -113,6 +114,43 @@ describe("resource factory", () => {
     expect(instances).toHaveLength(1);
     expect(first.connects).toBe(1);
     expect(getResourceProviderCacheStats()).toEqual({ total: 1, connected: 1 });
+  });
+
+  test("the same id with a different endpoint or credential gets a new client, the old one closed", async () => {
+    const first = (await getOrCreateResourceProvider({
+      ...connection(),
+      endpoint: "https://a",
+    })) as unknown as FakeProvider;
+    const renamed = (await getOrCreateResourceProvider({
+      ...connection(),
+      endpoint: "https://a",
+      name: "Renamed",
+      color: "#ffffff",
+    })) as unknown as FakeProvider;
+    expect(renamed).toBe(first);
+    const moved = (await getOrCreateResourceProvider({
+      ...connection(),
+      endpoint: "https://b",
+    })) as unknown as FakeProvider;
+    expect(moved).not.toBe(first);
+    expect(first.disconnects).toBe(1);
+    const rekeyed = (await getOrCreateResourceProvider({
+      ...connection(),
+      endpoint: "https://b",
+      secretAccessKey: "other",
+    })) as unknown as FakeProvider;
+    expect(rekeyed).not.toBe(moved);
+  });
+
+  test("the config key ignores presentation fields and key order, and covers nested tunnels", () => {
+    const base = { ...connection(), endpoint: "https://a", region: "eu" };
+    const reordered = { region: "eu", endpoint: "https://a", ...connection(), name: "Other", group: "g" };
+    expect(resourceConfigKey(reordered as ResourceConnection)).toBe(resourceConfigKey(base));
+    const tunnel = { enabled: true, host: "bastion", port: 22, username: "u", authMethod: "password" as const };
+    expect(resourceConfigKey({ ...base, sshTunnel: tunnel })).not.toBe(
+      resourceConfigKey({ ...base, sshTunnel: { ...tunnel, host: "other" } }),
+    );
+    expect(resourceConfigKey({ ...base, sshTunnel: tunnel })).toMatch(/^[0-9a-f]{64}$/);
   });
 
   test("a disconnected cache entry is rebuilt, not reused", async () => {

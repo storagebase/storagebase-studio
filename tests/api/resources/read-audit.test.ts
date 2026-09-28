@@ -31,7 +31,11 @@ const provider = {
   listDestinations: answer({ nodes: [], truncated: false }),
   browseMessages: answer({ messages: [], truncated: false }),
   describeCluster: answer({ clusterId: "c", controllerId: 1, brokers: [{ id: 1 }, { id: 2 }] }),
-  listTopicSummaries: answer({ topics: [{ name: "orders" }], countsTruncated: false }),
+  listTopicSummaries: answer({ topics: [{ name: "orders" }] }),
+  countTopicMessages: answer({
+    orders: { messageCount: 3, countError: null },
+    gone: { messageCount: null, countError: "topic does not exist" },
+  }),
   describeTopic: answer({
     name: "orders",
     internal: false,
@@ -46,7 +50,8 @@ const provider = {
     ],
     truncated: true,
   }),
-  listConsumerGroups: answer({ groups: [{}, {}], lagTruncated: false }),
+  listConsumerGroups: answer({ groups: [{}, {}] }),
+  measureGroupLag: answer({ billing: { totalLag: 0, lagError: null } }),
   describeConsumerGroup: answer({ groupId: "billing", members: [{}], offsets: [{}, {}] }),
   listNodes: answer({ nodes: [{}, {}, {}], truncated: true }),
   getHealth: answer({ status: "healthy", latencyMs: 9 }),
@@ -84,7 +89,14 @@ const cases: Array<[string, Record<string, unknown>, string, string, Record<stri
   ["health", {}, "resource.health", "s3:store", { healthy: true, latencyMs: 9 }],
   ["meta", {}, "resource.meta", "s3:store", undefined],
   ["kafka/cluster", {}, "kafka.cluster.read", "s3:store", { brokers: 2 }],
-  ["kafka/topics", {}, "kafka.topics.list", "s3:store", { itemsListed: 1, truncated: false }],
+  ["kafka/topics", {}, "kafka.topics.list", "s3:store", { itemsListed: 1 }],
+  [
+    "kafka/topics/counts",
+    { topics: ["orders", "gone"] },
+    "kafka.topics.counts",
+    "s3:store",
+    { itemsListed: 2, unreadable: 1 },
+  ],
   ["kafka/topic", { topic: "orders" }, "kafka.topic.read", "s3:orders", { partitions: 3, configs: 1 }],
   [
     "kafka/messages",
@@ -93,7 +105,8 @@ const cases: Array<[string, Record<string, unknown>, string, string, Record<stri
     "s3:orders[partition=0,seek=offset:10]",
     { messagesRead: 2, bytes: 12, limit: 2, truncated: true, firstOffset: 10, lastOffset: 12 },
   ],
-  ["kafka/groups", {}, "kafka.groups.list", "s3:store", { itemsListed: 2, truncated: false }],
+  ["kafka/groups", {}, "kafka.groups.list", "s3:store", { itemsListed: 2 }],
+  ["kafka/groups/lag", { groupIds: ["billing"] }, "kafka.groups.lag", "s3:store", { itemsListed: 1, unreadable: 0 }],
   ["kafka/group", { groupId: "billing" }, "kafka.group.read", "s3:billing", { members: 1, partitions: 2 }],
 ];
 

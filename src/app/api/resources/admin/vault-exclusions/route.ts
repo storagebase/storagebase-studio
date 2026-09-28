@@ -5,29 +5,26 @@ import { emitAuditEvent } from "@/lib/audit";
 import { auditRequestFields } from "@/lib/api/audit-request";
 import { logger } from "@/lib/logger";
 import { ResourceInvalidRequestError } from "@/lib/resources/errors";
-import { exclusionKey, validateExclusionRules } from "@/lib/resources/vault-exclusions";
-import { loadVaultExclusionRules, saveVaultExclusionRules } from "@/lib/resources/vault-exclusions-store";
-import { RESOURCE_CATEGORY_OF, isResourceType } from "@/lib/resources/types";
+import {
+  createVaultExclusionRule,
+  deleteVaultExclusionRule,
+  loadVaultExclusionRules,
+  updateVaultExclusionRule,
+  vaultExclusionStoreAvailable,
+} from "@/lib/resources/vault-exclusions-store";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Admin-only: read and replace one vault's exclusion rules, addressed by
- * `type` + the normalized vault `address` (`normalizedVaultAddress`, which the
- * workbench computes from the connection). Rules are enforced server-side on
- * every vault route for everyone; this API is the only way to change them.
- * Both methods are audited; a PUT records the rule set before and after.
+ * Admin-only: the global vault exclusion rules (Admin > Access > Vault
+ * exclusions). GET lists them; POST creates one; PUT (`{ id, ...rule }`)
+ * replaces one; DELETE (`?id=`) removes one. The rules are enforced
+ * server-side on every vault route for everyone, admins included, matched
+ * against the vault identity the SERVER derives from the connection it
+ * resolved (src/lib/resources/vault-exclusions.ts) — nothing here, or in any
+ * other request, tells the server which vault a connection is. Every call is
+ * audited; a change records the rule before and after.
  */
-
-function requireVault(type: unknown, address: unknown): { type: string; address: string } {
-  if (!isResourceType(type) || RESOURCE_CATEGORY_OF[type] !== "vault") {
-    throw new ResourceInvalidRequestError('"type" must be a vault resource type');
-  }
-  if (typeof address !== "string" || address.trim() === "" || address.length > 2048) {
-    throw new ResourceInvalidRequestError('"address" must be the normalized vault address');
-  }
-  return { type, address };
-}
 
 function audit(request: NextRequest, user: string, action: string, target: string, details?: string, failed = false) {
   try {
@@ -46,40 +43,81 @@ function audit(request: NextRequest, user: string, action: string, target: strin
   }
 }
 
+async function readBody(request: NextRequest): Promise<Record<string, unknown>> {
+  const body: unknown = await request.json().catch(() => null);
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new ResourceInvalidRequestError("The request body must be a JSON object");
+  }
+  return body as Record<string, unknown>;
+}
+
+function requireId(value: unknown): string {
+  if (typeof value !== "string" || value === "" || value.length > 200) {
+    throw new ResourceInvalidRequestError('"id" must name an exclusion rule');
+  }
+  return value;
+}
+
 export async function GET(request: NextRequest) {
   const route = "GET /api/resources/admin/vault-exclusions";
   const guard = await guardAdminRoute(request, route);
   if ("response" in guard) return guard.response;
-  const params = new URL(request.url).searchParams;
   try {
-    const vault = requireVault(params.get("type"), params.get("address"));
-    const rules = await loadVaultExclusionRules(exclusionKey(vault.type, vault.address));
-    audit(request, guard.session.username, "vault.exclusions.read", `${vault.type}:${vault.address}`);
-    return NextResponse.json({ rules });
+    const rules = await loadVaultExclusionRules();
+    const storeAvailable = await vaultExclusionStoreAvailable();
+    audit(request, guard.session.username, "vault.exclusions.read", "vault-exclusions");
+    return NextResponse.json({
+      rules,
+      storeAvailable,
+      ...(storeAvailable
+        ? {}
+        : { message: "Vault exclusion rules need server storage: set STORAGE_PROVIDER to sqlite or postgres." }),
+    });
   } catch (error) {
     return createErrorResponse(error, { route });
   }
 }
 
-export async function PUT(request: NextRequest) {
-  const route = "PUT /api/resources/admin/vault-exclusions";
+/** One mutation: guard, run, audit the outcome (before/after on success), map the error. */
+async function mutate(
+  request: NextRequest,
+  route: string,
+  action: string,
+  run: (actor: string) => Promise<{ target: string; before: unknown; after: unknown; status?: number }>,
+): Promise<NextResponse> {
   const guard = await guardAdminRoute(request, route);
   if ("response" in guard) return guard.response;
-  let target = "vault:unknown";
+  const actor = guard.session.username;
   try {
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const vault = requireVault(body.type, body.address);
-    target = `${vault.type}:${vault.address}`;
-    const rules = validateExclusionRules(body.rules);
-    const key = exclusionKey(vault.type, vault.address);
-    const before = await loadVaultExclusionRules(key).catch(() => null);
-    await saveVaultExclusionRules(key, rules, guard.session.username);
+    const { target, before, after, status } = await run(actor);
     // Patterns are admin configuration, not secret material: the trail keeps
     // the whole before/after so a rule change can be reviewed and undone.
-    audit(request, guard.session.username, "vault.exclusions.update", target, JSON.stringify({ before, after: rules }));
-    return NextResponse.json({ rules });
+    audit(request, actor, action, target, JSON.stringify({ before, after }));
+    return NextResponse.json({ rule: after ?? before }, { status: status ?? 200 });
   } catch (error) {
-    audit(request, guard.session.username, "vault.exclusions.update", target, undefined, true);
+    audit(request, actor, action, "vault-exclusions", undefined, true);
     return createErrorResponse(error, { route });
   }
+}
+
+export async function POST(request: NextRequest) {
+  return mutate(request, "POST /api/resources/admin/vault-exclusions", "vault.exclusions.create", async (actor) => {
+    const rule = await createVaultExclusionRule(await readBody(request), actor);
+    return { target: `vault-exclusion:${rule.id}`, before: null, after: rule, status: 201 };
+  });
+}
+
+export async function PUT(request: NextRequest) {
+  return mutate(request, "PUT /api/resources/admin/vault-exclusions", "vault.exclusions.update", async (actor) => {
+    const body = await readBody(request);
+    const { before, rule } = await updateVaultExclusionRule(requireId(body.id), body, actor);
+    return { target: `vault-exclusion:${rule.id}`, before, after: rule };
+  });
+}
+
+export async function DELETE(request: NextRequest) {
+  return mutate(request, "DELETE /api/resources/admin/vault-exclusions", "vault.exclusions.delete", async (actor) => {
+    const before = await deleteVaultExclusionRule(requireId(new URL(request.url).searchParams.get("id")), actor);
+    return { target: `vault-exclusion:${before.id}`, before, after: null };
+  });
 }

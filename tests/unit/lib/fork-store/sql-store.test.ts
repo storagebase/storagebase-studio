@@ -62,6 +62,7 @@ describe("SqlForkStore on SQLite", () => {
         "storagebase_audit_events_type_ts",
         "storagebase_audit_events_user_ts",
         "storagebase_settings",
+        "storagebase_access_records",
       ]),
     );
   });
@@ -221,6 +222,30 @@ describe("SqlForkStore on SQLite", () => {
     expect(row).toEqual({ updated_at: new Date(now).toISOString(), updated_by: "bob" });
   });
 
+  test("settings list by literal, case-exact key prefix in key order, skipping corrupted rows", async () => {
+    await store.setSetting("vault-exclusions:b", { n: 2 }, "alice");
+    await store.setSetting("vault-exclusions:a", { n: 1 }, "alice");
+    await store.setSetting("VAULT-EXCLUSIONS:c", { n: 3 }, "alice");
+    await store.setSetting("vault_exclusions%x", { n: 4 }, "alice");
+    await store.setSetting("other", { n: 5 }, "alice");
+    db.prepare(
+      "INSERT INTO storagebase_settings (key, value, updated_at, updated_by) VALUES ('vault-exclusions:z', '{', 'x', 'y')",
+    ).run();
+    const warned = spyOn(logger, "warn").mockImplementation(() => {});
+    try {
+      expect(await store.listSettings("vault-exclusions:")).toEqual([
+        { key: "vault-exclusions:a", value: { n: 1 } },
+        { key: "vault-exclusions:b", value: { n: 2 } },
+      ]);
+      expect(warned).toHaveBeenCalledTimes(1);
+      // `_` and `%` in a prefix are literal, not LIKE wildcards.
+      expect(await store.listSettings("vault_exclusions%")).toEqual([{ key: "vault_exclusions%x", value: { n: 4 } }]);
+      expect(await store.listSettings("vault-exclusions%")).toEqual([]);
+    } finally {
+      warned.mockRestore();
+    }
+  });
+
   test("a corrupted setting reads as null with a warning", async () => {
     db.prepare(
       "INSERT INTO storagebase_settings (key, value, updated_at, updated_by) VALUES ('bad', '{', 'x', 'y')",
@@ -228,6 +253,41 @@ describe("SqlForkStore on SQLite", () => {
     const warned = spyOn(logger, "warn").mockImplementation(() => {});
     try {
       expect(await store.getSetting("bad")).toBeNull();
+      expect(warned).toHaveBeenCalledTimes(1);
+    } finally {
+      warned.mockRestore();
+    }
+  });
+  test("access records upsert by kind and id, list in id order per kind, and delete", async () => {
+    await store.putRecord("group", "b", { id: "b", name: "Beta" }, "alice");
+    await store.putRecord("group", "a", { id: "a", name: "Alpha" }, "alice");
+    await store.putRecord("binding", "a", { id: "a", kind: "binding" }, "alice");
+    now += 1000;
+    await store.putRecord("group", "a", { id: "a", name: "Alpha 2" }, "bob");
+
+    expect(await store.listRecords("group")).toEqual([
+      { id: "a", name: "Alpha 2" },
+      { id: "b", name: "Beta" },
+    ]);
+    expect(await store.listRecords("binding")).toEqual([{ id: "a", kind: "binding" }]);
+    const row = db
+      .prepare("SELECT updated_at, updated_by FROM storagebase_access_records WHERE kind = 'group' AND id = 'a'")
+      .get() as { updated_at: string; updated_by: string };
+    expect(row).toEqual({ updated_at: new Date(now).toISOString(), updated_by: "bob" });
+
+    await store.deleteRecord("group", "a");
+    await store.deleteRecord("group", "missing");
+    expect(await store.listRecords("group")).toEqual([{ id: "b", name: "Beta" }]);
+  });
+
+  test("a corrupted access record is skipped with a warning", async () => {
+    db.prepare(
+      "INSERT INTO storagebase_access_records (kind, id, value, updated_at, updated_by) VALUES ('group', 'x', '{', 't', 'u')",
+    ).run();
+    await store.putRecord("group", "y", { id: "y" }, "alice");
+    const warned = spyOn(logger, "warn").mockImplementation(() => {});
+    try {
+      expect(await store.listRecords("group")).toEqual([{ id: "y" }]);
       expect(warned).toHaveBeenCalledTimes(1);
     } finally {
       warned.mockRestore();
