@@ -18,7 +18,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S4 | `src/lib/db/providers/keyvalue/redis.ts` | +2/−0 | Spread `...storagebaseSentinelOptions(config)` into the `new Redis({...})` options + import | Sentinel must change how ioredis connects (5.5) | **PR [#2314](https://github.com/libredb/libredb-studio/pull/2314)** — delete this seam and its row when it merges | applied in phase 5 |
 | S5 | `package.json` | +3/−0 | One-time `"workspaces": ["packages/*"]` | P8: fork deps sit in `packages/storagebase-deps` | no | applied in phase 0 |
 | S6 | `next.config.ts` | +2/−0 | `...STORAGEBASE_SERVER_EXTERNALS` spread in `serverExternalPackages` + import | Node-only fork SDKs (Azure/Kafka) must stay out of the client bundle | no | applied in phase 0 |
-| S7 | `knip.json` | +13/−1 | Workspace + entry entries for `packages/storagebase-deps` and fork paths; `ajv-draft-04` ignored alongside `ajv` because bun hoists it for @platformatic/kafka at runtime but no source imports it | knip would flag fork entry points | no | applied in phase 0 |
+| S7 | `knip.json` | +13/−1 | Workspace + entry entries for `packages/storagebase-deps` and fork paths | knip would flag fork entry points | no | applied in phase 0 |
 | S8a | `src/components/github-repo-link.tsx` | +11/−47 | Render `null` (leaf stub, P9) | D5: no social links | no | applied in phase 6 |
 | S8b | `src/lib/community/star-prompt-toast.ts` | +8/−43 | Both entry points inert (leaf stub, P9) | D5: no star prompt | no | applied in phase 6 |
 | S8c | `src/components/community-section.tsx` | +10/−109 | Render `null` (leaf stub, P9) | D5: no social links on the login hero either | no | applied in phase 6 |
@@ -46,6 +46,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S27 | `tests/unit/security-role-denial-table.test.ts` | +3/−0 | Extend the number-word table to fifteen | With the fork's three new call sites the count is fourteen; the test spells counts out in words | no | applied in final gate |
 | S28 | `bin/lib/launcher-utils.mjs` | +2/−0 | Classify `STORAGEBASE_RESOURCE_SEED_PATH` as a path variable | The launcher-utils census requires every `*_PATH` var in `.env.example` be classified; the server reads this one like `SEED_CONFIG_PATH` | no | applied in final gate |
 | S29 | `tests/unit/lib/query-events/sink.test.ts` | +3/−0 | Stub the fork's S2 tap in this upstream sink unit test | S2 arms a second, fork-owned sink; this file's timer-count and warning assertions own only the upstream sink, so the fork tap must not run here | no | applied in final gate |
+| S30 | `bunfig.toml` | +8/−0 | Pin `[install] linker = "hoisted"` | The S5 workspace seam makes bun default to the isolated linker, which breaks upstream dependency-resolution tests that resolve transitive packages (`fzstd`, `ajv-draft-04`) from a symlinked manifest; hoisted is upstream's measured layout | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 

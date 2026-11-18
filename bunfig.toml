@@ -1,3 +1,11 @@
 [test]
 preload = ["./tests/setup-dom.ts", "./tests/helpers/strict-to-be-null.ts", "./tests/setup.ts", "./tests/helpers/mock-sonner.ts", "./tests/helpers/mock-navigation.ts"]
 root = "tests"
+
+# StorageBase fork (SEAMS.md S30): the root's `"workspaces": ["packages/*"]` seam makes bun's
+# default linker "isolated" for this repository, which changes the node_modules layout upstream's
+# dependency-resolution tests assume (a transitive package such as `fzstd` or `ajv-draft-04` stays
+# under node_modules/.bun instead of the top level, and createRequire() from a symlinked manifest no
+# longer finds it). Hoisted is upstream's layout and what those tests were measured against.
+[install]
+linker = "hoisted"
