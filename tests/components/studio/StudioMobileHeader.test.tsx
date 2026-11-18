@@ -470,26 +470,23 @@ describe("StudioMobileHeader", () => {
     expect(String((mockToastError.mock.calls as unknown[][])[0][0])).toContain("Could not copy");
   });
 
-  test("renders a repository link in the header actions", () => {
+  test("does not render a repository link in the header actions", () => {
     const { container } = render(<StudioMobileHeader {...defaults} />);
     const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
 
-    expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("https://github.com/libredb/libredb-studio");
-    expect(link!.getAttribute("target")).toBe("_blank");
-    expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link).toBeNull();
   });
 
-  // Asserted through the observable effect rather than `not.toThrow()`: the
-  // handler swallows every storage error, so a throw assertion could not fail.
-  test("following the repository link marks the star prompt handled", () => {
+  // The fork ships without social/star links (SEAMS.md S8): there is no link to
+  // follow, so the star-prompt key is never touched. Asserted through the
+  // observable effect rather than `not.toThrow()`, which could not fail.
+  test("does not mark the star prompt handled without a repository link", () => {
     localStorage.removeItem("libredb_star_prompt_handled");
     const { container } = render(<StudioMobileHeader {...defaults} />);
-    const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]')!;
+    const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
 
-    fireEvent.click(link);
-
-    expect(localStorage.getItem("libredb_star_prompt_handled")).not.toBeNull();
+    expect(link).toBeNull();
+    expect(localStorage.getItem("libredb_star_prompt_handled")).toBeNull();
     localStorage.removeItem("libredb_star_prompt_handled");
   });
 

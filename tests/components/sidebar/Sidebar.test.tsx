@@ -558,18 +558,15 @@ describe("Sidebar", () => {
   });
 
   /**
-   * The sidebar is the only chrome BOTH modes render: the embedded workspace
-   * supplies its own header, so a link mounted only in the studio headers would
-   * never reach a platform tenant.
+   * The sidebar is the only chrome BOTH modes render. The fork ships without
+   * social/star links (SEAMS.md S8), so no repository link is rendered here.
    */
-  test("footer links to the repository, in both standalone and embedded chrome", () => {
+  test("footer ships without a repository link, in both standalone and embedded chrome", () => {
     const props = createDefaultProps();
     const { container } = render(<Sidebar {...props} />);
     const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
 
-    expect(link).not.toBeNull();
-    expect(link!.getAttribute("href")).toBe("https://github.com/libredb/libredb-studio");
-    expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link).toBeNull();
   });
 
   test("footer shows connected status", () => {

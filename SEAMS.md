@@ -31,6 +31,11 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S12 | `tests/unit/db/kafka/seam-guard.test.ts` | +6/−2 | Add the fork's kafka client (`src/storagebase/resources/providers/messaging/kafka-client.ts`) to `IMPORTERS` and `LOADER_TAKERS` | The census pins exactly which files may import `@platformatic/kafka` or take `loadPlatformatic`; the fork's separate write-capable client is one more importer (5.4) | no (fork constraint; upstream's two importers stay unchanged) | applied in phase 4 |
 | S13 | `tests/unit/lib/no-engine-branches.test.ts` | +39/−0 | Six `REGISTRIES` entries for the fork's compile-enforced `ResourceType` tables | The census scans all of src/ and its type-id set includes `kafka`, a fork type-id too; the fork's registry tables are the same mapping class upstream's REGISTRIES lists, so they need the same held entries | no | applied in phase 2 |
 | S14 | `tests/security/helpers/provider-routes.ts` | +48/−0 | Classify the fork's `/api/sb/**` routes in `PROVIDER_ROUTES_WITHOUT_A_CONNECTION_BODY` | The governance-grants inventory requires EVERY guardRoute-using route be classified as resolving an upstream connection or named with a reason; fork routes resolve through the fork store/seed instead | no | applied in phase 2 |
+| S15 | `tests/components/sidebar/Sidebar.test.tsx` | +4/−7 | Assert no repository link in the footer | The test asserted the link the S8a stub removes | no | applied in final gate |
+| S16 | `tests/components/studio/StudioDesktopHeader.test.tsx` | +9/−14 | Assert no repository link/star handling in the desktop header | Same as S15 | no | applied in final gate |
+| S17 | `tests/components/studio/StudioMobileHeader.test.tsx` | +9/−12 | Assert no repository link/star handling in the mobile header | Same as S15 | no | applied in final gate |
+| S18 | `tests/hooks/use-query-adapter.test.ts` | +12/−14 | Assert no star invitation from the embedded query path | The test asserted the toast the S8b stub removes | no | applied in final gate |
+| S19 | `tests/hooks/use-query-execution.test.ts` | +8/−9 | Assert no star invitation from the standalone query path | Same as S18 | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 

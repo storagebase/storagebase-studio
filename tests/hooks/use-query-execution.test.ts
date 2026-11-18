@@ -5057,7 +5057,7 @@ describe("useQueryExecution", () => {
     });
   });
 
-  // ── One-shot star prompt (#331 community nudge) ───────────────────────────
+  // ── No star prompt (fork ships without social/star links, SEAMS.md S8) ─────
 
   describe("star prompt", () => {
     const COUNT_KEY = "libredb_star_prompt_query_count";
@@ -5069,7 +5069,7 @@ describe("useQueryExecution", () => {
       localStorage.removeItem(HANDLED_KEY);
     });
 
-    test("invites a star on the tenth successful query", async () => {
+    test("does not invite a star on the tenth successful query", async () => {
       localStorage.setItem(COUNT_KEY, "9");
       mockGlobalFetch({ "/api/db/query": { ok: true, json: mockQueryResult } });
       const params = createDefaultParams();
@@ -5080,10 +5080,10 @@ describe("useQueryExecution", () => {
         await result.current.executeQuery("SELECT * FROM users");
       });
 
-      expect(mockToastDefault).toHaveBeenCalled();
+      expect(mockToastDefault).not.toHaveBeenCalled();
     });
 
-    test("stays quiet on earlier successful queries", async () => {
+    test("leaves no star-prompt count on earlier successful queries", async () => {
       mockGlobalFetch({ "/api/db/query": { ok: true, json: mockQueryResult } });
       const params = createDefaultParams();
 
@@ -5094,7 +5094,7 @@ describe("useQueryExecution", () => {
       });
 
       expect(mockToastDefault).not.toHaveBeenCalled();
-      expect(localStorage.getItem(COUNT_KEY)).toBe("1");
+      expect(localStorage.getItem(COUNT_KEY)).toBeNull();
     });
 
     test("does not count a failed statement in a multi-statement run", async () => {
@@ -5122,10 +5122,9 @@ describe("useQueryExecution", () => {
     });
 
     /**
-     * The once-per-browser invitation is spent the moment it fires, so it must
-     * fire on a query the user ran - not on a scroll. Both assertions matter:
-     * the count staying at "9" is what proves the guard short-circuits BEFORE
-     * `recordQuerySuccess`, rather than merely suppressing the toast.
+     * The fork ships without social/star links (SEAMS.md S8), so no invitation
+     * ever fires - not on a query the user ran, and not on a scroll. The count
+     * simply stays at its pre-set value either way.
      */
     test("a load-more page is not a query the user ran", async () => {
       localStorage.setItem(COUNT_KEY, "9");

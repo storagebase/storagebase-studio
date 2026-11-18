@@ -1419,13 +1419,11 @@ describe("useQueryAdapter", () => {
     expect(result.current.pendingUnlimitedQuery).toBeNull();
   });
 
-  // ── The one-shot star invitation exists in the embedded mode too ───────────
+  // ── No star invitation in the embedded mode either ─────────────────────────
   //
-  // The embedded workspace does NOT run `useQueryExecution`; it runs this
-  // adapter. Wiring the nudge only into the standalone hook would have made it
-  // structurally unreachable for every platform tenant - and because the prompt
-  // fires on the single run that reaches the threshold, a path that counts
-  // without being able to display would be worse than one that never counts.
+  // The embedded workspace runs this adapter rather than `useQueryExecution`.
+  // The fork ships without social/star links (SEAMS.md S8), so neither path
+  // counts a query nor shows a toast.
 
   describe("star prompt", () => {
     const COUNT_KEY = "libredb_star_prompt_query_count";
@@ -1437,7 +1435,7 @@ describe("useQueryAdapter", () => {
       localStorage.removeItem(HANDLED_KEY);
     });
 
-    test("executeQuery invites a star on the tenth successful query", async () => {
+    test("executeQuery does not invite a star on the tenth successful query", async () => {
       localStorage.setItem(COUNT_KEY, "9");
       const params = makeHookParams();
       const { result } = renderHook(() => useQueryAdapter(params as never));
@@ -1446,10 +1444,10 @@ describe("useQueryAdapter", () => {
         await result.current.executeQuery("SELECT 1");
       });
 
-      expect(mockToastDefault).toHaveBeenCalled();
+      expect(mockToastDefault).not.toHaveBeenCalled();
     });
 
-    test("executeQuery counts quietly before the threshold", async () => {
+    test("executeQuery leaves no star-prompt count before the threshold", async () => {
       const params = makeHookParams();
       const { result } = renderHook(() => useQueryAdapter(params as never));
 
@@ -1458,7 +1456,7 @@ describe("useQueryAdapter", () => {
       });
 
       expect(mockToastDefault).not.toHaveBeenCalled();
-      expect(localStorage.getItem(COUNT_KEY)).toBe("1");
+      expect(localStorage.getItem(COUNT_KEY)).toBeNull();
     });
 
     test("a failed query is not a success", async () => {
@@ -1474,7 +1472,7 @@ describe("useQueryAdapter", () => {
       expect(localStorage.getItem(COUNT_KEY)).toBe("9");
     });
 
-    test("forceExecuteQuery counts the query the safety dialog confirmed", async () => {
+    test("forceExecuteQuery leaves no star-prompt count for the confirmed query", async () => {
       const params = makeHookParams();
       const { result } = renderHook(() => useQueryAdapter(params as never));
 
@@ -1483,10 +1481,10 @@ describe("useQueryAdapter", () => {
         await new Promise((r) => setTimeout(r, 10));
       });
 
-      expect(localStorage.getItem(COUNT_KEY)).toBe("1");
+      expect(localStorage.getItem(COUNT_KEY)).toBeNull();
     });
 
-    test("handleUnlimitedQuery counts the confirmed unlimited run", async () => {
+    test("handleUnlimitedQuery leaves no star-prompt count for the confirmed run", async () => {
       const targetTab = makeTab();
       const { tabs, setTabs } = createMutableTabs([targetTab]);
       const params = makeHookParams({ tabs, setTabs, currentTab: targetTab });
@@ -1501,7 +1499,7 @@ describe("useQueryAdapter", () => {
         await new Promise((r) => setTimeout(r, 10));
       });
 
-      expect(localStorage.getItem(COUNT_KEY)).toBe("1");
+      expect(localStorage.getItem(COUNT_KEY)).toBeNull();
     });
 
     test("a load-more page is not a query the user ran", async () => {
