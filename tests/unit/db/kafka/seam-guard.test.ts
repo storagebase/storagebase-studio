@@ -96,6 +96,8 @@ const SOURCE_FILE = /\.(c|m)?(t|j)sx?$/;
 
 /** The only files in the repository that may import the library: the adapter, and the fixture seed. */
 const IMPORTERS = ["docker/kafka/seed-binary.ts", "src/lib/db/providers/stream/kafka/platformatic-client.ts"];
+// StorageBase fork (SEAMS.md S12): the separate write-capable client is one more importer.
+IMPORTERS.push("src/storagebase/resources/providers/messaging/kafka-client.ts");
 /**
  * The files outside the provider that take the adapter's loader, loadPlatformatic(), and so the
  * real library: the adapter's own tests, the real TLS handshakes, the write-reach test's recording
@@ -104,6 +106,8 @@ const IMPORTERS = ["docker/kafka/seed-binary.ts", "src/lib/db/providers/stream/k
  * that no longer takes it.
  */
 const LOADER_TAKERS = [
+  // StorageBase fork (SEAMS.md S12): the fork's client takes the loader to mute the protocol log.
+  "src/storagebase/resources/providers/messaging/kafka-client.ts",
   "tests/integration/db/kafka-provider.test.ts",
   "tests/live/kafka-write-reach.ts",
   "tests/unit/db/kafka/platformatic-client.test.ts",

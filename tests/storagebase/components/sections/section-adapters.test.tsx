@@ -15,6 +15,15 @@ mock.module("@/components/ui/select", () => ({
   SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+mock.module("@/components/storagebase/resources/kafka/KafkaWorkbench", () => ({
+  KafkaWorkbench: ({ connection, readOnly }: { connection: { id: string }; readOnly?: boolean }) => (
+    <div
+      data-testid="kafka-workbench"
+      data-id={connection.id}
+      data-readonly={readOnly === true ? "true" : "false"}
+    />
+  ),
+}));
 import { sectionConnectionBody } from "@/components/storagebase/sections/connection-body";
 import { ResourceConnectionForm } from "@/components/storagebase/sections/ResourceConnectionForm";
 import { ResourceTree } from "@/components/storagebase/sections/ResourceTree";
@@ -146,29 +155,15 @@ describe("section adapters over the fork API", () => {
     ).toThrow();
   });
 
-  test("the messaging workbench reads the shared tree, honours read-only, and reports refusals", async () => {
-    let fail = false;
-    mockGlobalFetch({
-      "/api/sb/resources/tree": () =>
-        fail ? { status: 403, json: { error: "denied" } } : { json: { nodes: [leaf], truncated: false } },
-    });
+  test("the messaging workbench forwards its connection and read-only grant to the Kafka workbench", () => {
     const view = render(<SectionKafkaWorkbench connection={stored} readOnly />);
-    expect(screen.getByText("Reading topics…")).toBeDefined();
-    await waitFor(() => expect(screen.getByText("jobs")).toBeDefined());
-    expect(screen.getByText("read-only")).toBeDefined();
-    view.rerender(<SectionKafkaWorkbench connection={{ ...stored, id: "res_other" }} />);
-    expect(screen.getByText("Reading topics…")).toBeDefined();
-    await waitFor(() => expect(screen.getByText("jobs")).toBeDefined());
-    fail = true;
-    view.rerender(<SectionKafkaWorkbench connection={{ ...stored, id: "res_bad" }} />);
-    await waitFor(() => expect(screen.getByTestId("kafka-workbench-error").textContent).toContain("denied"));
-  });
+    const workbench = screen.getByTestId("kafka-workbench");
+    expect(workbench.getAttribute("data-id")).toBe("res_k1");
+    expect(workbench.getAttribute("data-readonly")).toBe("true");
 
-  test("the workbench distinguishes an empty topic list from a truncated one", async () => {
-    mockGlobalFetch({ "/api/sb/resources/tree": { json: { nodes: [], truncated: true } } });
-    render(<SectionKafkaWorkbench connection={stored} />);
-    await waitFor(() => expect(screen.getByText("No topics listed.")).toBeDefined());
-    expect(screen.getByText("List truncated by the provider.")).toBeDefined();
+    view.rerender(<SectionKafkaWorkbench connection={seeded} />);
+    expect(screen.getByTestId("kafka-workbench").getAttribute("data-id")).toBe("seed:k1");
+    expect(screen.getByTestId("kafka-workbench").getAttribute("data-readonly")).toBe("false");
   });
 
   test("the connection form renders the family's fields and probes before it saves", async () => {
