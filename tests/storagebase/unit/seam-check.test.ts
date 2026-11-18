@@ -161,7 +161,7 @@ describe("parseArgs", () => {
     expect(parseArgs([]).ref).toBe("libredb/main");
     process.env.STORAGEBASE_UPSTREAM_REF = before;
 
-    expect(parseArgs(["--ref", "libredb/main", "--base", "abc1234"]).base).toBe("abc1234");
+    expect(parseArgs(["--ref", "libredb/tags/1.2.0", "--base", "abc1234"]).base).toBe("abc1234");
   });
 
   test("unknown options are refused rather than ignored", () => {

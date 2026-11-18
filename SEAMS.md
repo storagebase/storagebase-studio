@@ -28,6 +28,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S9 | `src/lib/seed/credential-resolver.ts` | +3/−0 | `${akv:…}` references | Only if AKV must feed *connection credentials* (D4) | **yes, first choice**: "pluggable secret resolver" | **reserved, not applied** (D4 default: workbench only) |
 | S10 | `bun.lock` | regenerated | Take upstream's lockfile, run `bun install` | Lockfile policy (P8); never hand-resolved | no | permanent |
 | S11 | `CLAUDE.md` | +2/−0 | One anchor line after the header pointing fork agents at `STORAGEBASE.md` | Fork agents must discover the fork rules; upstream's file says nothing about them | no | applied in phase 0 |
+| S12 | `tests/unit/db/kafka/seam-guard.test.ts` | +6/−2 | Add the fork's kafka client (`src/storagebase/resources/providers/messaging/kafka-client.ts`) to `IMPORTERS` and `LOADER_TAKERS` | The census pins exactly which files may import `@platformatic/kafka` or take `loadPlatformatic`; the fork's separate write-capable client is one more importer (5.4) | no (fork constraint; upstream's two importers stay unchanged) | applied in phase 4 |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 

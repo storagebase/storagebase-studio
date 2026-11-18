@@ -21,19 +21,14 @@ image:
   # Empty keeps the chart's default (appVersion). Pin a storagebase-<version> tag for a release.
   tag: ""
 
-extraEnv:
-  # Fork store driver: sqlite (default) or postgres. Server-side only.
-  - name: STORAGEBASE_STORE_PROVIDER
-    value: "sqlite"
-  # Fork store location in the sqlite mode. Mount it on a volume.
-  - name: STORAGEBASE_STORE_SQLITE_PATH
-    value: "/app/data/storagebase.sqlite"
-  # DSN for the postgres mode, when STORAGEBASE_STORE_PROVIDER=postgres.
-  - name: STORAGEBASE_STORE_POSTGRES_URL
-    value: ""
-  # Audit retention, in days. 0 keeps everything.
-  - name: STORAGEBASE_AUDIT_RETENTION_DAYS
-    value: "90"
-  # YAML file of preconfigured resource connections (same shape as upstream seeds, with roles:).
-  - name: STORAGEBASE_RESOURCE_SEED_PATH
-    value: ""
+extraEnv: []
+  # The fork store (audit trail, resource connections) deliberately has NO env of its own: it
+  # follows upstream's STORAGE_PROVIDER / STORAGE_SQLITE_PATH / STORAGE_POSTGRES_URL exactly
+  # (P5, configuration before code), so one storage configuration drives both layers. Mount a
+  # volume on the path STORAGE_SQLITE_PATH names when it is "sqlite".
+  #
+  # Fork-only env, added here as rows when needed:
+  #   - name: STORAGEBASE_AUDIT_RETENTION_DAYS   # whole days, 0 keeps everything (default 365)
+  #     value: "90"
+  #   - name: STORAGEBASE_RESOURCE_SEED_PATH     # YAML of preconfigured resource connections
+  #     value: ""
