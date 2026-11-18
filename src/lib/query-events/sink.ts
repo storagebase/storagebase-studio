@@ -29,6 +29,7 @@ import { governanceEnabled } from "@/lib/governance/config";
 import { governanceInstanceId } from "@/lib/governance/instance";
 import { logger } from "@/lib/logger";
 import { onShutdown } from "@/lib/shutdown";
+import { storagebaseQueryTap } from "@/storagebase/core/seams";
 import { buildQueryEvent, queryEventPolicy } from "./build";
 import { type QueryEventBatchWrite, queryEventBackoffMs, writeQueryEventBatch } from "./postgres-sink";
 import type { QueryEventInput, QueryEventRow } from "./types";
@@ -183,6 +184,7 @@ function enqueue(state: Sink, row: QueryEventRow): void {
  * unit has ended. It never throws and never waits: the row is built now and inserted later.
  */
 export function recordQueryEvent(input: QueryEventInput): void {
+  storagebaseQueryTap(input);
   if (!governanceEnabled()) return;
   let row: QueryEventRow;
   try {

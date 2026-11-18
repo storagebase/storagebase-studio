@@ -1,4 +1,5 @@
 import { storage } from "@/lib/storage";
+import { storagebaseAuditTap } from "@/storagebase/core/seams";
 
 export type AuditEventType =
   | "maintenance"
@@ -763,6 +764,7 @@ export function emitAuditEvent(event: Omit<AuditEvent, "id" | "timestamp">): Aud
   // JSON.stringify escapes newlines and control characters, so an attacker-controlled actor
   // cannot forge a second log line. This is why the audit channel does not reuse logger.ts.
   console.log(JSON.stringify(toAuditLine(stored)));
+  storagebaseAuditTap(stored);
   return stored;
 }
 

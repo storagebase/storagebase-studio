@@ -127,7 +127,9 @@ describe("fork SDK packaging wiring", () => {
   test("Dockerfile.storagebase installs the workspace and stages the SDKs into the payload", () => {
     const dockerfile = readFileSync(join(ROOT, "deploy", "storagebase", "Dockerfile.storagebase"), "utf8");
 
-    expect(dockerfile).toContain("COPY packages/storagebase-deps/package.json ./packages/storagebase-deps/package.json");
+    expect(dockerfile).toContain(
+      "COPY packages/storagebase-deps/package.json ./packages/storagebase-deps/package.json",
+    );
     expect(dockerfile).toContain("node scripts/storagebase/stage-resource-sdks.mjs .next/standalone");
   });
 

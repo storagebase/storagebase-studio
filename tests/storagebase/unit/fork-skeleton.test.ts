@@ -50,12 +50,9 @@ describe("the one-time workspace seams", () => {
   });
 
   test("the sync workflow regenerates the lockfile the documented way", () => {
-    const workflow = readFileSync(
-      join(ROOT, ".github", "workflows", "storagebase-upstream-sync.yml"),
-      "utf8",
-    );
+    const workflow = readFileSync(join(ROOT, ".github", "workflows", "storagebase-upstream-sync.yml"), "utf8");
 
-    expect(workflow).toContain("git checkout \"$TAG\" -- bun.lock");
+    expect(workflow).toContain('git checkout "$TAG" -- bun.lock');
     expect(workflow).toContain("bun install");
     expect(workflow).toContain("node scripts/storagebase/seam-check.mjs");
   });
