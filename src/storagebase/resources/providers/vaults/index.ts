@@ -7,3 +7,4 @@
  * append their import line in phase 6.
  */
 import "./azure-key-vault";
+import "./vault";
