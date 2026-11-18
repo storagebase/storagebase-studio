@@ -51,7 +51,19 @@ describe("test discovery", () => {
 
   test("discovers the layers the suite is made of, and each one is non-empty", () => {
     const files = discoverTestFiles(root);
-    const layers = ["unit", "api", "integration", "hooks", "security", "evals", "components", "isolated"];
+    // The StorageBase re-fork ships its own tests/storagebase/ layer; name it here
+    // so the "nothing outside those layers" guard below keeps covering the tree.
+    const layers = [
+      "unit",
+      "api",
+      "integration",
+      "hooks",
+      "security",
+      "evals",
+      "components",
+      "isolated",
+      "storagebase",
+    ];
 
     for (const layer of layers) {
       expect(files.filter((file) => file.startsWith(`tests/${layer}/`)).length).toBeGreaterThan(0);

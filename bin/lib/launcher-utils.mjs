@@ -69,6 +69,8 @@ export function mcpUrlFor(hostname, port) {
  */
 export const PATH_VARIABLES = Object.freeze([
   "SEED_CONFIG_PATH",
+  // The StorageBase fork's resource-seed YAML path: read by the server like SEED_CONFIG_PATH.
+  "STORAGEBASE_RESOURCE_SEED_PATH",
   "SEED_DISCOVERY_PATH",
   "STORAGE_SQLITE_PATH",
   "SQLITE_EMBEDDED_SAMPLE_PATH",

@@ -144,6 +144,8 @@ const REVIEWED_CALLERS: Readonly<Record<string, Readonly<Record<string, string>>
     "src/lib/agent/runtime.ts": AGENT_RUNTIME,
     "src/lib/api/object-route.ts":
       "handleObjectRequest, the shared body of every db/objects route and db/keys/scan, resolves the request's connection here before it builds",
+    "src/storagebase/resources/providers/messaging/kafka-route.ts":
+      "the fork's Kafka workbench resolves the request's upstream kafka seed through resolveConnection under the signed-in session before opening it, so a reviewed connection passes the review first and a fork resource connection opens only through the fork's own seed layer",
   },
   connectionsUnderAccessReview: {
     "src/lib/governance/visible.ts":
@@ -335,6 +337,14 @@ const HIDDEN_FORMS_ALLOWED: Readonly<Record<string, readonly Allowance[]>> = {
       form: "re-export",
       reason:
         "the CommonJS package entry for bundlers that cannot read TypeScript gives ./index.ts on as a whole; nothing in the app requires it",
+    },
+  ],
+  "src/storagebase/resources/sdk-loader.ts": [
+    {
+      origin: null,
+      form: "computed",
+      reason:
+        "the fork's one resource-SDK loader takes a provider-chosen specifier at runtime so each node-only SDK loads once behind a bundler-ignore import; a gated module is never a resource SDK",
     },
   ],
 };

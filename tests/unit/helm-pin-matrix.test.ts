@@ -1,6 +1,7 @@
 /**
  * Unit tests for the Helm CLI version matrix pinned across the five workflows
- * that run `azure/setup-helm` (eight sites in total).
+ * that run `azure/setup-helm` (nine sites in total, the ninth added by the
+ * StorageBase re-fork's `.github/workflows/storagebase-ci.yml`).
  *
  * This exists because of #434. Its NOTES.txt assertions used
  * `helm install --dry-run=client`, which is green on Helm 4 (the maintainer's
@@ -12,8 +13,10 @@
  * from drifting away from what contributors run locally.
  *
  * The matrix is deliberately NOT uniform, and the asymmetry is the point:
- *   - Six sites run Helm 4, so the test suite, the lint job and every
+ *   - Eight sites run Helm 4, so the test suite, the lint job and every
  *     byte-producing release step use the client the project develops against.
+ *     The re-fork's `storagebase-ci.yml:test` joins them here: it runs the
+ *     same Helm-touching suite on the fork's CI and must track the same pin.
  *   - `helm-release.yml` -> lint-test stays on Helm 3.16, because its two
  *     `ct install` runs are the only place in this repo where a Helm 3 client
  *     installs the chart into a cluster at all, and our users install with Helm
@@ -85,6 +88,9 @@ const EXPECTED_PINS: Record<string, string> = {
   "helm-release.yml:release-oci": HELM_4,
   // helm dependency build, vendoring the mirror chart into the operator image.
   "operator-release.yml:build-and-push": HELM_4,
+  // The re-fork's own CI: helm dependency build + template over the same chart
+  // tests, so it must pin the same Helm 4 client as the upstream suite sites.
+  "storagebase-ci.yml:test": HELM_4,
 };
 
 /** The site whose Helm 3 pin is load-bearing evidence, not an oversight. */
@@ -236,9 +242,9 @@ describe("jobCommandLines", () => {
   });
 });
 
-describe("the eight setup-helm sites", () => {
-  test("there are exactly eight, and every one is classified", () => {
-    expect(ALL_PINS).toHaveLength(8);
+describe("the nine setup-helm sites", () => {
+  test("there are exactly nine, and every one is classified", () => {
+    expect(ALL_PINS).toHaveLength(9);
     expect([...BY_SITE.keys()].sort()).toEqual(Object.keys(EXPECTED_PINS).sort());
   });
 
@@ -314,7 +320,7 @@ describe("#434 regression: the suite-running jobs cannot drift apart", () => {
 describe("the Helm 3 site is pinned on purpose and says so", () => {
   test("helm-release.yml lint-test stays on Helm 3.16", () => {
     // Its two `ct install` runs are the only cluster install in the repo, and
-    // Helm 3 is what users run. Do not unify this with the other six.
+    // Helm 3 is what users run. Do not unify this with the other eight.
     expect(BY_SITE.get(HELM3_PINNED_SITE)?.version).toBe(HELM_3);
   });
 

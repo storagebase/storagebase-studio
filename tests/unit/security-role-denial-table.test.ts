@@ -28,6 +28,9 @@ const WORDS = [
   "ten",
   "eleven",
   "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
 ];
 
 function walk(dir: string): string[] {

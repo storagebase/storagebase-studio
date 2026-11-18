@@ -36,6 +36,15 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S17 | `tests/components/studio/StudioMobileHeader.test.tsx` | +9/−12 | Assert no repository link/star handling in the mobile header | Same as S15 | no | applied in final gate |
 | S18 | `tests/hooks/use-query-adapter.test.ts` | +12/−14 | Assert no star invitation from the embedded query path | The test asserted the toast the S8b stub removes | no | applied in final gate |
 | S19 | `tests/hooks/use-query-execution.test.ts` | +8/−9 | Assert no star invitation from the standalone query path | Same as S18 | no | applied in final gate |
+| S20 | `tests/unit/lib/passkey/management.test.ts` | +17/−9 | Filter the fork's `storagebase.audit.v1` stdout lines out of the upstream `libredb.audit.v1` assertion | The S3 tap mirrors upstream events into the fork sink, whose own stdout line is counted by the test's broad `event:"account"` filter under coverage | no | applied in final gate |
+| S21 | `tests/unit/test-runner-discovery.test.ts` | +13/−1 | Name `storagebase` as a test-runner layer | The fork's `tests/storagebase/**` must be discoverable by the runner census, which enumerates layers explicitly | no | applied in final gate |
+| S22 | `tests/unit/helm-pin-matrix.test.ts` | +12/−6 | Count the fork CI's setup-helm site as the ninth | `storagebase-ci.yml:test` is a new, pinned setup-helm site; the census enumerates all of them | no | applied in final gate |
+| S23 | `tests/security/kubernetes-access-callers.test.ts` | +10/−0 | Allow the fork's computed SDK import and the Kafka route's `resolveConnection` call | The census enumerates every such caller repo-wide; these two fork callers are legitimate and named with reasons | no | applied in final gate |
+| S24 | `.env.example` | +6/−0 | Document `STORAGEBASE_AUDIT_RETENTION_DAYS` and `STORAGEBASE_RESOURCE_SEED_PATH` | Every env var must have an example; fork-only config uses the `STORAGEBASE_` prefix (P6) | no | applied in final gate |
+| S25 | `docs/BACKLOG.md` | +1/−1 | Update D85's auth-mock count for the fork's ported helpers | The count is measured by a structural guard and the fork's `tests/storagebase/**` helpers changed it | no | applied in final gate |
+| S26 | `docs/SECURITY.md` | +6/−3 | Add the three fork routes that call `auditRoleDenial` to the role-denial table | The table is compile-checked against every call site; fork routes are new call sites | no | applied in final gate |
+| S27 | `tests/unit/security-role-denial-table.test.ts` | +3/−0 | Extend the number-word table to fifteen | With the fork's three new call sites the count is fourteen; the test spells counts out in words | no | applied in final gate |
+| S28 | `bin/lib/launcher-utils.mjs` | +2/−0 | Classify `STORAGEBASE_RESOURCE_SEED_PATH` as a path variable | The launcher-utils census requires every `*_PATH` var in `.env.example` be classified; the server reads this one like `SEED_CONFIG_PATH` | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 
