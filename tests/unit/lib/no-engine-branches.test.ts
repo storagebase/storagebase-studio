@@ -218,6 +218,45 @@ export const REGISTRIES: readonly Listed[] = [
     count: 1,
     reason: "the engines the VS Code channel holds back, a policy default, not engine behaviour",
   },
+  // StorageBase fork (SEAMS.md S13): the resource layer's compile-enforced ResourceType tables. The
+  // type-id set is the fork's own union, not DatabaseType; "kafka" shares one spelling with an
+  // upstream engine id but means a Messaging resource here. No upstream table was extended.
+  {
+    path: "src/components/storagebase/resources/viewer-registry.ts",
+    declaration: "RESOURCE_VIEWERS",
+    count: 1,
+    reason: "the fork's total ResourceType -> viewer table, compile-enforced over its own union",
+  },
+  {
+    path: "src/storagebase/resources/registry.ts",
+    declaration: "RESOURCE_PROVIDER_LOADERS",
+    count: 1,
+    reason: "the fork's provider-loader registry, one import per resource type",
+  },
+  {
+    path: "src/storagebase/resources/types.ts",
+    declaration: "RESOURCE_CATEGORY_OF",
+    count: 1,
+    reason: "the fork's total ResourceType -> category table, compile-enforced over its own union",
+  },
+  {
+    path: "src/storagebase/resources/ui-config.ts",
+    declaration: "RESOURCE_UI_CONFIG",
+    count: 1,
+    reason: "the fork's compile-enforced per-resource-type UI table, the parallel of CONNECTION_FIELDS",
+  },
+  {
+    path: "src/storagebase/resources/ui-config.ts",
+    declaration: "RESOURCE_TYPE_ORDER",
+    count: 1,
+    reason: "the fork's display-order array, derived from its own ResourceType union",
+  },
+  {
+    path: "src/storagebase/resources/ui-config.ts",
+    declaration: "WORKBENCH_RESOURCE_TYPES",
+    count: 3,
+    reason: "the fork's set of types that open a full-page workbench, keyed by its own ResourceType union",
+  },
 ];
 
 /** A spelling of a type id that names something else. */

@@ -148,4 +148,34 @@ export const PROVIDER_ROUTES_WITHOUT_A_CONNECTION_BODY: Readonly<Record<string, 
     "builds none, and under governance resolves no connection: it removes only the caller's own cached providers of the connection id it names, which needs no grant; without governance it resolves a connection of the user's own only to name the cache entries it removes, the editor's and the execution profiles' of that record (tests/api/db/disconnect.test.ts)",
   "mcp/token":
     "mints an MCP token for the session's own user and takes no connection; under governance MCP is held off, so it mints none (tests/unit/mcp/config.test.ts)",
+  // StorageBase fork (SEAMS.md S14): the /api/sb/** routes resolve a FORK resource connection (the
+  // fork store or the fork seed file), never an upstream DatabaseConnection, so the governance
+  // grant machinery of this inventory does not apply to them. Each one still calls guardRoute
+  // (route-auth census) and gates its own permission level.
+  "sb/admin/audit":
+    "the fork's audit search page: an admin-only query over the fork's own audit store, with no database connection to resolve",
+  "sb/blob/delete": "a fork blob resource operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/blob/download": "a fork blob resource operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/blob/meta": "a fork blob resource operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/blob/preview": "a fork blob resource operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/blob/upload": "a fork blob resource operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/resources/connections": "the fork's resource-connection CRUD; it writes fork-store records with server-sealed credentials, and resolves no upstream database connection",
+  "sb/resources/connections/[id]": "the fork's resource-connection CRUD by id; it writes fork-store records with server-sealed credentials, and resolves no upstream database connection",
+  "sb/resources/health": "the fork's resource health probe; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/resources/meta": "the fork's resource catalog metadata; it reads the fork's own ResourceType registry, with no database connection to resolve",
+  "sb/resources/test": "tests a pre-save fork resource connection candidate; the candidate never reaches an upstream resolveConnection call",
+  "sb/resources/tree": "the fork's resource tree; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/certificate/import": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/deleted": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/deleted/purge": "an admin-only fork Key Vault purge; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/deleted/recover": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/key/create": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/object": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/object/delete": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/objects": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/secret/delete": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/secret/read": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/secret/reveal": "the fork Key Vault's only value-reading route; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/secret/save": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
+  "sb/vault/secret/write": "a fork Azure Key Vault operation; it resolves a stored or seeded resource connection, never an upstream database connection",
 };
