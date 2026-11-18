@@ -71,4 +71,8 @@ If a merge ever names one of these, two fork commits disagree — resolve within
 
 | Date | Upstream ref | Result |
 |---|---|---|
-| 2026-11-18 | `libredb/main` @ `c8bf0db4a` (past tag 1.3.0, dep bumps only) | first dry run of the re-forked tree — recorded in phase 7 of the port |
+| 2026-11-18 | `libredb/main` @ `c8bf0db4a` (30 commits past tag 1.3.0, dep bumps only) | **Green.** Merged into `dryrun/upstream-sync` (merge commit `d12ae517`). Exactly one conflict: `bun.lock`, resolved by S10's policy (take upstream's lockfile, `bun install` regenerates the workspace half). `package.json` (S5) and `src/lib/audit.ts` (S3) auto-merged cleanly and kept their seams within budget; no other file conflicted and no layering bug was found. Post-merge `seam-check` green against the new base (19 ledger rows, 264 changed paths, all within budget), `typecheck` green, fork suite 71 files / 745 tests green, route-auth + governance-grants 100 tests green. No seam's spend changed: the merge absorbed upstream's change into the new base without moving a fork edit. |
+
+## Upstream PRs from this fork
+
+- [libredb/libredb-studio#2314](https://github.com/libredb/libredb-studio/pull/2314) — Redis Sentinel connections, offered from `storagebase:upstream-pr/redis-sentinel`. When it merges, delete seam S4 from `src/lib/db/providers/keyvalue/redis.ts`, remove its `SEAMS.md` row, and keep only the fork's options builder if another deployment still needs the `redis-sentinel://` string form (otherwise remove that too).
