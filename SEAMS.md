@@ -12,7 +12,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 
 | Id | File | Budget | Edit | Why it cannot be avoided | Upstream PR | Status |
 |---|---|---|---|---|---|---|
-| S1 | `src/app/page.tsx` | +3/−0 | Wrap `<Studio />` in `<StorageBaseShell />` (fork section rail) + import | The rail must sit beside the DB studio on `/` | no (product UI) | applied in phase 2 |
+| S1 | `src/app/page.tsx` | +4/−1 | Wrap `<Studio />` in `<StorageBaseShell />` (fork section rail) + import; Biome reindents the child, hence the one removed line | The rail must sit beside the DB studio on `/` | no (product UI) | applied in phase 2 |
 | S2 | `src/lib/query-events/sink.ts` | +2/−0 | First line of `recordQueryEvent`: `storagebaseQueryTap(input);` + import | The one point every statement-executing route passes through, governance or not | yes: "query event observer" | applied in phase 1 |
 | S3 | `src/lib/audit.ts` | +2/−0 | End of `emitAuditEvent`: `storagebaseAuditTap(stored);` + import | Upstream events (login, logout, role denial, connection test) must reach the durable fork store | yes: "audit sink registry" | applied in phase 1 |
 | S4 | `src/lib/db/providers/keyvalue/redis.ts` | +2/−0 | Spread `...storagebaseSentinelOptions(config)` into the `new Redis({...})` options + import | Sentinel must change how ioredis connects (5.5) | **yes, first choice** — seam exists only until it merges | applied in phase 5 |
