@@ -39,6 +39,7 @@
     "type": "git",
     "url": "https://github.com/libredb/libredb-studio"
   },
+  "workspaces": ["packages/*"],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

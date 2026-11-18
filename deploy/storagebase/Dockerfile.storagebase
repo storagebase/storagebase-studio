@@ -1,0 +1,172 @@
+# ==============================================================================
+# StorageBase Studio - Production Dockerfile (fork-owned, P6)
+#
+# Upstream's Dockerfile is never edited. This copy carries exactly three fork
+# deltas over it, each marked FORK DELTA below:
+#   1. the deps stage also copies packages/storagebase-deps (the bun workspace),
+#   2. the builder stage stages the fork's node-only SDK closures into the
+#      standalone payload (scripts/storagebase/stage-resource-sdks.mjs),
+#   3. everything else stays byte-identical in behaviour, so a future upstream
+#      Dockerfile change is a visual diff, not a re-derivation.
+#
+# Published by .github/workflows/storagebase-image.yml as
+# ghcr.io/storagebase/storagebase-studio.
+# ==============================================================================
+
+# Bun for fast dependency installation, Node.js for build
+# Bun's JIT compiler segfaults under QEMU emulation (ARM64 cross-build),
+# so we use Node.js for the Next.js build step.
+FROM oven/bun:1.4.4 AS deps
+WORKDIR /usr/src/app
+RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
+COPY package.json bun.lock ./
+# FORK DELTA 1: the workspace manifest must exist before `bun install`, or the
+# root's "workspaces": ["packages/*"] resolves nothing and the install fails.
+COPY packages/storagebase-deps/package.json ./packages/storagebase-deps/package.json
+RUN bun install --frozen-lockfile
+
+# Build with Node.js to avoid Bun/QEMU segfaults on ARM64.
+# The libc and native-module constraints are upstream's; see their Dockerfile.
+FROM node:26.13.0-trixie-slim AS builder
+WORKDIR /usr/src/app
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DOCKER_BUILD=true
+
+# Next.js bakes this prefix into routes and browser bundles. Rebuild to change it.
+ARG BASE_PATH=""
+
+ARG JWT_SECRET_BUILD="build-time-placeholder-secret-32ch"
+ARG ADMIN_PASSWORD_BUILD="build"
+ARG USER_PASSWORD_BUILD="build"
+ENV JWT_SECRET=$JWT_SECRET_BUILD
+ENV ADMIN_PASSWORD=$ADMIN_PASSWORD_BUILD
+ENV USER_PASSWORD=$USER_PASSWORD_BUILD
+
+# Stage Monaco from node_modules into public/ so the editor is served from our own
+# origin (issue #247). Explicit here: this bypasses the package.json build script.
+RUN node scripts/copy-monaco.mjs && npx next build
+
+# Upstream's payload prune and native asserts, unchanged: the deny-list script,
+# the screenshots drop, the musl bindings sweep and the load checks.
+RUN set -eux; \
+    bash scripts/lib/prune-standalone-payload.sh .next/standalone; \
+    rm -rf public/screenshots .next/standalone/public/screenshots; \
+    ARCH="$(node -p 'process.arch')"; \
+    for root in node_modules .next/standalone/node_modules; do \
+      [ -d "$root/@duckdb" ] && find "$root/@duckdb" -maxdepth 1 -type d -name 'node-bindings-*-musl' -exec rm -rf {} + ; \
+      [ -d "$root/@img" ] && find "$root/@img" -maxdepth 1 -type d -name '*-linuxmusl-*' -exec rm -rf {} + ; \
+      [ -d "$root/better-sqlite3/prebuilds" ] && find "$root/better-sqlite3/prebuilds" -maxdepth 1 -type f -name '*.node' ! -name "linux-${ARCH}.node" -delete ; \
+      rm -rf "$root/better-sqlite3/deps" "$root/better-sqlite3/src" "$root/better-sqlite3/binding.gyp"; \
+      true; \
+    done; \
+    find .next/standalone/node_modules/db2-node -maxdepth 1 -type f -name 'db2-node.*.node' ! -name "db2-node.linux-${ARCH}-gnu.node" -delete; \
+    test -f ".next/standalone/node_modules/db2-node/db2-node.linux-${ARCH}-gnu.node"; \
+    test "$(find .next/standalone/node_modules/db2-node -name '*.node' | wc -l)" -eq 1; \
+    node -e "require('/usr/src/app/.next/standalone/node_modules/db2-node')"; \
+    test -f "node_modules/@duckdb/node-bindings-linux-${ARCH}/libduckdb.so"; \
+    test -d "node_modules/@img/sharp-libvips-linux-${ARCH}"; \
+    test -f "node_modules/better-sqlite3/prebuilds/linux-${ARCH}.node"; \
+    test -d node_modules/oracledb/build; \
+    test -f .next/standalone/server.js; \
+    test -d .next/standalone/node_modules; \
+    test ! -e .next/standalone/src; \
+    test ! -e .next/standalone/Dockerfile; \
+    echo "--- native payload surviving the prune ---"; \
+    find node_modules .next/standalone/node_modules \( -name '*.node' -o -name '*.so' -o -name '*.so.*' \) | sort | xargs -r ls -lh | awk '{print $5, $9}'
+
+# FORK DELTA 2: stage the fork's node-only SDK closures (Azure Blob / Key Vault)
+# over the pruned standalone payload. The providers import these through computed
+# specifiers with bundler-ignore comments, which is exactly what file tracing
+# cannot see; this script walks each closure through the installed node_modules.
+# The asserts are the point, same as upstream's: a staging step that failed
+# silently would surface as a resource provider refusing to load at runtime.
+RUN set -eux; \
+    node scripts/storagebase/stage-resource-sdks.mjs .next/standalone; \
+    test -f .next/standalone/node_modules/@azure/storage-blob/package.json; \
+    test -f .next/standalone/node_modules/@azure/identity/package.json; \
+    test -d .next/standalone/node_modules/@azure/core-auth; \
+    echo "--- fork SDK payload ---"; \
+    find .next/standalone/node_modules/@azure -maxdepth 1 -mindepth 1 -type d | sort
+
+# Production image - use Node.js slim for lower memory footprint
+# trixie-slim: glibc must match the stage where native modules were built (see builder).
+FROM node:26.13.0-trixie-slim AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Memory optimization for low-memory environments (Render free tier)
+# V8 heap limit to prevent OOM on 512MB instances
+ENV NODE_OPTIONS="--max-old-space-size=384"
+
+# Where the agent's durable ledger lives (upstream's reasoning; see their Dockerfile).
+ENV WORKFLOW_LOCAL_DATA_DIR=/app/data/workflow
+
+COPY --from=builder /usr/src/app/public ./public
+
+# Set the correct permission for prerender cache and storage
+RUN mkdir -p .next data
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder /usr/src/app/.next/standalone ./
+COPY --from=builder /usr/src/app/.next/static ./.next/static
+
+# Copy better-sqlite3 native binding for server storage support. Since v13 the
+# package is N-API and self-contained (upstream's reasoning; see their Dockerfile).
+COPY --from=builder /usr/src/app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+
+# Copy the embedded LibreDB database package (upstream's reasoning; see their Dockerfile).
+COPY --from=builder /usr/src/app/node_modules/@libredb/libredb ./node_modules/@libredb/libredb
+
+# Copy the DuckDB driver (upstream's reasoning; see their Dockerfile).
+COPY --from=builder /usr/src/app/node_modules/@duckdb ./node_modules/@duckdb
+COPY --from=builder /usr/src/app/node_modules/detect-libc ./node_modules/detect-libc
+
+# Copy the Oracle driver (upstream's reasoning; see their Dockerfile).
+COPY --from=builder /usr/src/app/node_modules/oracledb ./node_modules/oracledb
+
+# Notices for the Rust crates compiled into db2-node's addons (upstream's reasoning).
+COPY --from=builder /usr/src/app/THIRD_PARTY_NOTICES.txt ./THIRD_PARTY_NOTICES.txt
+
+# Vendored sample database templates (upstream's reasoning; see their Dockerfile).
+COPY --from=builder /usr/src/app/seed-assets ./seed-assets
+
+# Create non-root user for security (upstream's reasoning; see their Dockerfile).
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app && \
+    chgrp 0 /app/data /app/.next && \
+    chmod g=u /app/data && \
+    chmod g=u,+t /app/.next
+
+# gosu lets the entrypoint drop from root to the app user after fixing the
+# permissions of a mounted (often root-owned) data volume.
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/*
+
+# Entrypoint makes the SQLite data dir writable by `nextjs` then drops privileges
+# (upstream's reasoning; see their Dockerfile).
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# The bind-address resolver, the CapRover and the Kubernetes discovery exporters,
+# outside /app for the reasons in upstream's Dockerfile.
+COPY docker/bind-address.mjs /usr/local/lib/libredb-studio/bind-address.mjs
+COPY docker/discover.mjs /usr/local/lib/libredb-studio/discover.mjs
+COPY docker/discover-kubernetes.mjs /usr/local/lib/libredb-studio/discover-kubernetes.mjs
+
+# Render uses PORT env variable, default to 3000
+EXPOSE 3000/tcp
+ENV PORT=3000
+# Empty is the "nobody chose" sentinel (upstream's reasoning; see their Dockerfile).
+ENV HOSTNAME=""
+
+# server.js is created by next build from the standalone output
+# https://nextjs.org/docs/pages/api-reference/next-config-js/output
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "server.js"]

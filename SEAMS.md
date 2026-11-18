@@ -1,0 +1,63 @@
+# Seam ledger
+
+The complete list of upstream files this fork is allowed to edit, and the budget each edit may spend.
+Anything not in this table is forbidden without the owner's approval and a new ledger row.
+`scripts/storagebase/seam-check.mjs` enforces it: every upstream file changed vs the tracked upstream
+ref must appear here, and each listed file must stay within its budget (added/removed lines vs the
+merge-base). A seam's only job is to *call into* or *import from* `src/storagebase/**` — no logic
+inside upstream files.
+
+Budgets: `+N/−M` means at most N added and M removed lines vs the merge-base. `regenerated` means the
+file is produced by tooling (`bun install`), never hand-resolved.
+
+| Id | File | Budget | Edit | Why it cannot be avoided | Upstream PR | Status |
+|---|---|---|---|---|---|---|
+| S1 | `src/app/page.tsx` | +3/−0 | Wrap `<Studio />` in `<StorageBaseShell />` (fork section rail) + import | The rail must sit beside the DB studio on `/` | no (product UI) | applied in phase 2 |
+| S2 | `src/lib/query-events/sink.ts` | +2/−0 | First line of `recordQueryEvent`: `storagebaseQueryTap(input);` + import | The one point every statement-executing route passes through, governance or not | yes: "query event observer" | applied in phase 1 |
+| S3 | `src/lib/audit.ts` | +2/−0 | End of `emitAuditEvent`: `storagebaseAuditTap(stored);` + import | Upstream events (login, logout, role denial, connection test) must reach the durable fork store | yes: "audit sink registry" | applied in phase 1 |
+| S4 | `src/lib/db/providers/keyvalue/redis.ts` | +2/−0 | Spread `...storagebaseSentinelOptions(config)` into the `new Redis({...})` options + import | Sentinel must change how ioredis connects (5.5) | **yes, first choice** — seam exists only until it merges | applied in phase 5 |
+| S5 | `package.json` | +3/−0 | One-time `"workspaces": ["packages/*"]` | P8: fork deps sit in `packages/storagebase-deps` | no | applied in phase 0 |
+| S6 | `next.config.ts` | +2/−0 | `...STORAGEBASE_SERVER_EXTERNALS` spread in `serverExternalPackages` + import | Node-only fork SDKs (Azure/Kafka) must stay out of the client bundle | no | applied in phase 0 |
+| S7 | `knip.json` | +12/−0 | Workspace + entry entries for `packages/storagebase-deps` and fork paths | knip would flag fork entry points | no | applied in phase 0 |
+| S8a | `src/components/github-repo-link.tsx` | +2/−0 | Render `null` (leaf stub, P9) | D5: no social links | no | applied in phase 6 |
+| S8b | `src/lib/community/star-prompt-toast.ts` | +1/−0 | Return early (leaf stub, P9) | D5: no star prompt | no | applied in phase 6 |
+| S9 | `src/lib/seed/credential-resolver.ts` | +3/−0 | `${akv:…}` references | Only if AKV must feed *connection credentials* (D4) | **yes, first choice**: "pluggable secret resolver" | **reserved, not applied** (D4 default: workbench only) |
+| S10 | `bun.lock` | regenerated | Take upstream's lockfile, run `bun install` | Lockfile policy (P8); never hand-resolved | no | permanent |
+| S11 | `CLAUDE.md` | +2/−0 | One anchor line after the header pointing fork agents at `STORAGEBASE.md` | Fork agents must discover the fork rules; upstream's file says nothing about them | no | applied in phase 0 |
+
+## Explicitly not seams (the old fork edited them; this fork must not)
+
+`src/lib/types.ts`, `db-ui-config.ts`, `use-connection-form.ts`, `use-connection-payload.ts`,
+`ConnectionModal.tsx`, `seed/types.ts`, `seed/connection-filter.ts`, `agent/context-snapshot.ts`,
+`db/connection-fingerprint.ts` (Sentinel travels inside a connection string, see 5.5) ·
+`db/factory.ts` (the old cache-invalidation fix is obsolete: upstream's `provider-cache-key.ts` keys on
+id + fingerprint + credential digest + read-only mode) ·
+`Studio.tsx`, `Sidebar.tsx`, `SchemaDiagram.tsx` (ERD toggle → upstream PR only; Redis dock → dropped,
+upstream ships a generic `src/components/key-browser/KeyBrowser.tsx`) ·
+`storage/{types,storage-facade,encrypting-provider,connection-secrets,factory}.ts`, `use-storage-sync.ts`
+(resource connections live in the fork store) ·
+`api/errors.ts`, `api/error-codes.ts`, `api/rate-limit.ts` (fork-local `SB_*` codes, existing bucket) ·
+`instrumentation.ts` (fork taps initialise lazily) ·
+`app/api/db/{query,multi-query,transaction}/route.ts` and `objects/*` (S2 replaces per-route audit;
+DB access control is upstream config: seeds, `roles:`, `readOnly`, `managed`) ·
+`admin-sections.ts`, `AdminDashboard.tsx`, `AuditTab.tsx`, `OverviewTab.tsx`, `app/api/admin/audit/route.ts`
+(fork admin pages at `/sb-admin/*`, linked from the rail) ·
+`auth.ts`, `login/*`, `api/auth/*` (upstream OIDC covers Entra sign-in) ·
+all branding and rename files: `charts/`, `operator/`, `packaging/`, `deploy/`, `desktop/`, `snap/`,
+`distribution/`, `bin/`, `fly.toml` (P6).
+
+## Census tests
+
+Upstream census tests that enumerate the tree (route-auth census, `no-engine-branches`, coverage gate)
+pass **unmodified**. Fork routes satisfy them by construction: every `src/app/api/sb/**` route calls
+`guardRoute`, no fork code branches on an engine type-id outside provider files, and coverage is 100% on
+`src/storagebase/**`. If a census test still needs a fork entry, that is a seam: add a ledger row first.
+
+## Keeping this file honest
+
+`node scripts/storagebase/seam-check.mjs` (CI + pre-push):
+1. Diffs `HEAD` against the merge-base with the tracked upstream ref (`STORAGEBASE_UPSTREAM_REF`,
+   default `libredb/main`), filtered to paths that exist upstream.
+2. Every changed upstream path must appear in this table, else fail.
+3. Per ledger file, the diff must stay within the budget, else fail.
+4. Prints the table with each file's current upstream churn (commits in the last 60 days).

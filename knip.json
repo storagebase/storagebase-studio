@@ -38,6 +38,17 @@
         "@radix-ui/react-use-layout-effect",
         "sharp"
       ]
+    },
+    "packages/storagebase-deps": {
+      "entry": [],
+      "project": [],
+      "ignoreDependencies": [
+        "@azure/identity",
+        "@azure/keyvault-certificates",
+        "@azure/keyvault-keys",
+        "@azure/keyvault-secrets",
+        "@azure/storage-blob"
+      ]
     }
   },
   "ignoreDependencies": [

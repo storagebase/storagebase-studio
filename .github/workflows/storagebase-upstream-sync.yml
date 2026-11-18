@@ -1,0 +1,146 @@
+name: StorageBase upstream sync
+
+# The weekly upstream merge (docs/storagebase/UPSTREAM_SYNC.md). Upstream ships about one minor
+# release per week as bare-semver tags; the fork's design goal is that merging one is mechanical.
+#
+# What the job does:
+#   1. Fetch upstream tags, pick the newest bare-semver tag, skip if already merged into main.
+#   2. Merge it into sync/upstream-<tag>. NEVER rebase.
+#   3. Take upstream's bun.lock verbatim, then `bun install` (the workspace makes the fork's half of
+#      the lockfile; hand-resolving a lockfile is forbidden — P8).
+#   4. Run seam-check plus the gate.
+#   5. Open a PR against main. On a conflict the PR is still opened, with the conflicted files
+#      listed in the body — they must all be ledger seams (SEAMS.md); a conflicted file outside the
+#      ledger is a layering bug to fix in the fork, not in the merge.
+#
+# Requires repo settings: Actions → General → "Allow GitHub Actions to create and approve pull
+# requests" (the workflow uses the default GITHUB_TOKEN to open the PR).
+
+on:
+  schedule:
+    # Mondays 06:20 UTC, before the European workday and after upstream's weekend releases.
+    - cron: "20 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Merge the newest upstream tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Fetch upstream tags and pick the newest bare-semver release
+        id: tag
+        run: |
+          set -eux
+          git remote add libredb https://github.com/libredb/libredb-studio.git
+          git fetch libredb main --tags --force
+          NEWEST="$(git tag --list --sort=-v:refname --merged libredb/main | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
+          test -n "$NEWEST"
+          echo "tag=$NEWEST" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor "$NEWEST" origin/main; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop if the tag is already merged
+        if: steps.tag.outputs.already == 'true'
+        run: echo "Upstream ${{ steps.tag.outputs.tag }} is already merged; nothing to do."
+
+      - name: Merge the tag
+        id: merge
+        if: steps.tag.outputs.already == 'false'
+        run: |
+          set -ux
+          TAG="${{ steps.tag.outputs.tag }}"
+          git config user.name "storagebase-sync-bot"
+          git config user.email "noreply@storagebase.dev"
+          git switch -c "sync/upstream-$TAG"
+          CONFLICTS=""
+          if ! git merge --no-edit "$TAG" -m "Merge upstream libredb-studio $TAG"; then
+            CONFLICTS="$(git diff --name-only --diff-filter=U | tr '\n' ' ')"
+            echo "conflicts=$CONFLICTS" >> "$GITHUB_OUTPUT"
+            # The PR carries the conflicted state with markers, listed in its body: the review — not
+            # the bot — resolves it, and only ever inside ledger seams.
+            git add -A
+            git commit --no-edit --no-verify -m "Merge upstream libredb-studio $TAG (conflicts to resolve: $CONFLICTS)"
+          else
+            echo "conflicts=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate the lockfile (take upstream's, then bun install)
+        if: steps.tag.outputs.already == 'false'
+        run: |
+          set -ux
+          TAG="${{ steps.tag.outputs.tag }}"
+          git checkout "$TAG" -- bun.lock
+          git config user.name "storagebase-sync-bot"
+          git config user.email "noreply@storagebase.dev"
+          bun install
+          git add bun.lock
+          git diff --cached --quiet || git commit --no-edit --no-verify -m "chore: regenerate bun.lock after upstream $TAG"
+
+      - name: Seam ledger check
+        if: steps.tag.outputs.already == 'false'
+        run: node scripts/storagebase/seam-check.mjs
+
+      - name: Report the gate result in the PR
+        if: steps.tag.outputs.already == 'false'
+        run: |
+          set +e
+          (bun run format && bun run lint && bun run typecheck && bun run knip \
+            && bun run chart:check && bun run channels:showcase:check \
+            && bun run readme:check && bun run security:check \
+            && bun run test && bun run build) > /tmp/gate.log 2>&1
+          GATE_STATUS=$?
+          tail -40 /tmp/gate.log > /tmp/gate-tail.txt || true
+          {
+            echo "GATE_STATUS=$GATE_STATUS" >> "$GITHUB_ENV"
+          }
+          exit 0
+
+      - name: Push the sync branch
+        if: steps.tag.outputs.already == 'false'
+        run: |
+          set -ux
+          TAG="${{ steps.tag.outputs.tag }}"
+          git push origin "sync/upstream-$TAG"
+
+      - name: Open the sync PR
+        if: steps.tag.outputs.already == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          GATE_STATUS: ${{ env.GATE_STATUS }}
+        run: |
+          set -ux
+          TAG="${{ steps.tag.outputs.tag }}"
+          BODY_FILE=$(mktemp)
+          {
+            echo "Weekly upstream merge (docs/storagebase/UPSTREAM_SYNC.md)."
+            echo ""
+            if [ -n "$CONFLICTS" ]; then
+              echo "## ⚠️ Conflicted files (must all be SEAMS.md ledger seams)"
+              for f in $CONFLICTS; do echo "- \`$f\`"; done
+              echo ""
+              echo "A conflicted file outside the ledger is a layering bug — fix the layering, not the merge."
+            else
+              echo "Merge is clean: zero conflicts."
+            fi
+            echo ""
+            echo "Gate status: $([ "$GATE_STATUS" = "0" ] && echo "✅ green" || echo "❌ failing — see the workflow log; the merge must not land until green")"
+          } > "$BODY_FILE"
+          gh pr create --base main --head "sync/upstream-$TAG" \
+            --title "Sync upstream libredb-studio $TAG" \
+            --body-file "$BODY_FILE" --label upstream-sync || true

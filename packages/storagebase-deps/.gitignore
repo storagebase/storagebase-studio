@@ -1,0 +1,4 @@
+# Fork-owned: the root .gitignore anchors /node_modules, so the bun workspace's
+# package-local node_modules (symlinks bun creates beside the manifest) needs
+# its own ignore file. Upstream's .gitignore is never edited (no ledger row).
+node_modules/

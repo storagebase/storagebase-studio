@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import packageJson from "./package.json";
 import { readBasePath } from "./src/lib/config/base-path";
 import { readDevAllowedOrigins } from "./src/lib/config/dev-origins";
+import { STORAGEBASE_SERVER_EXTERNALS } from "./src/storagebase/core/externals";
 // Relative, not "@/": Next loads this file before any tsconfig path alias exists for it, and
 // src/lib/security/headers.ts is import-free by design precisely so a next.config can read it.
 import { securityHeaders, type SecurityHeaderOptions } from "./src/lib/security/headers";
@@ -278,6 +279,7 @@ const nextConfig: NextConfig = {
     "db2-node",
     "node-opcua-client",
     "node-opcua-certificate-manager",
+    ...STORAGEBASE_SERVER_EXTERNALS,
   ],
 
   // One rule over every path, not just the skipped ones: both values are constants and byte

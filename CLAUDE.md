@@ -2,6 +2,8 @@
 
 Guidance for Claude Code in this repo — conventions, rules, and gotchas only. Read the code and `docs/` for anything derivable from them.
 
+> **This repo is the StorageBase Studio fork** — read [`STORAGEBASE.md`](STORAGEBASE.md) before anything else: it owns the fork rules, and [`SEAMS.md`](SEAMS.md) is the only list of upstream files the fork may touch.
+
 > **This repo is published as the npm package `@libredb/studio`** — a CLI (`npx @libredb/studio`) plus an embeddable library surface built by `build:lib`. It is **not** embedded in `libredb-platform`: separate products since 2026-08-14, so "platform consumes this" is never a reason to keep or avoid anything (`.claude/rules/platform-integration.md` was deleted with that decision).
 
 ## Project Overview

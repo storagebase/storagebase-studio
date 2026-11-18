@@ -1,0 +1,13 @@
+{
+  "name": "@storagebase/deps",
+  "version": "0.0.0",
+  "private": true,
+  "//": "The fork's node-only SDK workspace (P8). Root package.json never gains a fork dependency; the root gets only the one-time \"workspaces\": [\"packages/*\"] seam. bun hoists these into the root node_modules, bun.lock carries the workspace, and knip.json lists this package with the SDKs as ignoreDependencies because their consumer (src/storagebase/**) sits in the root workspace. The Azure set is what the azure-blob and azure-key-vault providers load; @platformatic/kafka is already a root dependency upstream. scripts/storagebase/stage-resource-sdks.mjs stages this closure into the standalone Docker payload.",
+  "dependencies": {
+    "@azure/identity": "^4.13.3",
+    "@azure/keyvault-certificates": "^4.10.3",
+    "@azure/keyvault-keys": "^4.10.2",
+    "@azure/keyvault-secrets": "^4.11.2",
+    "@azure/storage-blob": "^12.33.0"
+  }
+}

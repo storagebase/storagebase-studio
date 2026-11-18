@@ -1,0 +1,180 @@
+name: StorageBase CI
+
+# The fork's gate: the upstream CI gate unchanged, plus the seam ledger check. The upstream workflows
+# (.github/workflows/ci.yml and friends) keep running in this repo unchanged; if the owner prefers a
+# single gate, disable the upstream ones through GitHub repo settings (Actions → disable per workflow),
+# never by editing the files (fork rule P6).
+#
+# What this workflow adds over upstream's CI:
+#   - seam-check: every upstream file this fork edits must be a ledgered seam within budget (SEAMS.md).
+#   - the fork's own test suites under tests/storagebase/** run in the same bun runner as the rest of
+#     the suite (tests/runner discovers them), so the repo-wide 100% line coverage gate covers
+#     src/storagebase/** too.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-build:
+    name: Lint, Typecheck and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          # seam-check diffs HEAD against the merge-base with libredb/main, so the upstream history
+          # must be present; a shallow single-ref checkout has none of it.
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: git remote add libredb https://github.com/libredb/libredb-studio.git && git fetch libredb main --tags --force
+
+      - name: Seam ledger check (SEAMS.md)
+        run: node scripts/storagebase/seam-check.mjs
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install dependencies
+        uses: ./.github/actions/bun-install
+
+      - name: Chart version sync guard (issue #138)
+        run: |
+          git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          bun run chart:check
+        env:
+          CHART_SYNC_STRICT: "1"
+
+      - name: Login channel showcase drift guard (#425)
+        run: bun run channels:showcase:check
+
+      - name: Localized README drift guard (#317)
+        run: bun run readme:check
+
+      - name: Security posture drift guard (control 3.3)
+        run: bun run security:check
+
+      - name: Check formatting (Biome)
+        run: bun run format
+
+      - name: Run linters (oxlint + ESLint)
+        run: bun run lint
+
+      - name: Setup Go (Windows launcher toolchain)
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: packaging/windows/launcher/go.mod
+          cache: false
+
+      - name: Vet and test the Windows launcher (Go)
+        run: |
+          cd packaging/windows/launcher
+          gofmt -l . | tee /tmp/gofmt.out
+          test ! -s /tmp/gofmt.out
+          go vet ./...
+          go test ./...
+
+      - name: Run TypeScript type check
+        run: bun run typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Install the VS Code extension's dependencies for knip
+        run: npm ci --ignore-scripts
+        working-directory: vscode-extension
+
+      - name: Run knip (unused files, exports, dependencies)
+        run: bun run knip
+
+      - name: Build project
+        run: bun run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          NEXT_TELEMETRY_DISABLED: 1
+          JWT_SECRET: test-secret-for-ci-build-only-32ch
+          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_PASSWORD: test-admin
+          USER_EMAIL: user@libredb.org
+          USER_PASSWORD: test-user
+
+      - name: Build library package (tsup)
+        run: bun run build:lib
+
+      - name: Check package types resolution (attw)
+        run: bun run attw
+
+      - name: Check package entry closures (lib:closure)
+        run: bun run lib:closure
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.4"
+
+      - name: Install dependencies
+        uses: ./.github/actions/bun-install
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.1.3
+
+      - name: Add Bitnami repo
+        run: helm repo add bitnami https://charts.bitnami.com/bitnami --timeout 5m
+
+      - name: Build chart dependencies
+        run: helm dependency build charts/libredb-studio --skip-refresh
+
+      - name: Run the test suite with coverage
+        run: bun run test:coverage
+        env:
+          LIBREDB_REQUIRE_HELM: "1"
+          JWT_SECRET: test-secret-for-ci-build-only-32ch
+          ADMIN_EMAIL: admin@libredb.org
+          ADMIN_PASSWORD: test-admin
+          USER_EMAIL: user@libredb.org
+          USER_PASSWORD: test-user
+
+      # The repo holds 100% line coverage (#196), and the fork inherits the same gate over its own
+      # namespace: nothing under src/storagebase/** may land uncovered.
+      - name: Enforce 100% line coverage (repo-wide, src/storagebase/** included)
+        run: bun run coverage:check
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: coverage/lcov.info
