@@ -18,7 +18,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S4 | `src/lib/db/providers/keyvalue/redis.ts` | +2/−0 | Spread `...storagebaseSentinelOptions(config)` into the `new Redis({...})` options + import | Sentinel must change how ioredis connects (5.5) | **PR [#2314](https://github.com/libredb/libredb-studio/pull/2314)** — delete this seam and its row when it merges | applied in phase 5 |
 | S5 | `package.json` | +3/−0 | One-time `"workspaces": ["packages/*"]` | P8: fork deps sit in `packages/storagebase-deps` | no | applied in phase 0 |
 | S6 | `next.config.ts` | +2/−0 | `...STORAGEBASE_SERVER_EXTERNALS` spread in `serverExternalPackages` + import | Node-only fork SDKs (Azure/Kafka) must stay out of the client bundle | no | applied in phase 0 |
-| S7 | `knip.json` | +12/−0 | Workspace + entry entries for `packages/storagebase-deps` and fork paths | knip would flag fork entry points | no | applied in phase 0 |
+| S7 | `knip.json` | +13/−1 | Workspace + entry entries for `packages/storagebase-deps` and fork paths; `ajv-draft-04` ignored alongside `ajv` because bun hoists it for @platformatic/kafka at runtime but no source imports it | knip would flag fork entry points | no | applied in phase 0 |
 | S8a | `src/components/github-repo-link.tsx` | +11/−47 | Render `null` (leaf stub, P9) | D5: no social links | no | applied in phase 6 |
 | S8b | `src/lib/community/star-prompt-toast.ts` | +8/−43 | Both entry points inert (leaf stub, P9) | D5: no star prompt | no | applied in phase 6 |
 | S8c | `src/components/community-section.tsx` | +10/−109 | Render `null` (leaf stub, P9) | D5: no social links on the login hero either | no | applied in phase 6 |

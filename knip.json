@@ -55,7 +55,8 @@
     "tailwindcss",
     "@workflow/world-postgres",
     "@ai-sdk/anthropic",
-    "ajv"
+    "ajv",
+    "ajv-draft-04"
   ],
   "ignoreBinaries": [
     "genhtml",
