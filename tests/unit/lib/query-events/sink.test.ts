@@ -18,6 +18,9 @@ import { queryEventInput, startInTheFuture } from "../../../helpers/governance/q
 
 const realPg = await import("pg");
 mock.module("pg", () => ({ Pool: FakePool, Client: realPg.Client, types: realPg.types }));
+// StorageBase fork (SEAMS.md S29): S2's tap belongs to a second, fork-owned sink; this unit owns
+// only the upstream sink and its timer/warning assertions, so stub the tap for this file.
+mock.module("@/storagebase/core/seams", () => ({ storagebaseQueryTap: () => {} }));
 const listenerStatus: GovernanceListenerStatus = { state: "listening", since: 0, lastNotificationAt: null };
 mock.module("@/lib/governance/listener", () => ({ governanceListenerStatus: () => listenerStatus }));
 

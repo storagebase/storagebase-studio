@@ -45,6 +45,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S26 | `docs/SECURITY.md` | +6/−3 | Add the three fork routes that call `auditRoleDenial` to the role-denial table | The table is compile-checked against every call site; fork routes are new call sites | no | applied in final gate |
 | S27 | `tests/unit/security-role-denial-table.test.ts` | +3/−0 | Extend the number-word table to fifteen | With the fork's three new call sites the count is fourteen; the test spells counts out in words | no | applied in final gate |
 | S28 | `bin/lib/launcher-utils.mjs` | +2/−0 | Classify `STORAGEBASE_RESOURCE_SEED_PATH` as a path variable | The launcher-utils census requires every `*_PATH` var in `.env.example` be classified; the server reads this one like `SEED_CONFIG_PATH` | no | applied in final gate |
+| S29 | `tests/unit/lib/query-events/sink.test.ts` | +3/−0 | Stub the fork's S2 tap in this upstream sink unit test | S2 arms a second, fork-owned sink; this file's timer-count and warning assertions own only the upstream sink, so the fork tap must not run here | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 
