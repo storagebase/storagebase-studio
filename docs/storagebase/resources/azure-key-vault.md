@@ -23,6 +23,15 @@ reaches the fork store, never served back to the browser, and resolved from
 `${env:…}` / `${vault:…}` references when a seeded connection names it. The
 browser's row carries only the "has credential" marker.
 
+### Not a credential source (decision D4)
+
+This workbench is where AKV values are read and written; it is **not** a
+credential resolver for other connections. A seed connection cannot name
+`${akv:…}` the way it names `${vault:…}` — upstream's credential resolver is
+a hard-coded prefix switch (`SEAMS.md` S9 is reserved, not applied). When AKV
+must feed connection credentials, the path is upstream's pluggable
+secret-resolver PR first (P7), and only then an `${akv:…}` seam.
+
 ### Auth modes
 
 `authMode` selects the credential; without it the fields decide:

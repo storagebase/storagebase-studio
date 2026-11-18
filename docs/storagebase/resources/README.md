@@ -5,9 +5,10 @@ database studio, all under fork-owned paths (STORAGEBASE.md P1 — `src/storageb
 `src/app/api/sb/resources/**`, `src/components/storagebase/resources/**`). This page is the
 spine's contract: the type union, the permission levels, the route surface with exact request
 and response shapes, the connection storage + sealing model, the seed file format and the fork
-error codes. Per-type pages (`azure-blob.md`, `kafka.md`, `azure-key-vault.md`,
-`hashicorp-vault.md`, `openbao.md`) land with the provider families in phases 3-4 — they are
-planned, not missing.
+error codes. The per-type pages live beside it: [`azure-blob.md`](azure-blob.md),
+[`azure-key-vault.md`](azure-key-vault.md), [`kafka.md`](kafka.md),
+[`hashicorp-vault.md`](hashicorp-vault.md) and [`openbao.md`](openbao.md) — code, doc and tests
+stay 1:1 per type-id (the fork triad rule).
 
 ## The type union (the only list)
 
