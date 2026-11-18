@@ -1,0 +1,106 @@
+# =============================================================================
+# StorageBase Studio — Redis Sentinel fixture (fork-owned, S4 interim)
+# =============================================================================
+# A minimal master + replica + 3-sentinel topology for the future live test of
+# docs/storagebase/redis-sentinel.md (and, one day, tests/live/redis-sentinel.ts).
+# Not a production deployment: no auth, no persistence tuning — the unit suite
+# pins the option-building logic; this fixture is what a live run needs that a
+# mock cannot give (the sentinels naming a master, and a failover landing on the
+# promoted replica).
+#
+#   docker compose -f deploy/storagebase/compose.yml up -d
+#   docker compose -f deploy/storagebase/compose.yml ps          # all healthy?
+#   docker compose -f deploy/storagebase/compose.yml exec sentinel-1 \
+#       redis-cli -p 26379 SENTINEL get-master-addr-by-name mymaster
+#   docker compose -f deploy/storagebase/compose.yml stop redis-master   # failover drill
+#
+# The connection the interim seam reads (a connection an API caller supplies
+# inline — see the IMPORTANT note in docs/storagebase/redis-sentinel.md):
+#
+#   redis-sentinel://sentinel-1:26379,sentinel-2:26379,sentinel-3:26379?name=mymaster
+#
+# The sentinels resolve and ANNOUNCE the master by hostname
+# (`sentinel announce-hostnames yes`), so that address only answers inside this
+# compose network: a live test connects through a client that shares it. Add the
+# studio (or a one-shot probe container) as another service on `sentinel-net`;
+# the published sentinel ports below are for fixture sanity from the host
+# (redis-cli SENTINEL …), not for a full client failover from outside.
+#
+# To also exercise the one-secret auth path (the `sentinelPassword` default):
+# add `--requirepass secret` to master and replica, and
+# `sentinel auth-pass mymaster secret` to every sentinel's generated config,
+# then carry the same secret as `:secret@` in the connection string.
+# =============================================================================
+
+x-sentinel: &sentinel
+  image: redis:7-alpine # any redis >= 6.2: sentinel resolve-hostnames arrived there
+  restart: unless-stopped
+  depends_on: [redis-master]
+  healthcheck:
+    test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+  # Written to /tmp so redis can rewrite its own config at runtime (it does, on
+  # every failover it witnesses): a read-only mount would break exactly the
+  # reconfiguration a failover drill exists to produce.
+  command: >
+    sh -c 'printf "%s\n"
+    "port 26379"
+    "sentinel resolve-hostnames yes"
+    "sentinel announce-hostnames yes"
+    "sentinel monitor mymaster redis-master 6379 2"
+    "sentinel down-after-milliseconds mymaster 5000"
+    "sentinel failover-timeout mymaster 10000"
+    > /tmp/sentinel.conf &&
+    redis-server /tmp/sentinel.conf --sentinel'
+
+services:
+  redis-master:
+    image: redis:7-alpine
+    container_name: storagebase-redis-master
+    restart: unless-stopped
+    networks: [sentinel-net]
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-replica:
+    image: redis:7-alpine
+    container_name: storagebase-redis-replica
+    restart: unless-stopped
+    networks: [sentinel-net]
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-server", "--replicaof", "redis-master", "6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  sentinel-1:
+    <<: *sentinel
+    container_name: storagebase-sentinel-1
+    networks: [sentinel-net]
+    ports: ["26379:26379"]
+
+  sentinel-2:
+    <<: *sentinel
+    container_name: storagebase-sentinel-2
+    networks: [sentinel-net]
+    ports: ["26380:26379"]
+
+  sentinel-3:
+    <<: *sentinel
+    container_name: storagebase-sentinel-3
+    networks: [sentinel-net]
+    ports: ["26381:26379"]
+
+networks:
+  sentinel-net:
+    name: storagebase-sentinel-net

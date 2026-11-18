@@ -17,6 +17,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import Redis, { type RedisOptions } from "ioredis";
 import { logger } from "@/lib/logger";
+import { storagebaseSentinelOptions } from "@/storagebase/redis-sentinel/options";
 import { BaseDatabaseProvider } from "../../base-provider";
 import {
   applySourceBound,
@@ -1564,6 +1565,7 @@ export class RedisProvider extends BaseDatabaseProvider {
   private async openClient(db: number, commandTimeout?: number): Promise<Redis> {
     const client = new Redis({
       ...this.redisOptions(),
+      ...storagebaseSentinelOptions(this.config),
       ...(commandTimeout === undefined ? {} : oneCommandOptions(commandTimeout)),
     });
     let connecting = true;
