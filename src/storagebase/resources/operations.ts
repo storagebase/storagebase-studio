@@ -1,0 +1,449 @@
+import type { ResourceHealth, ResourceNode, ResourceNodePage } from "./types";
+
+/**
+ * The family operation interfaces, declared with the spine (phase 2a) and
+ * implemented by the provider modules as they land (phases 3-4). They are
+ * separate interfaces on purpose: a route downcasts only after checking the
+ * provider's declared `operations`, so an unsupported operation is a 400 the
+ * ROUTE decides — never a method the caller had to probe for.
+ *
+ * Reads are bounded with an explicit truncation flag; writes are the
+ * full-management surface the fork committed to (confirm dialogs and audit
+ * events live at the routes, not here).
+ */
+
+export interface BlobObjectMeta {
+  readonly id: string;
+  readonly name: string;
+  readonly sizeBytes: number | null;
+  readonly lastModified: string | null;
+  readonly contentType: string | null;
+}
+
+export interface BlobDownload {
+  readonly body: ReadableStream<Uint8Array>;
+  readonly contentType: string | null;
+  readonly sizeBytes: number | null;
+}
+
+export interface BlobPreview {
+  /** What the preview decided the body is, so the viewer picks a pane, not a guess. */
+  readonly kind: "text" | "image" | "binary";
+  readonly text?: string;
+  readonly truncated: boolean;
+  readonly contentType: string | null;
+}
+
+export interface BlobOperations {
+  listBuckets(): Promise<ResourceNodePage>;
+  listObjects(bucket: string, prefix: string | null): Promise<ResourceNodePage>;
+  readBlobMeta(bucket: string, name: string): Promise<BlobObjectMeta>;
+  downloadBlob(bucket: string, name: string): Promise<BlobDownload>;
+  previewBlob(bucket: string, name: string, byteLimit: number): Promise<BlobPreview>;
+  uploadBlob(bucket: string, name: string, body: ReadableStream<Uint8Array>): Promise<BlobObjectMeta>;
+  deleteBlob(bucket: string, name: string): Promise<void>;
+}
+
+export interface BrowseMessagesPage {
+  readonly messages: readonly ResourceNode[];
+  readonly truncated: boolean;
+}
+
+export interface MessagingOperations {
+  listDestinations(): Promise<ResourceNodePage>;
+  browseMessages(destination: string, limit: number): Promise<BrowseMessagesPage>;
+  publishMessage(destination: string, body: string, attributes?: Record<string, string>): Promise<void>;
+  purgeQueue(destination: string): Promise<void>;
+}
+
+export interface SecretVersion {
+  readonly version: string | null;
+  readonly createdAt: string | null;
+}
+
+export interface SecretRead {
+  readonly name: string;
+  readonly value: string;
+  readonly metadata: SecretVersion | null;
+}
+
+export interface VaultOperations {
+  listMounts(): Promise<ResourceNodePage>;
+  listSecrets(mount: string, prefix: string | null): Promise<ResourceNodePage>;
+  readSecret(path: string): Promise<SecretRead>;
+  writeSecret(path: string, value: string): Promise<void>;
+  deleteSecret(path: string): Promise<void>;
+}
+
+/** Narrowing helpers the routes use after the capability check. */
+export function asBlobOperations(provider: object): BlobOperations | null {
+  return "listBuckets" in provider ? (provider as BlobOperations) : null;
+}
+
+export function asMessagingOperations(provider: object): MessagingOperations | null {
+  return "listDestinations" in provider ? (provider as MessagingOperations) : null;
+}
+
+export function asVaultOperations(provider: object): VaultOperations | null {
+  return "listMounts" in provider ? (provider as VaultOperations) : null;
+}
+
+/*
+ * The Kafka workbench surface (docs/storagebase/resources/kafka.md). Its own interface, not
+ * a widening of `MessagingOperations`: cluster, topic-admin and consumer-group
+ * operations have no RabbitMQ/SQS meaning, and the generic messaging routes
+ * keep serving the Resources section unchanged. Offsets travel as strings —
+ * they are int64 on the wire and a JS number stops being exact at 2^53.
+ */
+
+export interface KafkaBroker {
+  readonly nodeId: number;
+  readonly host: string;
+  readonly port: number;
+  /** Null where the client library's describeCluster drops the rack field (kafkajs did; verify on @platformatic/kafka). */
+  readonly rack: string | null;
+  readonly isController: boolean;
+}
+
+export interface KafkaClusterOverview {
+  readonly clusterId: string;
+  readonly controllerId: number | null;
+  readonly brokers: readonly KafkaBroker[];
+}
+
+export interface KafkaTopicSummary {
+  readonly name: string;
+  readonly internal: boolean;
+  readonly partitions: number;
+  readonly replicationFactor: number;
+  readonly underReplicatedPartitions: number;
+}
+
+/**
+ * The topic listing is metadata only — one round trip, whatever the topic
+ * count. Message counts cost two ListOffsets calls per topic, so they are
+ * asked for separately (`countTopicMessages`), a bounded batch at a time, for
+ * the rows a viewer can actually see.
+ */
+export interface KafkaTopicListing {
+  readonly topics: readonly KafkaTopicSummary[];
+}
+
+/** Names per lazy-measurement call (`countTopicMessages`, `measureGroupLag`); the routes refuse more. */
+export const KAFKA_MEASURE_BATCH_LIMIT = 50;
+
+export interface KafkaTopicCount {
+  /** Sum of high minus low watermarks — approximate (compaction, transaction markers); null when unreadable. */
+  readonly messageCount: number | null;
+  /**
+   * Why `messageCount` is null: the topic does not exist, or its offsets
+   * could not be read (no leader, mid-deletion, a broker that answered
+   * short). Null when the count was read.
+   */
+  readonly countError: string | null;
+}
+
+export interface KafkaPartitionDetail {
+  readonly partition: number;
+  readonly leader: number;
+  readonly replicas: readonly number[];
+  readonly isr: readonly number[];
+  readonly offlineReplicas: readonly number[];
+  /** Null when the partition's offsets could not be read (see `offsetsError`). */
+  readonly earliestOffset: string | null;
+  readonly latestOffset: string | null;
+}
+
+export interface KafkaConfigEntry {
+  readonly name: string;
+  /** Null for sensitive entries: the broker never returns their value. */
+  readonly value: string | null;
+  readonly source: string;
+  readonly isDefault: boolean;
+  readonly readOnly: boolean;
+  readonly isSensitive: boolean;
+}
+
+export interface KafkaTopicDetail {
+  readonly name: string;
+  readonly internal: boolean;
+  readonly partitions: readonly KafkaPartitionDetail[];
+  readonly configs: readonly KafkaConfigEntry[];
+  /** Why the offsets are missing, when the offset read failed; the rest of the detail still answers. */
+  readonly offsetsError: string | null;
+}
+
+export interface KafkaCreateTopicInput {
+  readonly name: string;
+  readonly partitions: number;
+  readonly replicationFactor: number;
+  readonly configs?: Readonly<Record<string, string>>;
+}
+
+export type KafkaSeek =
+  | { readonly mode: "earliest" }
+  | { readonly mode: "latest" }
+  | { readonly mode: "offset"; readonly offset: string }
+  | { readonly mode: "timestamp"; readonly timestamp: number };
+
+export interface KafkaReadQuery {
+  /** One partition, or every partition when absent. */
+  readonly partition?: number;
+  readonly seek: KafkaSeek;
+  readonly limit: number;
+}
+
+export interface KafkaRecord {
+  readonly partition: number;
+  readonly offset: string;
+  readonly timestamp: string;
+  readonly key: string | null;
+  readonly value: string | null;
+  /** "utf8" when the bytes decode cleanly; "base64" otherwise, so binary is shown, not mangled. */
+  readonly keyEncoding: "utf8" | "base64";
+  readonly valueEncoding: "utf8" | "base64";
+  /** True when the value was cut at the per-record byte cap. */
+  readonly valueTruncated: boolean;
+  readonly valueBytes: number;
+  readonly headers: Readonly<Record<string, string>>;
+}
+
+export interface KafkaMessagesPage {
+  readonly messages: readonly KafkaRecord[];
+  /** More messages exist in the requested window than this page carries. */
+  readonly truncated: boolean;
+}
+
+export interface KafkaProduceInput {
+  readonly key?: string;
+  readonly value: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly partition?: number;
+}
+
+export interface KafkaProduceResult {
+  readonly partition: number;
+  readonly offset: string;
+}
+
+export interface KafkaConsumerGroupSummary {
+  readonly groupId: string;
+  readonly state: string;
+  readonly protocolType: string;
+  readonly protocol: string;
+  readonly members: number;
+  /**
+   * The coordinator broker's id, derived the way Kafka assigns it: the leader of the
+   * `__consumer_offsets` partition the group id hashes to. Null when that metadata was unreadable
+   * or the partition has no leader.
+   */
+  readonly coordinator: number | null;
+  /** The studio's own throwaway peek groups — hidden by default in the UI. */
+  readonly internal: boolean;
+}
+
+/** State and members only; lag is measured separately (`measureGroupLag`), like topic counts. */
+export interface KafkaConsumerGroupListing {
+  readonly groups: readonly KafkaConsumerGroupSummary[];
+}
+
+export interface KafkaGroupLag {
+  /** Sum of per-partition lag; null when any of the group's topics could not be read (`lagError`). */
+  readonly totalLag: number | null;
+  /** Why lag could not be measured; null when it was. */
+  readonly lagError: string | null;
+  /** Distinct topics the group has committed offsets on; null when its offsets could not be fetched. */
+  readonly topics: number | null;
+}
+
+export interface KafkaGroupMember {
+  readonly memberId: string;
+  readonly clientId: string;
+  readonly clientHost: string;
+  readonly assignments: ReadonlyArray<{ readonly topic: string; readonly partitions: readonly number[] }>;
+}
+
+export interface KafkaGroupOffset {
+  readonly topic: string;
+  readonly partition: number;
+  /** Null when the group has no committed offset for the partition. */
+  readonly committedOffset: string | null;
+  /** Null when the topic's end offsets could not be read (see `endOffsetError`). */
+  readonly endOffset: string | null;
+  readonly lag: number | null;
+  readonly endOffsetError: string | null;
+}
+
+export interface KafkaConsumerGroupDetail {
+  readonly groupId: string;
+  readonly state: string;
+  readonly protocolType: string;
+  readonly protocol: string;
+  readonly members: readonly KafkaGroupMember[];
+  readonly offsets: readonly KafkaGroupOffset[];
+}
+
+export type KafkaOffsetReset =
+  | { readonly mode: "earliest" }
+  | { readonly mode: "latest" }
+  | { readonly mode: "timestamp"; readonly timestamp: number }
+  | { readonly mode: "offset"; readonly offset: string };
+
+export interface KafkaResetOffsetsInput {
+  readonly groupId: string;
+  readonly topic: string;
+  readonly reset: KafkaOffsetReset;
+  /** Every partition of the topic when absent. */
+  readonly partitions?: readonly number[];
+}
+
+export interface KafkaAdminOperations {
+  describeCluster(): Promise<KafkaClusterOverview>;
+  listTopicSummaries(): Promise<KafkaTopicListing>;
+  /** Best effort per topic, keyed by name; at most `KAFKA_MEASURE_BATCH_LIMIT` names. */
+  countTopicMessages(topics: readonly string[]): Promise<Record<string, KafkaTopicCount>>;
+  describeTopic(topic: string): Promise<KafkaTopicDetail>;
+  createTopic(input: KafkaCreateTopicInput): Promise<void>;
+  deleteTopic(topic: string): Promise<void>;
+  /** `count` is the new TOTAL, the Kafka protocol's own meaning. */
+  addPartitions(topic: string, count: number): Promise<void>;
+  /** `null` removes a topic-level override (back to the broker default). */
+  alterTopicConfigs(topic: string, changes: Readonly<Record<string, string | null>>): Promise<void>;
+  readMessages(topic: string, query: KafkaReadQuery): Promise<KafkaMessagesPage>;
+  produceMessage(topic: string, input: KafkaProduceInput): Promise<KafkaProduceResult>;
+  listConsumerGroups(): Promise<KafkaConsumerGroupListing>;
+  /** Best effort per group, keyed by id; at most `KAFKA_MEASURE_BATCH_LIMIT` ids. */
+  measureGroupLag(groupIds: readonly string[]): Promise<Record<string, KafkaGroupLag>>;
+  describeConsumerGroup(groupId: string): Promise<KafkaConsumerGroupDetail>;
+  resetConsumerGroupOffsets(input: KafkaResetOffsetsInput): Promise<readonly KafkaGroupOffset[]>;
+  deleteConsumerGroup(groupId: string): Promise<void>;
+}
+
+export function asKafkaAdminOperations(provider: object): KafkaAdminOperations | null {
+  return "describeCluster" in provider ? (provider as KafkaAdminOperations) : null;
+}
+
+/*
+ * The vault workbench surface (docs/storagebase/resources/azure-key-vault.md and the other
+ * vault docs). One object model over secrets, keys and certificates; each
+ * provider declares which of them it serves through the `vault.*` capability
+ * flags, and the workbench renders only those tabs. Values never ride on a
+ * listing or a detail: `revealSecret` is the only method that returns one.
+ */
+
+export type VaultObjectType = "secret" | "key" | "certificate";
+
+export const VAULT_OBJECT_TYPES: readonly VaultObjectType[] = ["secret", "key", "certificate"];
+
+export interface VaultObjectSummary {
+  readonly type: VaultObjectType;
+  /** The address every by-name call takes (a bare name, or a mount path on Vault). */
+  readonly name: string;
+  readonly enabled: boolean | null;
+  readonly createdOn: string | null;
+  readonly updatedOn: string | null;
+  readonly expiresOn: string | null;
+  readonly notBefore: string | null;
+  readonly tags: Readonly<Record<string, string>>;
+  /** Secrets. */
+  readonly contentType: string | null;
+  /** Keys: RSA / EC (-HSM), the size in bits or the curve. */
+  readonly keyType: string | null;
+  readonly keySize: number | null;
+  readonly curve: string | null;
+  /** Certificates. */
+  readonly subject: string | null;
+  readonly issuer: string | null;
+  readonly thumbprint: string | null;
+}
+
+export interface VaultObjectListing {
+  readonly objects: readonly VaultObjectSummary[];
+  readonly truncated: boolean;
+}
+
+export interface VaultObjectVersion {
+  readonly version: string;
+  readonly enabled: boolean | null;
+  readonly createdOn: string | null;
+  readonly updatedOn: string | null;
+  readonly expiresOn: string | null;
+}
+
+export interface VaultObjectDetail extends VaultObjectSummary {
+  readonly version: string | null;
+  readonly recoveryLevel: string | null;
+  /** Keys: the operations the key permits (encrypt, sign, wrapKey, ...). */
+  readonly keyOperations: readonly string[];
+  readonly versions: readonly VaultObjectVersion[];
+  readonly versionsTruncated: boolean;
+}
+
+export interface VaultDeletedObject {
+  readonly type: VaultObjectType;
+  readonly name: string;
+  readonly deletedOn: string | null;
+  readonly scheduledPurgeDate: string | null;
+}
+
+export interface VaultSecretReveal {
+  readonly name: string;
+  readonly value: string;
+  readonly version: string | null;
+}
+
+export interface VaultSecretWrite {
+  /** Absent: update the current version's properties only, never its value. */
+  readonly value?: string;
+  readonly contentType?: string;
+  readonly tags?: Readonly<Record<string, string>>;
+  /** ISO timestamp, or null to clear. */
+  readonly expiresOn?: string | null;
+  readonly enabled?: boolean;
+}
+
+export type VaultRsaKeySize = 2048 | 3072 | 4096;
+export type VaultEcCurve = "P-256" | "P-384" | "P-521";
+
+export type VaultKeyCreate =
+  | {
+      readonly keyType: "RSA";
+      readonly keySize: VaultRsaKeySize;
+      readonly tags?: Readonly<Record<string, string>>;
+      readonly expiresOn?: string;
+      readonly enabled?: boolean;
+    }
+  | {
+      readonly keyType: "EC";
+      readonly curve: VaultEcCurve;
+      readonly tags?: Readonly<Record<string, string>>;
+      readonly expiresOn?: string;
+      readonly enabled?: boolean;
+    };
+
+export interface VaultCertificateImport {
+  /** The file's bytes, base64. PEM files may carry the key and chain; PFX/P12 are PKCS#12. */
+  readonly contentsBase64: string;
+  readonly format: "pem" | "pkcs12";
+  readonly password?: string;
+  readonly tags?: Readonly<Record<string, string>>;
+  readonly enabled?: boolean;
+}
+
+export interface VaultWorkbenchOperations {
+  listVaultObjects(type: VaultObjectType): Promise<VaultObjectListing>;
+  describeVaultObject(type: VaultObjectType, name: string): Promise<VaultObjectDetail>;
+  revealSecret(name: string, version?: string): Promise<VaultSecretReveal>;
+  saveSecret(name: string, input: VaultSecretWrite): Promise<void>;
+  createKey(name: string, input: VaultKeyCreate): Promise<void>;
+  importCertificate(name: string, input: VaultCertificateImport): Promise<void>;
+  /** Soft delete where the service has one (declared by `vault.soft-delete`). */
+  deleteVaultObject(type: VaultObjectType, name: string): Promise<void>;
+  listDeletedVaultObjects(type: VaultObjectType): Promise<readonly VaultDeletedObject[]>;
+  recoverDeletedVaultObject(type: VaultObjectType, name: string): Promise<void>;
+  purgeDeletedVaultObject(type: VaultObjectType, name: string): Promise<void>;
+}
+
+export function asVaultWorkbenchOperations(provider: object): VaultWorkbenchOperations | null {
+  return "listVaultObjects" in provider ? (provider as VaultWorkbenchOperations) : null;
+}
