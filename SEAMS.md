@@ -19,8 +19,12 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S5 | `package.json` | +3/−0 | One-time `"workspaces": ["packages/*"]` | P8: fork deps sit in `packages/storagebase-deps` | no | applied in phase 0 |
 | S6 | `next.config.ts` | +2/−0 | `...STORAGEBASE_SERVER_EXTERNALS` spread in `serverExternalPackages` + import | Node-only fork SDKs (Azure/Kafka) must stay out of the client bundle | no | applied in phase 0 |
 | S7 | `knip.json` | +12/−0 | Workspace + entry entries for `packages/storagebase-deps` and fork paths | knip would flag fork entry points | no | applied in phase 0 |
-| S8a | `src/components/github-repo-link.tsx` | +2/−0 | Render `null` (leaf stub, P9) | D5: no social links | no | applied in phase 6 |
-| S8b | `src/lib/community/star-prompt-toast.ts` | +1/−0 | Return early (leaf stub, P9) | D5: no star prompt | no | applied in phase 6 |
+| S8a | `src/components/github-repo-link.tsx` | +11/−47 | Render `null` (leaf stub, P9) | D5: no social links | no | applied in phase 6 |
+| S8b | `src/lib/community/star-prompt-toast.ts` | +8/−43 | Both entry points inert (leaf stub, P9) | D5: no star prompt | no | applied in phase 6 |
+| S8c | `src/components/community-section.tsx` | +10/−109 | Render `null` (leaf stub, P9) | D5: no social links on the login hero either | no | applied in phase 6 |
+| S8d | `tests/components/GitHubRepoLink.test.tsx` | +11/−95 | Assert the stub renders nothing | A stub's direct test cannot keep asserting the removed behaviour | no | applied in phase 6 |
+| S8e | `tests/components/CommunitySection.test.tsx` | +9/−92 | Assert the stub renders nothing | Same as S8d | no | applied in phase 6 |
+| S8f | `tests/unit/lib/community/star-prompt-toast.test.ts` | +18/−103 | Assert both entry points are inert | Same as S8d | no | applied in phase 6 |
 | S9 | `src/lib/seed/credential-resolver.ts` | +3/−0 | `${akv:…}` references | Only if AKV must feed *connection credentials* (D4) | **yes, first choice**: "pluggable secret resolver" | **reserved, not applied** (D4 default: workbench only) |
 | S10 | `bun.lock` | regenerated | Take upstream's lockfile, run `bun install` | Lockfile policy (P8); never hand-resolved | no | permanent |
 | S11 | `CLAUDE.md` | +2/−0 | One anchor line after the header pointing fork agents at `STORAGEBASE.md` | Fork agents must discover the fork rules; upstream's file says nothing about them | no | applied in phase 0 |
