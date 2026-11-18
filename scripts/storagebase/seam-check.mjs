@@ -39,7 +39,10 @@ const root = path.resolve(here, "..", "..");
 
 /** Runs one git command in the repo root and returns its stdout, failing loudly. */
 function git(args) {
-  return execFileSync("git", args, { cwd: root, encoding: "utf8" });
+  // stderr piped, never inherited: probe calls like `cat-file -e` are EXPECTED to fail on fork-owned
+  // paths, and their "fatal: path exists on disk, but not in …" noise belongs nowhere, least of all
+  // in a CI log someone has to read.
+  return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
 /** @param {string[]} argv */
