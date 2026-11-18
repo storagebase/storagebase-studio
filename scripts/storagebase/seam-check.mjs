@@ -45,7 +45,10 @@ function git(args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
-/** @param {string[]} argv */
+/**
+ * @param {string[]} argv
+ * @returns {{ ref: string, base: string | null }}
+ */
 export function parseArgs(argv) {
   const options = { ref: process.env.STORAGEBASE_UPSTREAM_REF ?? "libredb/main", base: null };
   for (let i = 0; i < argv.length; i += 1) {
@@ -81,10 +84,11 @@ export function parseLedger(text) {
     if (rawBudget === "regenerated") {
       rows.set(file, { id, added: Number.POSITIVE_INFINITY, removed: Number.POSITIVE_INFINITY, regenerated: true });
     } else {
-      const [added, removed] = rawBudget
-        .replace("−", "-")
-        .split("/")
-        .map((part) => Number.parseInt(part, 10) || 0);
+      // The budget's `−M` is a prose allowance (M lines may be removed), not a negative number:
+      // parse the magnitude, or `removed > row.removed` would pass on any spend at all.
+      const [addedRaw, removedRaw] = rawBudget.replace("−", "-").split("/");
+      const added = Number.parseInt(addedRaw, 10) || 0;
+      const removed = Math.abs(Number.parseInt(removedRaw, 10)) || 0;
       rows.set(file, { id, added, removed, regenerated: false });
     }
   }
