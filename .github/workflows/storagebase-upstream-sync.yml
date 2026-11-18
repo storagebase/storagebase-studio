@@ -97,6 +97,8 @@ jobs:
 
       - name: Report the gate result in the PR
         if: steps.tag.outputs.already == 'false'
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           set +e
           (bun run format && bun run lint && bun run typecheck && bun run knip \

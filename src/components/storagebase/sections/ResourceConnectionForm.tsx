@@ -101,9 +101,9 @@ export function ResourceConnectionForm({
         </div>
       ))}
       {form.testResult && (
-        <p role="status" data-tone={form.testResult.tone} className="text-xs text-fg-muted break-words">
+        <output data-tone={form.testResult.tone} className="block text-xs text-fg-muted break-words">
           {form.testResult.message}
-        </p>
+        </output>
       )}
       <div className="flex items-center gap-2 pt-2">
         <Button

@@ -105,8 +105,13 @@ export function stageResourceSdks(root, outDir, packages = RESOURCE_SDK_PACKAGES
   return { copied: copied.sort() };
 }
 
-// CLI entry only when executed directly (the unit test imports this module).
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// CLI entry only when executed directly (the unit test imports this module). Both sides are real
+// paths, so a symlinked checkout still runs it instead of silently exiting 0.
+if (
+  process.argv[1] !== undefined &&
+  fs.existsSync(process.argv[1]) &&
+  fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))
+) {
   const outDir = process.argv[2];
   if (!outDir) {
     console.error("Usage: node scripts/storagebase/stage-resource-sdks.mjs <outDir>");

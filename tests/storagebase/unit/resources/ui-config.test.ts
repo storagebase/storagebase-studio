@@ -66,7 +66,9 @@ describe("RESOURCE_UI_CONFIG", () => {
           "sessionToken",
           "token",
         ] as const
-      ).slice().sort(),
+      )
+        .slice()
+        .sort(),
     );
     // Identifiers and addresses are not credentials: the access key id, not the
     // secret access key, and never the endpoint the operator already knows.

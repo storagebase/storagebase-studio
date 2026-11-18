@@ -144,7 +144,7 @@ describe("createStoredResourceConnection", () => {
     expect(puts[0]).toMatchObject({ kind: RESOURCE_CONNECTION_KIND, actor: "alice" });
     const stored = JSON.stringify(puts[0]?.value);
     expect(stored).not.toContain("hvs.root-token");
-    expect((puts[0]?.value as StoredResourceConnection).token).toMatch(/^v1:/);
+    expect((puts[0]?.value as StoredResourceConnection | undefined)?.token).toMatch(/^v1:/);
     expect(record.updatedBy).toBe("alice");
   });
 

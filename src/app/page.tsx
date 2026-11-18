@@ -6,7 +6,7 @@ export default function Page() {
   return (
     <WorkspaceOwnerGate>
       <StorageBaseShell>
-      <Studio />
+        <Studio />
       </StorageBaseShell>
     </WorkspaceOwnerGate>
   );

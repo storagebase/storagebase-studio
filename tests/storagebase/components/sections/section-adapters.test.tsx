@@ -17,11 +17,7 @@ mock.module("@/components/ui/select", () => ({
 }));
 mock.module("@/components/storagebase/resources/kafka/KafkaWorkbench", () => ({
   KafkaWorkbench: ({ connection, readOnly }: { connection: { id: string }; readOnly?: boolean }) => (
-    <div
-      data-testid="kafka-workbench"
-      data-id={connection.id}
-      data-readonly={readOnly === true ? "true" : "false"}
-    />
+    <div data-testid="kafka-workbench" data-id={connection.id} data-readonly={readOnly === true ? "true" : "false"} />
   ),
 }));
 import { sectionConnectionBody } from "@/components/storagebase/sections/connection-body";

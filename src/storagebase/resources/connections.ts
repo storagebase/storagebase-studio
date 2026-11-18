@@ -184,7 +184,7 @@ export async function resourceStoreAvailable(): Promise<boolean> {
 }
 
 /** The uniform 404 for a stored connection that is not there. */
-export function storedConnectionNotFound(): ResourceNotFoundError {
+function storedConnectionNotFound(): ResourceNotFoundError {
   return new ResourceNotFoundError("Resource connection not found: it does not exist or is not available to you");
 }
 

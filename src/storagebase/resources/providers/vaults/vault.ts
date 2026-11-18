@@ -41,8 +41,8 @@ import type { SecretRead, VaultOperations } from "../../operations";
 /** The dev/standalone defaults; a connection's `endpoint` always wins. */
 export const VAULT_DEFAULT_ENDPOINT = "http://127.0.0.1:8200";
 export const OPENBAO_DEFAULT_ENDPOINT = "http://127.0.0.1:8201";
-export const VAULT_DEFAULT_PORT = 8200;
-export const OPENBAO_DEFAULT_PORT = 8201;
+const VAULT_DEFAULT_PORT = 8200;
+const OPENBAO_DEFAULT_PORT = 8201;
 
 /** The type-driven defaults. One function so neither id can drift from the other's table. */
 export function defaultEndpointOf(type: ResourceType): string {

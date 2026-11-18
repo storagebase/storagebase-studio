@@ -100,7 +100,7 @@ const SeedEntrySchema = z.object({
   fields: SeedFieldsSchema.optional(),
 });
 
-export const ResourceSeedConfigSchema = z.object({
+const ResourceSeedConfigSchema = z.object({
   connections: z.array(SeedEntrySchema),
 });
 
@@ -204,9 +204,7 @@ export async function loadResourceSeedEntries(): Promise<ResourceSeedEntry[]> {
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") {
-      logger.error(`Cannot read the resource seed config at ${path}: ${code ?? (error as Error).name}`, {
-        route: ROUTE,
-      });
+      logger.error(`Cannot read the resource seed config at ${path}`, error, { route: ROUTE, code });
       return [];
     }
     if (!missingPathsLogged.has(path)) {
@@ -227,13 +225,19 @@ export async function loadResourceSeedEntries(): Promise<ResourceSeedEntry[]> {
     if (problem !== undefined) throw problem;
     parsed = document.toJS();
   } catch (error) {
-    logger.error(`Failed to parse the resource seed config at ${path}: ${seedParseFailure(error)}`, { route: ROUTE });
+    logger.error(`Failed to parse the resource seed config at ${path}`, error, {
+      route: ROUTE,
+      detail: seedParseFailure(error),
+    });
     return [];
   }
 
   const result = ResourceSeedConfigSchema.safeParse(parsed);
   if (!result.success) {
-    logger.error(`Invalid resource seed config at ${path}: ${describeIssues(result.error)}`, { route: ROUTE });
+    logger.error(`Invalid resource seed config at ${path}`, result.error, {
+      route: ROUTE,
+      detail: describeIssues(result.error),
+    });
     return [];
   }
   const refusal = refuseInvalidCustomRoles(result.data.connections, path);

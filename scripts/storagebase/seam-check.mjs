@@ -28,12 +28,19 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..", "..");
+
+/** True only when this file is the program itself — real paths on both sides, so symlinked checkouts run it. */
+function isDirectExecution(argv1) {
+  return (
+    argv1 !== undefined && existsSync(argv1) && realpathSync(argv1) === realpathSync(fileURLToPath(import.meta.url))
+  );
+}
 
 /** One ledger row: the seam id, its file, and its spend budget (or a `regenerated` exemption). */
 
@@ -125,7 +132,9 @@ export function checkAgainstLedger(ledger, changes, numstat, existsAtBase) {
   const violations = [];
   for (const [file, row] of ledger) {
     if (!existsAtBase(file)) {
-      violations.push(`${row.id}: ${file} does not exist at the upstream base — the seam target moved; update SEAMS.md.`);
+      violations.push(
+        `${row.id}: ${file} does not exist at the upstream base — the seam target moved; update SEAMS.md.`,
+      );
     }
   }
   const unlisted = [];
@@ -198,7 +207,9 @@ function main() {
   const violations = checkAgainstLedger(ledger, changes, numstat, existsAtBase);
 
   // The report, green or red: churn is the standing cost each row has to keep justifying.
-  console.log(`Seam check against ${options.ref} (base ${base.slice(0, 8)}) — ${ledger.size} ledger rows, ${changes.size} changed paths.\n`);
+  console.log(
+    `Seam check against ${options.ref} (base ${base.slice(0, 8)}) — ${ledger.size} ledger rows, ${changes.size} changed paths.\n`,
+  );
   const idWidth = Math.max(...[...ledger.values()].map((row) => row.id.length), 3);
   for (const [file, row] of ledger) {
     const churn = upstreamChurn(options.ref, file);
@@ -223,6 +234,6 @@ function main() {
   console.log("seam-check: green — every upstream edit is a ledgered seam within budget.");
 }
 
-if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isDirectExecution(process.argv[1])) {
   main();
 }
