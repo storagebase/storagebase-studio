@@ -54,8 +54,9 @@ strings (int64 on the wire).
 ## Routes and permission matrix
 
 Every route is POST and calls `guardRoute({ bucket: "query" })` **before** the body is
-parsed. Levels come from `@/storagebase/resources/permissions` (read / write / admin);
-admin routes additionally call upstream's `adminRequiredResponse()`.
+parsed. Levels come from the Kafka route table in `kafka-route.ts`
+(`KAFKA_ROUTE_PERMISSIONS`, same read/write/admin vocabulary the resource spine
+uses); admin routes additionally call upstream's `adminRequiredResponse()`.
 
 | Level | Routes |
 |---|---|
