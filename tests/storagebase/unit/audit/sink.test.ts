@@ -183,6 +183,21 @@ describe("recordStoragebaseAuditEvent", () => {
     expect(buffered[1]).toMatchObject({ action: "executed", statement: "SELECT ?" });
   });
 
+  test("an upstream event reaches the store but prints no second stdout line", async () => {
+    // Upstream's emitAuditEvent already printed its `libredb.audit.v1` line for this event; a
+    // `storagebase.audit.v1` echo would double every login in a log pipeline and land inside the
+    // console.log windows upstream's own tests assert on.
+    const real = await memoryStore();
+    store = real;
+    storagebaseRecordUpstreamEvent(upstreamEvent({ id: "up-8" }));
+    recordStoragebaseAuditEvent(input());
+    await elapse(1000);
+    expect(parsedLines().map((line) => line.event)).toEqual(["resource_operation"]);
+    const stored = (await real.queryAuditEvents({ limit: 10 })).events.map((event) => event.id);
+    expect(stored).toContain("up-8");
+    expect(stored).toHaveLength(2);
+  });
+
   test("a batch-sized queue flushes at once, without waiting for the interval", async () => {
     const real = await memoryStore();
     store = real;

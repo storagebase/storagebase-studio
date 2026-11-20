@@ -3,6 +3,7 @@ import { MAX_AUDIT_FIELD_LENGTH, redactUriCredentials, type AuditEvent } from "@
 import { logger } from "@/lib/logger";
 import { onShutdown } from "@/lib/shutdown";
 import type { QueryEventInput } from "@/lib/query-events/types";
+import { storagebaseTimers } from "@/storagebase/core/timers";
 import { getForkStore } from "@/storagebase/store";
 import { MAX_AUDIT_STATEMENT_LENGTH } from "./masker";
 import { storagebaseQueryEvent } from "./query-event";
@@ -26,11 +27,15 @@ import { storagebaseEventFromUpstream } from "./upstream";
  *
  * The two destinations, in the order they are reached:
  *
- * 1. ONE STDOUT JSON LINE PER EVENT, schema `storagebase.audit.v1`, printed when the event's batch
- *    first reaches a flush — so a log pipeline (Graylog / Elastic SIEM) gets the trail without the
- *    database, and a store that is down does not duplicate the line on the retry. The print rides
- *    the flush rather than the record on purpose: upstream tests spy stdout around a single awaited
- *    route call, and a synchronous print here would put a second JSON line inside their windows.
+ * 1. ONE STDOUT JSON LINE PER FORK EVENT, schema `storagebase.audit.v1`, printed when the event's
+ *    batch first reaches a flush — so a log pipeline (Graylog / Elastic SIEM) gets the trail without
+ *    the database, and a store that is down does not duplicate the line on the retry. An upstream
+ *    event mirrored by the S3 tap prints NOTHING here: upstream already wrote its own
+ *    `libredb.audit.v1` line with the same id, and a deferred echo would both double it in the
+ *    pipeline and land inside upstream tests' console.log windows (a passkey or account test that
+ *    runs past the 1 s flush interval). The print rides the flush rather than the record on purpose:
+ *    upstream tests spy stdout around a single awaited route call, and a synchronous print here
+ *    would put a second JSON line inside their windows.
  *    The line is an explicit allowlist (never a spread of the event), so a field added to the
  *    schema later cannot silently start being logged.
  *
@@ -256,7 +261,11 @@ function toStoragebaseAuditLine(event: StoragebaseAuditEvent): StoragebaseAuditL
 
 // ── The queue, the ring and the flush ──
 
-/** One queued event, with whether its stdout line has already been printed. */
+/**
+ * One queued event, with whether its stdout line has already been printed. An upstream event
+ * mirrored by the S3 tap enters already printed: upstream's `emitAuditEvent` wrote its
+ * `libredb.audit.v1` line (same id), so a `storagebase.audit.v1` echo would only double it.
+ */
 interface QueuedAuditEvent {
   readonly event: StoragebaseAuditEvent;
   printed: boolean;
@@ -281,20 +290,11 @@ interface SinkState {
 }
 
 const SINK_KEY = Symbol.for("storagebase.auditSink");
-/** The timers this module's own load pinned (src/storagebase/core/seams.ts sets it), when that
- * module ran first; a process that loaded the sink without it (the fork's own tests) gets this
- * process's own timers, which is the same pair in production either way. */
-const PINNED_TIMERS_KEY = Symbol.for("storagebase.auditTimers");
 
 type SinkHolder = { [SINK_KEY]?: SinkState };
-type PinnedTimersHolder = {
-  [PINNED_TIMERS_KEY]?: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout };
-};
 
-/** The timers the sink schedules with: the pinned pair when the seams module pinned one. */
-function sinkTimers(): { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout } {
-  return (globalThis as PinnedTimersHolder)[PINNED_TIMERS_KEY] ?? { setTimeout, clearTimeout };
-}
+/** The timers the sink schedules with: the pair src/storagebase/core/seams.ts pinned, see timers.ts. */
+const sinkTimers = storagebaseTimers;
 
 const newSink = (): SinkState => ({
   queue: [],
@@ -410,7 +410,7 @@ function schedule(state: SinkState): void {
   state.timer.unref?.();
 }
 
-function enqueue(state: SinkState, event: StoragebaseAuditEvent): void {
+function enqueue(state: SinkState, event: StoragebaseAuditEvent, printed: boolean): void {
   if (state.queue.length >= STORAGEBASE_AUDIT_QUEUE_CAPACITY) {
     state.dropped += 1;
     if (!state.full) {
@@ -422,7 +422,7 @@ function enqueue(state: SinkState, event: StoragebaseAuditEvent): void {
     }
     return;
   }
-  state.queue.push({ event, printed: false });
+  state.queue.push({ event, printed });
   // The registry keeps one hook per name, so registering it with every event registers it once.
   onShutdown(SHUTDOWN_HOOK, flushStoragebaseAuditEvents);
   schedule(state);
@@ -436,13 +436,13 @@ function enqueue(state: SinkState, event: StoragebaseAuditEvent): void {
  * harmless as a sink failure. It never throws and never waits — a broken sink is the sink's own
  * failure to report, never a failed request.
  */
-function recordBuilt(build: () => StoragebaseAuditEventInput): void {
+function recordBuilt(build: () => StoragebaseAuditEventInput, printed = false): void {
   try {
     const event = sanitizeStoragebaseAuditEvent(build());
     const state = sinkState();
     state.ring.push(event);
     if (state.ring.length > RING_CAPACITY) state.ring.splice(0, state.ring.length - RING_CAPACITY);
-    enqueue(state, event);
+    enqueue(state, event, printed);
   } catch (error) {
     logger.error("A StorageBase audit event could not be recorded", error, { route: ROUTE });
   }
@@ -458,9 +458,12 @@ export function storagebaseRecordQueryEvent(input: QueryEventInput): void {
   recordBuilt(() => storagebaseQueryEvent(input));
 }
 
-/** Records one upstream audit event handed over by the S3 tap, converted to the fork schema. */
+/**
+ * Records one upstream audit event handed over by the S3 tap, converted to the fork schema, for the
+ * durable store and the ring only: its stdout line is upstream's own, already printed.
+ */
 export function storagebaseRecordUpstreamEvent(event: AuditEvent): void {
-  recordBuilt(() => storagebaseEventFromUpstream(event));
+  recordBuilt(() => storagebaseEventFromUpstream(event), true);
 }
 
 /**

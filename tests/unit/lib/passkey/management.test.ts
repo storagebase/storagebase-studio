@@ -62,23 +62,15 @@ let fixture: StoreFixture;
 let log: ReturnType<typeof spyOn<Console, "log">>;
 
 function auditLines(): Record<string, unknown>[] {
-  return (
-    log.mock.calls
-      .map((call) => {
-        try {
-          return JSON.parse(String(call[0])) as Record<string, unknown>;
-        } catch {
-          return null;
-        }
-      })
-      // The StorageBase fork mirrors upstream audit events into its own durable sink, which prints a
-      // second `event:"account"` line under `storagebase.audit.v1`. These assertions are about
-      // upstream's own audit emission (`libredb.audit.v1`), so read only that schema's lines.
-      .filter(
-        (line): line is Record<string, unknown> =>
-          line !== null && line.event === "account" && line.schema === "libredb.audit.v1",
-      )
-  );
+  return log.mock.calls
+    .map((call) => {
+      try {
+        return JSON.parse(String(call[0])) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+    .filter((line): line is Record<string, unknown> => line !== null && line.event === "account");
 }
 
 function audited(action: string, outcome: "success" | "failure"): Record<string, unknown>[] {
