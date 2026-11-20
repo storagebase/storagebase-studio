@@ -157,7 +157,11 @@ export function checkAgainstLedger(ledger, changes, numstat, existsAtBase) {
   return violations;
 }
 
-/** The upstream paths this fork has touched: status + numstat, renames split into their two halves. */
+/**
+ * The upstream paths this fork has touched. ONE git call for the statuses and ONE for the numstats,
+ * because a per-file call per ledger row cost more than the check is worth on a repository this
+ * size (the CLI test's 5 s budget): the whole diff is a few hundred lines and is parsed once.
+ */
 function forkChangesAgainst(base) {
   const changes = new Map();
   const status = git(["diff", "--name-status", "--no-renames", base, "HEAD"]);
@@ -166,7 +170,22 @@ function forkChangesAgainst(base) {
     const [rawStatus, ...rest] = line.split("\t");
     changes.set(rest[rest.length - 1], rawStatus[0]);
   }
-  return changes;
+  const numstats = new Map();
+  const stats = git(["diff", "--numstat", "--no-renames", base, "HEAD"]);
+  for (const line of stats.split("\n")) {
+    if (line === "") continue;
+    const [add, del, ...rest] = line.split("\t");
+    numstats.set(rest[rest.length - 1], {
+      added: Number.parseInt(add, 10) || 0,
+      removed: Number.parseInt(del, 10) || 0,
+    });
+  }
+  return { changes, numstats };
+}
+
+/** The paths that exist at `base`, from one `ls-tree` walk rather than a cat-file probe per path. */
+function basePaths(base) {
+  return new Set(git(["ls-tree", "-r", "--name-only", base]).split("\n").filter((line) => line !== ""));
 }
 
 /** Upstream churn per ledger file: commits touching it on the upstream ref in the last 60 days. */
@@ -183,27 +202,10 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
   const ledger = parseLedger(readFileSync(path.join(root, "SEAMS.md"), "utf8"));
   const base = resolveBase(options);
-  const changes = forkChangesAgainst(base);
-  const numstat = (file) => {
-    const out = git(["diff", "--numstat", "--no-renames", base, "HEAD", "--", file]);
-    let added = 0;
-    let removed = 0;
-    for (const line of out.split("\n")) {
-      if (line === "") continue;
-      const [add, del] = line.split("\t");
-      added += Number.parseInt(add, 10) || 0;
-      removed += Number.parseInt(del, 10) || 0;
-    }
-    return { added, removed };
-  };
-  const existsAtBase = (file) => {
-    try {
-      git(["cat-file", "-e", `${base}:${file}`]);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  const { changes, numstats } = forkChangesAgainst(base);
+  const paths = basePaths(base);
+  const numstat = (file) => numstats.get(file) ?? { added: 0, removed: 0 };
+  const existsAtBase = (file) => paths.has(file);
   const violations = checkAgainstLedger(ledger, changes, numstat, existsAtBase);
 
   // The report, green or red: churn is the standing cost each row has to keep justifying.

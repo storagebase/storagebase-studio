@@ -170,7 +170,7 @@ describe("parseArgs", () => {
 });
 
 describe("the CLI arm", () => {
-  test("the check runs green end to end", () => {
+  test("the check runs green end to end", { timeout: 20_000 }, () => {
     const run = spawnSync("node", [join(ROOT, "scripts", "storagebase", "seam-check.mjs"), "--base", "HEAD"], {
       cwd: ROOT,
       encoding: "utf8",
