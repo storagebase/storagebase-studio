@@ -229,6 +229,30 @@ describe("AuditPage", () => {
     expect(sentBodies().at(-1)).toMatchObject({ export: true, text: "failed" });
   });
 
+  test("an export the route answers with non-JSON keeps the rows and downloads nothing", async () => {
+    fetchMock.mockClear();
+    fetchMock = mockGlobalFetch({
+      "/api/sb/admin/audit": async (req: Request) => {
+        const body = JSON.parse(await req.text()) as Record<string, unknown>;
+        if (body.export === true) {
+          return { text: "<html>bad gateway</html>", headers: { "content-type": "text/html" } };
+        }
+        return { json: { events: [forkEvent("a1")], nextCursor: null, source: "store", total: 1 } };
+      },
+    });
+    const view = render(<AuditPage />);
+    await waitFor(() => expect(view.queryByText("executed")).not.toBeNull());
+
+    await userEvent.click(view.getByRole("button", { name: "Export JSON" }));
+
+    // The parse of the HTML answer throws inside the export handler, whose
+    // catch leaves the page as it was — rows intact, no file, button back on.
+    await waitFor(() => expect(view.getByRole("button", { name: "Export JSON" }).hasAttribute("disabled")).toBe(false));
+    expect(mockDownloadText).not.toHaveBeenCalled();
+    expect(view.queryByText("executed")).not.toBeNull();
+    expect(view.getByTestId("audit-source").textContent).toContain("Durable store");
+  });
+
   test("the export is disabled while loading and when no rows match the filters", async () => {
     const view = render(<AuditPage />);
     expect(view.getByRole("button", { name: "Export JSON" }).hasAttribute("disabled")).toBe(true);

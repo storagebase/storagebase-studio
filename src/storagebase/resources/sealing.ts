@@ -118,6 +118,7 @@ export function resourceConnectionRow(
     ...(connection.clientId !== undefined ? { clientId: connection.clientId } : {}),
     ...(connection.vaultName !== undefined ? { vaultName: connection.vaultName } : {}),
     ...(connection.namespace !== undefined ? { namespace: connection.namespace } : {}),
+    ...(connection.permission !== undefined ? { permission: connection.permission } : {}),
     hasCredential: resourceConnectionHasCredential(connection),
   };
   if (seeded !== undefined) {

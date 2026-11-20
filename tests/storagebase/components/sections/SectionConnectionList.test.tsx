@@ -12,6 +12,7 @@ const owned: ResourceConnectionRow = {
   createdAt: "2026-01-01T00:00:00.000Z",
   endpoint: "broker:9092",
   hasCredential: true,
+  permission: "write",
 };
 const seededRead: ResourceConnectionRow = {
   ...owned,
@@ -62,6 +63,8 @@ describe("SectionConnectionList", () => {
     const handlers = renderList();
     const mine = row("events");
     expect(within(mine).getByText("Apache Kafka")).toBeDefined();
+    // A stored row carries its definer's grant too, so the list shows the same badge a seeded row gets.
+    expect(within(mine).getByTestId("permission-badge").textContent).toBe("read-write");
     const select = within(mine).getByRole("button", { name: /^events/ });
     expect(select.getAttribute("aria-current")).toBe("true");
     fireEvent.click(select);

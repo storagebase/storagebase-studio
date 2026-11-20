@@ -32,6 +32,12 @@ describe("kafka route permissions", () => {
     expect(kafkaGrantedPermission({ readOnly: false } as never, "admin")).toBe("admin");
     expect(kafkaGrantedPermission({} as never, "user")).toBe("write");
   });
+
+  test("a connection's definer-set grant caps the role, for stored and seeded records alike", () => {
+    expect(kafkaGrantedPermission({ permission: "read" } as never, "admin")).toBe("read");
+    expect(kafkaGrantedPermission({ permission: "write" } as never, "admin")).toBe("write");
+    expect(kafkaGrantedPermission({ permission: "admin" } as never, "user")).toBe("admin");
+  });
 });
 
 describe("kafka body grammar", () => {

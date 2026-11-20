@@ -463,6 +463,20 @@ describe("AzureKeyVaultProvider", () => {
     expect(provider.isConnected()).toBe(false);
   });
 
+  test("a plain failure out of the root read is translated at connect, never swallowed", async () => {
+    // listSecrets already labels its own failures; this stubs the root read
+    // to prove connect's defensive arm still labels anything else as a
+    // connection failure and leaves the provider disconnected.
+    const provider = new AzureKeyVaultProvider(connection);
+    provider.listMounts = async () => {
+      throw new Error("unexpected root failure");
+    };
+    const error = await provider.connect().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect((error as Error).message).toBe("Key Vault connect failed: unexpected root failure");
+    expect(provider.isConnected()).toBe(false);
+  });
+
   test("lists secrets as roots", async () => {
     const provider = new AzureKeyVaultProvider(connection);
     const page = await provider.listNodes(null);

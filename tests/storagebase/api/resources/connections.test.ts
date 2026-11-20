@@ -183,13 +183,26 @@ describe("POST /api/sb/resources/connections (list + create)", () => {
     const data = await parseResponseJSON<{ connection: Record<string, unknown> }>(res);
     const row = data.connection;
     expect(row.id).toMatch(/^res_[0-9a-f]{32}$/);
-    expect(row).toMatchObject({ name: "Prod Vault", type: "hashicorp-vault", hasCredential: true });
+    // No grant in the body → least privilege, on the row and in the store.
+    expect(row).toMatchObject({ name: "Prod Vault", type: "hashicorp-vault", hasCredential: true, permission: "read" });
     expect(JSON.stringify(row)).not.toContain("hvs.root-token");
 
     const stored = records.get(row.id as string) as StoredResourceConnection;
     expect(stored.token).toMatch(/^v1:/);
+    expect(stored.permission).toBe("read");
     expect(stored.updatedBy).toBe("admin");
     expect(JSON.stringify(stored)).not.toContain("hvs.root-token");
+  });
+
+  test("an admin's explicit grant is stored and served on the row", async () => {
+    const body = { action: "create", connection: { ...createBody.connection, permission: "admin" } };
+    const req = createMockRequest("/api/sb/resources/connections", { method: "POST", body });
+    const res = await connectionsPOST(req as never);
+    expect(res.status).toBe(200);
+    const data = await parseResponseJSON<{ connection: Record<string, unknown> }>(res);
+    expect(data.connection.permission).toBe("admin");
+    const stored = records.get(data.connection.id as string) as StoredResourceConnection;
+    expect(stored.permission).toBe("admin");
   });
 
   test("create refuses an invalid body with the fork's invalid-request code", async () => {
@@ -198,6 +211,7 @@ describe("POST /api/sb/resources/connections (list + create)", () => {
       { action: "create", connection: { type: "kafka" } },
       { action: "create", connection: { name: "x", type: "postgres" } },
       { action: "create", connection: { name: "x", type: "kafka", sshTunnel: { enabled: true } } },
+      { action: "create", connection: { name: "x", type: "kafka", permission: "superuser" } },
       { action: "unknown" },
       {},
     ]) {

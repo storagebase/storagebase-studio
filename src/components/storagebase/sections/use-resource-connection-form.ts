@@ -15,6 +15,7 @@ import {
   isSeededResourceConnection,
   type ResourceCategory,
   type ResourceConnection,
+  type ResourcePermission,
   type ResourceType,
 } from "@/storagebase/resources/types";
 import { sectionConnectionBody } from "./connection-body";
@@ -56,6 +57,7 @@ const FIELD_OWNERSHIP: Record<keyof ResourceConnection, FieldOwnership> = {
   color: "conditional",
   environment: "edited",
   group: "preserved",
+  permission: "edited",
   endpoint: "edited",
   region: "edited",
   accessKeyId: "edited",
@@ -131,6 +133,7 @@ export function useResourceConnectionForm({
   const [type, setType] = useState<ResourceType>(() => firstSelectableType(category));
   const [name, setName] = useState("");
   const [environment, setEnvironment] = useState<ConnectionEnvironment>("local");
+  const [permission, setPermission] = useState<ResourcePermission>("read");
   const [endpoint, setEndpoint] = useState("");
   const [region, setRegion] = useState("");
   const [accessKeyId, setAccessKeyId] = useState("");
@@ -214,6 +217,7 @@ export function useResourceConnectionForm({
       setType(editConnection.type);
       setName(editConnection.name);
       setEnvironment((editConnection.environment || "local") as ConnectionEnvironment);
+      setPermission(editConnection.permission ?? "read");
       const values = editConnection as unknown as Record<string, unknown>;
       for (const field of Object.keys(fieldSetters) as ResourceConnectionField[]) {
         fieldSetters[field](typeof values[field] === "string" ? (values[field] as string) : "");
@@ -233,6 +237,7 @@ export function useResourceConnectionForm({
       if (!editConnection) {
         setName("");
         setEnvironment("local");
+        setPermission("read");
         setType(firstSelectableType(category));
         for (const setter of Object.values(fieldSetters)) setter("");
       }
@@ -258,6 +263,7 @@ export function useResourceConnectionForm({
       type,
       createdAt: editConnection?.createdAt || new Date().toISOString(),
       environment,
+      permission,
       color:
         editConnection?.color && (editConnection.environment ?? "local") === environment
           ? editConnection.color
@@ -270,6 +276,7 @@ export function useResourceConnectionForm({
     name,
     type,
     environment,
+    permission,
     endpoint,
     region,
     accessKeyId,
@@ -371,6 +378,8 @@ export function useResourceConnectionForm({
     setName,
     environment,
     setEnvironment,
+    permission,
+    setPermission,
     fieldValues,
     setFieldValue: (field: ResourceConnectionField, value: string) => fieldSetters[field](value),
     takesField: (field: ResourceConnectionField) => takesResourceConnectionField(type, field),

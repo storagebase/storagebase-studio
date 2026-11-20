@@ -71,6 +71,7 @@ const STORED: StoredResourceConnection = {
   name: "Stored Vault",
   type: "hashicorp-vault",
   createdAt: "2026-11-18T00:00:00.000Z",
+  permission: "write",
   endpoint: "https://vault:8200",
   token: "v1:sealed", // replaced with a real envelope in beforeEach
   updatedAt: "2026-11-18T00:00:00.000Z",
@@ -98,13 +99,14 @@ afterEach(() => {
   delete process.env.STORAGEBASE_RESOURCE_SEED_PATH;
 });
 
-async function seedStored(): Promise<void> {
+async function seedStored(permission: "read" | "write" | "admin" = "write"): Promise<void> {
   const { sealResourceConnection } = await import("@/storagebase/resources/sealing");
   const sealed = sealResourceConnection({
     id: "res_stored1",
     name: "Stored Vault",
     type: "hashicorp-vault",
     createdAt: "2026-11-18T00:00:00.000Z",
+    permission,
     endpoint: "https://vault:8200",
     token: "hvs.stored-token",
   });
@@ -186,6 +188,30 @@ describe("handleResourceRequest", () => {
     expect(response.status).toBe(503);
     const data = (await response.json()) as { code: string };
     expect(data.code).toBe("SB_STORE_UNAVAILABLE");
+  });
+
+  test("a stored connection below the route's level answers 403 and never runs the callback", async () => {
+    await seedStored("read");
+    let ran = false;
+    const response = await post("api/sb/vault/secret/save", { connectionId: "res_stored1", name: "x", value: "y" });
+    expect(response.status).toBe(403);
+    const data = (await response.json()) as { code: string; error: string };
+    expect(data.code).toBe("SB_RESOURCE_ACCESS_DENIED");
+    expect(data.error).toContain("read");
+    expect(data.error).toContain("write");
+    expect(ran).toBe(false);
+  });
+
+  test("a stored connection's grant allows the route at or below it", async () => {
+    await seedStored("write");
+    const response = await post("api/sb/resources/tree", { connectionId: "res_stored1" });
+    expect(response.status).toBe(200);
+  });
+
+  test("a stored admin grant is required for the admin route, and the write grant is not enough", async () => {
+    await seedStored("write");
+    const response = await post("api/sb/vault/deleted/purge", { connectionId: "res_stored1", name: "x", confirm: "x" });
+    expect(response.status).toBe(403);
   });
 
   test("a seeded id resolves with the roles checked, the vault references read, and the seeded marker", async () => {

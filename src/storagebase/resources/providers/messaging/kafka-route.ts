@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { adminRequiredResponse, guardRoute } from "@/lib/api/require-session";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
 import type { DatabaseConnection } from "@/lib/types";
-import { resolveStoredResourceConnection } from "../../connections";
+import { resolveStoredResourceWithGrant } from "../../connections";
 import { openSeededResourceConnection } from "../../seed";
 import {
   beginResourceWrite,
@@ -14,13 +14,7 @@ import {
 import { forkResourceErrorResponse } from "../../handle-request";
 import { ResourceAccessDeniedError, ResourceInvalidRequestError, ResourceRouteError } from "../../errors";
 import { permits } from "../../permissions";
-import {
-  isReadOnlyResourceConnection,
-  isResourceType,
-  RESOURCE_CATEGORY_OF,
-  type ResourceConnection,
-  type ResourcePermission,
-} from "../../types";
+import { isResourceType, RESOURCE_CATEGORY_OF, type ResourceConnection, type ResourcePermission } from "../../types";
 import { KafkaProvider } from "./kafka";
 import type { KafkaOffsetReset, KafkaSeek } from "../../operations";
 
@@ -62,17 +56,13 @@ export function kafkaRoutePermission(route: string): ResourcePermission {
   return Object.hasOwn(KAFKA_ROUTE_PERMISSIONS, route) ? KAFKA_ROUTE_PERMISSIONS[route] : "admin";
 }
 
-/** `readOnly` wins over role: a read grant can do no write, whatever the session. */
+/** `readOnly` wins over the grant and the role; the definer's grant wins over the role; else role. */
 export function kafkaGrantedPermission(
   connection: DatabaseConnection | ResourceConnection,
   role: string,
 ): ResourcePermission {
-  if (
-    ("readOnly" in connection && connection.readOnly === true) ||
-    isReadOnlyResourceConnection(connection as ResourceConnection)
-  ) {
-    return "read";
-  }
+  if ("readOnly" in connection && connection.readOnly === true) return "read";
+  if ("permission" in connection && connection.permission !== undefined) return connection.permission;
   return role === "admin" ? "admin" : "write";
 }
 
@@ -118,8 +108,8 @@ async function resolveKafkaConnection(
     return await resolveConnection({ connectionId }, session as never);
   } catch (upstreamError) {
     const seeded = await openSeededResourceConnection(session, connectionId);
-    if (seeded !== null) return seeded.connection;
-    if (connectionId.startsWith("res_")) return await resolveStoredResourceConnection(connectionId);
+    if (seeded !== null) return { ...seeded.connection, permission: seeded.permission };
+    if (connectionId.startsWith("res_")) return (await resolveStoredResourceWithGrant(connectionId)).connection;
     throw upstreamError;
   }
 }

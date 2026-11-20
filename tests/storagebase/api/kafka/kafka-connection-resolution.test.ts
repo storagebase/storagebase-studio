@@ -35,10 +35,14 @@ mock.module("@/storagebase/resources/seed", () => ({
   openSeededResourceConnection: mockOpenSeeded,
 }));
 
-const mockResolveStored = mock(async (): Promise<ResourceConnection> => storedConnection);
+const storedWithGrant = (connection: ResourceConnection = storedConnection) => ({
+  connection: { ...connection, permission: "write" as const },
+  permission: "write" as const,
+});
+const mockResolveStored = mock(async (): Promise<ReturnType<typeof storedWithGrant>> => storedWithGrant());
 mock.module("@/storagebase/resources/connections", () => ({
   ...realConnections,
-  resolveStoredResourceConnection: mockResolveStored,
+  resolveStoredResourceWithGrant: mockResolveStored,
 }));
 
 const { POST: cluster } = await import("@/app/api/sb/kafka/cluster/route");
@@ -53,7 +57,7 @@ describe("kafka workbench connection resolution", () => {
     clearRateLimitState();
     resetHarness();
     mockOpenSeeded.mockImplementation(async () => null);
-    mockResolveStored.mockImplementation(async () => storedConnection);
+    mockResolveStored.mockImplementation(async () => storedWithGrant());
     responses.describeCluster = { clusterId: "c", brokers: [], controllerId: 1 };
   });
 

@@ -57,6 +57,7 @@ export async function readResourceConnectionCatalog(): Promise<ResourceConnectio
 /** The whitelisted create/update body: the same field vocabulary the server's `readResourceConnectionInput` accepts. */
 export function resourceConnectionInputOf(conn: ResourceConnection | ResourceConnectionRow): ResourceConnectionInput {
   const input: ResourceConnectionInput = { name: conn.name, type: conn.type };
+  if (conn.permission !== undefined) input.permission = conn.permission;
   const record = conn as unknown as Record<string, unknown>;
   // The body is a wire shape, not a type: the server whitelists the fields it
   // knows, so a field added to the browser vocabulary ahead of the intake list

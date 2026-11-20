@@ -88,6 +88,33 @@ export function ResourceConnectionForm({
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="sb-resource-permission">Permission</Label>
+        <Select
+          value={form.permission}
+          onValueChange={(value) => form.setPermission(value as "read" | "write" | "admin")}
+        >
+          <SelectTrigger id="sb-resource-permission" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(
+              [
+                ["read", "Read only — browse and use, never write"],
+                ["write", "Write — create, update and delete objects"],
+                ["admin", "Admin — irreversible operations too"],
+              ] as const
+            ).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[0.6875rem] text-fg-subtle">
+          Everyone using this connection is bounded by this grant; stored connections are shared deployment-wide.
+        </p>
+      </div>
       {fields.map((field: ResourceConnectionField) => (
         <div key={field} className="space-y-1.5">
           <Label htmlFor={`sb-resource-${field}`}>{field}</Label>

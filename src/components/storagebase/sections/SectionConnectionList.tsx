@@ -135,6 +135,14 @@ function ConnectionRow({
           <span className="block truncate font-medium">{conn.name}</span>
           <span className="flex items-center gap-1.5 text-fg-subtle">
             <span className="truncate">{cfg.label}</span>
+            {!seeded && conn.permission !== undefined && (
+              <span
+                data-testid="permission-badge"
+                className="shrink-0 rounded px-1 border border-hairline text-fg-muted leading-tight"
+              >
+                {PERMISSION_LABEL[conn.permission]}
+              </span>
+            )}
             {seeded && (
               <>
                 <span data-testid="managed-badge" className="inline-flex items-center gap-0.5 shrink-0">

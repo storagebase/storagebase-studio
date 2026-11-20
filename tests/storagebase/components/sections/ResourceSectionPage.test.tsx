@@ -146,6 +146,7 @@ const kafka: ResourceConnectionRow = {
   type: "kafka",
   createdAt: "2026-01-01T00:00:00.000Z",
   hasCredential: true,
+  permission: "write",
 };
 const blob: ResourceConnectionRow = {
   id: "res_s1",
@@ -276,6 +277,8 @@ describe("ResourceSectionPage", () => {
     expect(dialogProps?.editConnection).toMatchObject({ name: "events (copy)", type: "kafka" });
     expect(dialogProps?.editConnection?.id).not.toBe("res_k1");
     expect(dialogProps?.editConnection).not.toHaveProperty("hasCredential");
+    // The definer's grant is policy, not a credential: a copy keeps it.
+    expect(dialogProps?.editConnection).toMatchObject({ permission: "write" });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit connection" }));
     expect(dialogProps?.editConnection?.id).toBe("res_q1");

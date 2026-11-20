@@ -172,6 +172,61 @@ describe("Kafka workbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete topic" }));
   });
 
+  test("a seek by offset and by timestamp carries the typed argument to the route", async () => {
+    installRoutes();
+    const fetchMock = globalThis.fetch as unknown as { mock: { calls: unknown[][] } };
+    render(<KafkaWorkbench connection={connection} />);
+    await waitFor(() => expect(screen.getAllByTestId("kafka-topic-row").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByText("orders"));
+    await waitFor(() => expect(screen.getByTestId("kafka-topic-detail")).toBeDefined());
+    fireEvent.click(screen.getByRole("tab", { name: "Messages" }));
+
+    function sentSeeks(): unknown[] {
+      return fetchMock.mock.calls
+        .filter((call) => String(call[0]).includes("api/sb/kafka/messages"))
+        .map((call) => JSON.parse(String((call[1] as RequestInit | undefined)?.body ?? "{}")).seek);
+    }
+
+    fireEvent.change(screen.getByLabelText("Seek mode"), { target: { value: "offset" } });
+    fireEvent.change(screen.getByLabelText("Seek argument"), { target: { value: " 4 " } });
+    fireEvent.click(screen.getByRole("button", { name: "Read messages" }));
+    await waitFor(() => expect(sentSeeks()).toContainEqual({ mode: "offset", offset: "4" }));
+
+    fireEvent.change(screen.getByLabelText("Seek mode"), { target: { value: "timestamp" } });
+    fireEvent.change(screen.getByLabelText("Seek argument"), { target: { value: "1700000000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Read messages" }));
+    await waitFor(() => expect(sentSeeks()).toContainEqual({ mode: "timestamp", timestamp: 1700000000000 }));
+  });
+
+  test("the config tab holds its own describing state while the topic read is pending", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mockGlobalFetch({
+      "api/sb/kafka/topics/counts": { json: { counts: {} } },
+      "api/sb/kafka/topics": { json: listing },
+      "api/sb/kafka/topic": async () => {
+        await gate;
+        return { json: detail };
+      },
+      "api/sb/kafka/messages": { json: { messages: [], truncated: false } },
+    });
+    render(<KafkaWorkbench connection={connection} />);
+    await waitFor(() => expect(screen.getAllByTestId("kafka-topic-row").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByText("orders"));
+    await waitFor(() => expect(screen.getByTestId("kafka-topic-detail")).toBeDefined());
+
+    // The describe request has not answered yet, so the config tab shows the
+    // same loading line the overview tab does, not an empty config table.
+    fireEvent.click(screen.getByRole("tab", { name: "Config" }));
+    expect(screen.getByText("Describing topic…")).toBeDefined();
+    expect(screen.queryAllByTestId("kafka-config-row")).toHaveLength(0);
+
+    release();
+    await waitFor(() => expect(screen.getAllByTestId("kafka-config-row").length).toBeGreaterThan(0));
+  });
+
   test("lists consumer groups, opens one, resets offsets and deletes it", async () => {
     installRoutes();
     render(<KafkaWorkbench connection={connection} />);

@@ -401,6 +401,52 @@ describe("section hooks against the fork connection catalog", () => {
     expect(held.form?.name).toBe("");
   });
 
+  test("editing a connection keeps its own colour when the environment still matches", async () => {
+    const onConnect = mock(async (_conn: ResourceConnection) => {});
+    const edit: ResourceConnection = { ...stored, environment: "local", color: "#c084fc" };
+    const held: { form: ReturnType<typeof useResourceConnectionForm> | null } = { form: null };
+    function Harness() {
+      held.form = useResourceConnectionForm({
+        category: "messaging",
+        isOpen: true,
+        onClose: () => {},
+        onConnect,
+        editConnection: edit,
+        onTestConnection: async () => ({ success: true, message: "ok" }),
+      });
+      return null;
+    }
+    render(<Harness />);
+    await act(async () => {
+      await held.form?.handleConnect();
+    });
+
+    expect(onConnect).toHaveBeenCalledTimes(1);
+    const saved = onConnect.mock.calls[0]?.[0] as ResourceConnection;
+    expect(saved.environment).toBe("local");
+    expect(saved.color).toBe("#c084fc");
+  });
+
+  test("a healthy test adapter reports success with its latency", async () => {
+    const held: { form: ReturnType<typeof useResourceConnectionForm> | null } = { form: null };
+    function Harness() {
+      held.form = useResourceConnectionForm({
+        category: "messaging",
+        isOpen: true,
+        onClose: () => {},
+        onConnect: async () => {},
+        onTestConnection: async () => ({ success: true, message: "ok", latencyMs: 12 }),
+      });
+      return null;
+    }
+    render(<Harness />);
+    await act(async () => {
+      await held.form?.handleTestConnection();
+    });
+    expect(held.form?.testResult?.tone).toBe("success");
+    expect(held.form?.testResult?.message).toBe("Connected successfully (12ms)");
+  });
+
   test("the form moves an out-of-category type to the first selectable one", async () => {
     registerResourceProviderLoader("azure-key-vault", async () => {
       throw new Error("not loaded");

@@ -10,7 +10,7 @@ import {
   ResourceInvalidRequestError,
   ResourceNotFoundError,
 } from "@/storagebase/resources/errors";
-import { fakeWire, fakeWireState, metadata } from "../unit/kafka/fake-wire";
+import { fakeLibrary, fakeWire, fakeWireState, metadata } from "../unit/kafka/fake-wire";
 
 const config = { host: "b1", port: 9092 };
 const provider = (state = fakeWireState()) => {
@@ -35,6 +35,22 @@ describe("KafkaProvider — cluster and topics", () => {
     const listing = await kafka.listTopicSummaries();
     expect(listing.topics.map((t) => t.name)).toEqual(["orders"]);
     expect(listing.topics[0]).toMatchObject({ partitions: 2, replicationFactor: 2, underReplicatedPartitions: 1 });
+  });
+
+  test("builds the wire lazily from the injected loader when none is handed in", async () => {
+    const state = fakeWireState();
+    const kafka = new KafkaProvider(config, { load: async () => fakeLibrary(state) });
+    // No wire was injected: the first call is what constructs it from the
+    // connection options and the loader, and every later call reuses it.
+    expect((await kafka.describeCluster()).clusterId).toBe("c-1");
+    expect((await kafka.listTopicSummaries()).topics.map((topic) => topic.name)).toEqual(["orders"]);
+  });
+
+  test("a failed offset read is reported as the topic's offsetsError, never a failure", async () => {
+    const state = fakeWireState({ fail: "listOffsets" });
+    const detail = await new KafkaProvider(config, { wire: fakeWire(state).wire }).describeTopic("orders");
+    expect(detail.offsetsError).toContain("fake failure: listOffsets");
+    expect(detail.partitions[0]).toMatchObject({ earliestOffset: null, latestOffset: null });
   });
 
   test("counts a batch, with a missing topic and a failed offset read answered best effort", async () => {
@@ -208,6 +224,48 @@ describe("KafkaProvider — messages", () => {
     expect(page.messages.map((message) => message.offset)).toEqual(["5", "7", "6"]);
   });
 
+  test("breaks equal timestamps inside one partition by numeric offset order", async () => {
+    // Two offsets that compare differently as strings ("10" < "2") must sort
+    // by value: the comparator subtracts BigInts, so the wire's own order and
+    // its decimal width never matter.
+    const state = fakeWireState({
+      messages: [
+        {
+          topic: "orders",
+          partition: 0,
+          offset: BigInt(10),
+          timestamp: BigInt(5),
+          key: null,
+          value: null,
+          headers: new Map(),
+        },
+        {
+          topic: "orders",
+          partition: 0,
+          offset: BigInt(2),
+          timestamp: BigInt(5),
+          key: null,
+          value: null,
+          headers: new Map(),
+        },
+        {
+          topic: "orders",
+          partition: 0,
+          offset: BigInt(7),
+          timestamp: BigInt(5),
+          key: null,
+          value: null,
+          headers: new Map(),
+        },
+      ],
+    });
+    const page = await new KafkaProvider(config, { wire: fakeWire(state).wire }).readMessages("orders", {
+      seek: { mode: "earliest" },
+      limit: 10,
+    });
+    expect(page.messages.map((message) => message.offset)).toEqual(["2", "7", "10"]);
+  });
+
   test("answers an empty window, a partition miss and a base64 value", async () => {
     const empty = fakeWireState({ high: BigInt(2), low: BigInt(2) });
     expect(
@@ -332,6 +390,40 @@ describe("KafkaProvider — produce and consumer groups", () => {
     await expect(new KafkaProvider(config, { wire: fakeWire(live).wire }).deleteConsumerGroup("g-1")).rejects.toThrow(
       ResourceConflictError,
     );
+  });
+
+  test("a producer failure is translated into the fork's connection error", async () => {
+    const state = fakeWireState();
+    const f = fakeWire(state);
+    f.producer.send = async () => {
+      throw new Error("producer closed");
+    };
+    const error = await new KafkaProvider(config, { wire: f.wire })
+      .produceMessage("orders", { value: "v" })
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect((error as Error).message).toBe('Kafka produce to "orders": producer closed');
+  });
+
+  test("a partition whose end offset cannot be read answers a lag error, not a silent zero", async () => {
+    // The committed group names a topic the metadata does not carry, so no
+    // end offset exists for its partition: the row must say so.
+    const state = fakeWireState({ md: metadata({ topics: new Map() }) });
+    const lags = await new KafkaProvider(config, { wire: fakeWire(state).wire }).measureGroupLag(["g-1"]);
+    expect(lags["g-1"]).toEqual({
+      totalLag: null,
+      lagError: "orders: end offset of orders could not be read",
+      topics: 1,
+    });
+  });
+
+  test("a group the broker does not describe is a 404 before any offset write", async () => {
+    const state = fakeWireState({ described: new Map(), committed: [] });
+    const kafka = new KafkaProvider(config, { wire: fakeWire(state).wire });
+    await expect(kafka.deleteConsumerGroup("g-1")).rejects.toThrow(ResourceNotFoundError);
+    await expect(
+      kafka.resetConsumerGroupOffsets({ groupId: "g-1", topic: "orders", reset: { mode: "earliest" } }),
+    ).rejects.toThrow('Consumer group "g-1" does not exist');
   });
 
   test("deletes an Empty group", async () => {

@@ -72,10 +72,24 @@ function azureError(statusCode: number, message: string, code?: string) {
   return error;
 }
 
+/**
+ * A transport refusal injected at the top of every fake method, cleared in
+ * beforeEach. It drives the provider's per-operation catch arms with the two
+ * shapes a real service answers: a plain 500-ish failure and a 404 (the
+ * missing-resource spelling), neither of which any happy-path fake produces.
+ */
+let injectedFailure: unknown = null;
+
+function throwInjected(): void {
+  if (injectedFailure !== null) throw injectedFailure;
+}
+
 const FIXTURE_PREFIXES = [{ name: "nested/" }];
+// Hierarchy pages carry blob names in full, prefix included (the emulator and
+// the SDK both do); the provider is what strips the level prefix.
 const FIXTURE_BLOBS = [
   {
-    name: "hello.txt",
+    name: "nested/hello.txt",
     properties: {
       contentLength: 18,
       contentType: "application/octet-stream",
@@ -108,6 +122,7 @@ class FakeBlobClient {
     private readonly name: string,
   ) {}
   async getProperties() {
+    throwInjected();
     if (
       this.name !== "hello.txt" &&
       this.name !== "photo.png" &&
@@ -138,9 +153,11 @@ class FakeBlobClient {
     };
   }
   async download(offset?: number, count?: number) {
+    throwInjected();
     if (
       this.name !== "hello.txt" &&
       this.name !== "nobody.txt" &&
+      this.name !== "nullbody.txt" &&
       this.name !== "photo.png" &&
       this.name !== "blob.bin" &&
       this.name !== "big.txt"
@@ -150,6 +167,11 @@ class FakeBlobClient {
     if (this.name === "nobody.txt") {
       // Answers 200 with no body: the provider's guard, not a 404.
       return { contentType: "application/octet-stream", contentLength: 0 };
+    }
+    if (this.name === "nullbody.txt") {
+      // The SDK spelling the provider's `=== undefined` guard misses: a body
+      // field that is present but null. toWebStream is the one that refuses it.
+      return { readableStreamBody: null, contentType: "text/plain", contentLength: 0 };
     }
     if (this.name === "photo.png") {
       // A web ReadableStream body — the SDK's browser shape; the provider
@@ -195,9 +217,11 @@ class FakeBlobClient {
     };
   }
   async exists() {
+    throwInjected();
     return this.name === "hello.txt";
   }
   async delete() {
+    throwInjected();
     deleted.push({ container: this.container, name: this.name });
   }
 }
@@ -205,9 +229,11 @@ class FakeBlobClient {
 class FakeContainerClient {
   constructor(private readonly name: string) {}
   async exists() {
+    throwInjected();
     return this.name === "fixture";
   }
   listBlobsByHierarchy = (_delimiter: string, options?: { prefix?: string }) => {
+    throwInjected();
     return {
       byPage: (_settings?: { maxPageSize?: number }) => {
         const containerName = this.name;
@@ -310,6 +336,7 @@ class FakeBlobServiceClient {
             let done = false;
             return {
               async next() {
+                throwInjected();
                 if (done) return { done: true, value: undefined };
                 done = true;
                 listContainersCalls += 1;
@@ -418,6 +445,7 @@ describe("AzureBlobProvider", () => {
     uploaded.length = 0;
     deleted.length = 0;
     listContainersCalls = 0;
+    injectedFailure = null;
   });
 
   test("registers itself and resolves through the factory", async () => {
@@ -726,6 +754,83 @@ describe("AzureBlobProvider", () => {
     const error = await provider.uploadBlob("fixture", "broken.txt", toFailingStream()).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ResourceConnectionError);
     expect(uploaded[0]?.streamError).toBe(true);
+  });
+
+  test("lists the blobs of a nested level with their size and modified time", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    const page = await provider.listNodes("container/fixture/nested/");
+    expect(page.truncated).toBe(false);
+    expect(page.nodes).toHaveLength(1);
+    expect(page.nodes[0]).toMatchObject({
+      id: "container/fixture/nested/hello.txt",
+      parentId: "container/fixture/nested/",
+      kind: "blob",
+      name: "hello.txt",
+      hasChildren: false,
+      meta: { size: 18, modified: "2026-09-20T00:41:02.000Z" },
+    });
+  });
+
+  test("a null download body is refused by the stream conversion, not read as empty", async () => {
+    // `readableStreamBody` undefined is the provider's own guard; null slips
+    // past it and toWebStream is the refusal that catches the SDK spelling.
+    const provider = new AzureBlobProvider(keyConnection);
+    const error = await provider.downloadBlob("fixture", "nullbody.txt").catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect((error as Error).message).toBe("Azure download answered no body");
+  });
+
+  test("a plain failure out of the root read is translated at connect, never swallowed", async () => {
+    // listBuckets answers only own refusals or connection errors; this stubs
+    // the root read to prove connect's defensive arm still labels anything
+    // else as a connection failure and leaves the provider disconnected.
+    const provider = new AzureBlobProvider(keyConnection);
+    provider.listBuckets = async () => {
+      throw new Error("unexpected root failure");
+    };
+    const error = await provider.connect().catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ResourceConnectionError);
+    expect((error as Error).message).toBe("Azure Blob connect failed: unexpected root failure");
+    expect(provider.isConnected()).toBe(false);
+  });
+
+  test("a plain service failure on each operation is a connection error", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    injectedFailure = azureError(500, "server exploded");
+    await expect(provider.listNodes("container/fixture")).rejects.toThrow(
+      'Azure Blob list blobs in "fixture" failed: server exploded',
+    );
+    await expect(provider.readBlobMeta("fixture", "hello.txt")).rejects.toThrow(
+      'Azure Blob read "hello.txt" failed: server exploded',
+    );
+    await expect(provider.downloadBlob("fixture", "hello.txt")).rejects.toThrow(
+      'Azure Blob download "hello.txt" failed: server exploded',
+    );
+    await expect(provider.previewBlob("fixture", "hello.txt", 64)).rejects.toThrow(
+      'Azure Blob preview "hello.txt" failed: server exploded',
+    );
+    await expect(provider.deleteBlob("fixture", "hello.txt")).rejects.toThrow(
+      'Azure Blob delete "hello.txt" failed: server exploded',
+    );
+    // The whole surface is the same class, not just the message.
+    injectedFailure = azureError(500, "still down");
+    expect(await provider.readBlobMeta("fixture", "hello.txt").catch((e: unknown) => e)).toBeInstanceOf(
+      ResourceConnectionError,
+    );
+  });
+
+  test("a 404-shaped service failure on each operation is a missing resource", async () => {
+    const provider = new AzureBlobProvider(keyConnection);
+    injectedFailure = azureError(404, "gone", "BlobNotFound");
+    for (const run of [
+      () => provider.listNodes("container/fixture"),
+      () => provider.readBlobMeta("fixture", "hello.txt"),
+      () => provider.downloadBlob("fixture", "hello.txt"),
+      () => provider.previewBlob("fixture", "hello.txt", 64),
+      () => provider.deleteBlob("fixture", "hello.txt"),
+    ]) {
+      expect(await run().catch((e: unknown) => e)).toBeInstanceOf(ResourceNotFoundError);
+    }
   });
 
   test("delete removes an existing blob, and a missing one is a 404", async () => {

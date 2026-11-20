@@ -122,6 +122,20 @@ describe("BlobBrowser", () => {
     expect(screen.getByRole("button", { name: "Upload here" })).toBeDefined();
   });
 
+  test("an empty container says so instead of drawing an empty list", async () => {
+    mockRoutes({
+      "api/sb/resources/tree": { json: { nodes: [], truncated: false } },
+    });
+    const { BlobBrowser } = await import("@/components/storagebase/resources/blob/BlobBrowser");
+    render(<BlobBrowser {...props} node={containerNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Nothing listed here yet.")).toBeDefined();
+    });
+    expect(screen.queryByTestId("blob-browser-child")).toBeNull();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDefined();
+  });
+
   test("upload posts the file as a multipart part and notifies", async () => {
     const fetchMock = mockRoutes();
     const { BlobBrowser } = await import("@/components/storagebase/resources/blob/BlobBrowser");
@@ -202,6 +216,45 @@ describe("BlobBrowser", () => {
       expect(props.onChanged).toHaveBeenCalledTimes(1);
     });
     expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("an object with a modification time shows it in the meta drawer", async () => {
+    mockRoutes({
+      "api/sb/blob/meta": {
+        json: {
+          id: "container/fixture-blobs/hello.txt",
+          name: "hello.txt",
+          sizeBytes: 18,
+          lastModified: "2026-02-03T04:05:06.000Z",
+          contentType: "text/plain",
+        },
+      },
+    });
+    const { BlobBrowser } = await import("@/components/storagebase/resources/blob/BlobBrowser");
+    render(<BlobBrowser {...props} node={objectNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Modified")).toBeDefined();
+    });
+    expect(screen.getByText("2026-02-03T04:05:06.000Z")).toBeDefined();
+    expect(screen.getByText("18 bytes")).toBeDefined();
+    expect(screen.getByText("text/plain")).toBeDefined();
+  });
+
+  test("an image preview names its kind instead of dumping bytes", async () => {
+    mockRoutes({
+      "api/sb/blob/preview": {
+        json: { kind: "image", truncated: false, contentType: "image/png", sizeBytes: 1024 },
+      },
+    });
+    const { BlobBrowser } = await import("@/components/storagebase/resources/blob/BlobBrowser");
+    render(<BlobBrowser {...props} node={objectNode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("blob-browser-preview-note")).toBeDefined();
+    });
+    expect(screen.getByText("Image preview — download to view the full object.")).toBeDefined();
+    expect(screen.queryByTestId("blob-browser-preview")).toBeNull();
   });
 
   test("a failed delete surfaces the server sentence and stays open", async () => {

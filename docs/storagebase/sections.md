@@ -63,7 +63,8 @@ Resource connections are **not** in upstream storage. The hooks under
 | `useResourceConnectionForm` | `POST /api/sb/resources/test` before the save |
 
 The browser holds **rows only** — ids, non-secret fields, `hasCredential`, and
-on seeded rows `seeded: true` plus `permission`. `sectionConnectionBody()`
+`permission` (the creator-set grant on stored rows; the role-derived grant on
+seeded rows, which also carry `seeded: true`). `sectionConnectionBody()`
 names a stored (`res_…`) or seeded (`seed:…`) row by `connectionId`; only an
 unsaved form candidate travels inline, once, for the test route. No secret is
 ever returned to the browser or rendered in a row, header or dialog.
@@ -72,8 +73,9 @@ ever returned to the browser or rendered in a row, header or dialog.
 derives the active row (explicit pick → deep link → per-section remembered id
 → first), remembers picks in `localStorage` behind try/catch, and rewrites the
 URL with `history.replaceState`. Seeded rows have no edit/duplicate/delete
-affordances; a seeded row granted `read` reaches the workbench and viewer with
-`readOnly: true`.
+affordances; any row granted `read` — a seeded entry or a stored record whose
+definer chose `read` — reaches the workbench and viewer with `readOnly: true`,
+and the routes refuse write/admin operations regardless of the session's role.
 
 ## Main area
 

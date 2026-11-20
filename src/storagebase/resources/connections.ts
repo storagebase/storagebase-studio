@@ -14,7 +14,13 @@ import {
   sealResourceConnection,
   sealResourceSecretFields,
 } from "./sealing";
-import { isResourceType, type ResourceConnection, type ResourceConnectionRow, type ResourceType } from "./types";
+import {
+  isResourceType,
+  type ResourceConnection,
+  type ResourceConnectionRow,
+  type ResourcePermission,
+  type ResourceType,
+} from "./types";
 
 /**
  * User-created resource connections, persisted through the fork store as
@@ -41,6 +47,8 @@ export const RESOURCE_CONNECTION_KIND = "resource-connection";
 
 /** What the store holds: a ResourceConnection whose secret fields are sealed envelopes, plus bookkeeping. */
 export interface StoredResourceConnection extends ResourceConnection {
+  /** The creator-set grant every user of the record is bounded by; always present on a stored record. */
+  permission: ResourcePermission;
   updatedAt: string;
   updatedBy: string;
 }
@@ -48,10 +56,18 @@ export interface StoredResourceConnection extends ResourceConnection {
 /** The ids the create path mints, so a stored id can never collide with the seed namespace. */
 export const STORED_CONNECTION_ID_PREFIX = "res_";
 
+/** The permission levels a definer may grant; validated on intake, defaulted to least privilege. */
+const PERMISSION_LEVELS: ReadonlySet<string> = new Set(["read", "write", "admin"]);
+
+/** The grant a record without one gets: least privilege, never a silent full grant. */
+const DEFAULT_STORED_PERMISSION: ResourcePermission = "read";
+
 /** The connection a create or update body stands for: identity fields excluded, the rest validated strings. */
 export interface ResourceConnectionInput {
   name: string;
   type: ResourceType;
+  /** The creator-set grant; omitted means least privilege (`read`). */
+  permission?: ResourcePermission;
   color?: string;
   environment?: string;
   group?: string;
@@ -155,6 +171,15 @@ export function readResourceConnectionInput(
   }
 
   const input: ResourceConnectionInput = { name: name.trim(), type };
+  if (record.permission !== undefined) {
+    if (typeof record.permission !== "string" || !PERMISSION_LEVELS.has(record.permission)) {
+      return {
+        ok: false,
+        error: new ResourceRouteError('"permission" must be one of "read", "write" or "admin"'),
+      };
+    }
+    input.permission = record.permission as ResourcePermission;
+  }
   for (const field of OPTIONAL_INPUT_FIELDS) {
     const raw = record[field];
     if (raw === undefined || raw === "") continue;
@@ -217,7 +242,12 @@ export async function createStoredResourceConnection(
   const id = mintConnectionId();
   const now = new Date().toISOString();
   const sealed = sealResourceConnection({ ...input, id, createdAt: now });
-  const record: StoredResourceConnection = { ...sealed, updatedAt: now, updatedBy: actor };
+  const record: StoredResourceConnection = {
+    ...sealed,
+    permission: input.permission ?? DEFAULT_STORED_PERMISSION,
+    updatedAt: now,
+    updatedBy: actor,
+  };
   await store.putRecord(RESOURCE_CONNECTION_KIND, id, record, actor);
   return record;
 }
@@ -250,6 +280,9 @@ export async function updateStoredResourceConnection(
     name: input.name,
     type: input.type,
     createdAt: existing.createdAt,
+    // An edit that does not carry a grant keeps the one the definer set; a record from before this
+    // field existed gets least privilege rather than the old unrestricted default.
+    permission: input.permission ?? existing.permission ?? DEFAULT_STORED_PERMISSION,
     ...nonSecretInputOf(input),
     ...secrets,
     updatedAt: now,
@@ -282,4 +315,20 @@ export async function deleteStoredResourceConnection(id: string): Promise<void> 
 export async function resolveStoredResourceConnection(id: string): Promise<ResourceConnection> {
   const record = await findStored(id);
   return openSealedResourceConnection(record);
+}
+
+/**
+ * The stored connection a request opens, WITH the grant its definer set, so the
+ * request layer can answer 403 before any provider work (and so the route's
+ * caller can attach the grant to the connection, which is what withholds the
+ * UI's write affordances). A record written before the grant existed answers
+ * least privilege (`read`) — never an implicit full grant.
+ */
+export async function resolveStoredResourceWithGrant(
+  id: string,
+): Promise<{ connection: ResourceConnection; permission: ResourcePermission }> {
+  const record = await findStored(id);
+  const permission = record.permission ?? DEFAULT_STORED_PERMISSION;
+  const connection = openSealedResourceConnection(record);
+  return { connection: { ...connection, permission }, permission };
 }

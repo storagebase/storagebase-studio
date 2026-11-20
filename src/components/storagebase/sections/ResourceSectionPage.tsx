@@ -83,15 +83,15 @@ export function ResourceSectionPage({
   const duplicate = (conn: SectionConnection) => {
     // The catalog row's presentation flags are server facts, not form fields:
     // a copy is a NEW connection, so it has no credential yet and keeps neither
-    // the seeded marker nor the has-credential hint of the original.
+    // the seeded marker nor the has-credential hint of the original. The grant
+    // stays: it is the policy the definer chose, not a credential, and the
+    // form still lets the definer change it before saving.
     const {
       seeded: _seeded,
-      permission: _permission,
       hasCredential: _hasCredential,
       ...copy
     } = conn as typeof conn & {
       seeded?: unknown;
-      permission?: unknown;
       hasCredential?: unknown;
     };
     setDialog({

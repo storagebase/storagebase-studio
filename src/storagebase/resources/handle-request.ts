@@ -4,7 +4,7 @@ import { createErrorResponse } from "@/lib/api/errors";
 import { guardRoute } from "@/lib/api/require-session";
 import type { UserPayload } from "@/lib/auth";
 import { endResourceWrite, type ResourceAuditConnection } from "@/storagebase/audit/resource";
-import { resolveStoredResourceConnection } from "./connections";
+import { resolveStoredResourceWithGrant } from "./connections";
 import { ResourceAccessDeniedError, ResourceError, ResourceNotFoundError, ResourceRouteError } from "./errors";
 import { permits, resourceRoutePermission } from "./permissions";
 import { openSeededResourceConnection } from "./seed";
@@ -118,7 +118,7 @@ async function resolveResourceConnection(
     if (connectionId.startsWith(SEED_ID_PREFIX)) {
       return resolveSeeded(session, route, req, connectionId.slice(SEED_ID_PREFIX.length));
     }
-    return resolveStoredResourceConnection(connectionId);
+    return resolveStored(session, route, req, connectionId);
   }
 
   const inline = body.connection;
@@ -131,6 +131,28 @@ async function resolveResourceConnection(
     );
   }
   return inline;
+}
+
+/**
+ * A stored connection's grant is the definer's, checked before the record's
+ * sealed credentials are opened for use and answered with the same 403 a
+ * seeded entry's grant gets. The denial leaves one audit line, like the
+ * seeded one.
+ */
+async function resolveStored(
+  session: UserPayload,
+  route: string,
+  req: NextRequest,
+  id: string,
+): Promise<ResourceConnection> {
+  const opened = await resolveStoredResourceWithGrant(id);
+  const required = resourceRoutePermission(route);
+  if (!permits(opened.permission, required)) {
+    const error = new ResourceAccessDeniedError(opened.permission, required, opened.connection.name);
+    recordConnectionDenial(session, route, req, opened.connection, error);
+    throw error;
+  }
+  return opened.connection;
 }
 
 async function resolveSeeded(
@@ -146,7 +168,7 @@ async function resolveSeeded(
   const required = resourceRoutePermission(route);
   if (!permits(opened.permission, required)) {
     const error = new ResourceAccessDeniedError(opened.permission, required, opened.connection.name);
-    recordSeededDenial(session, route, req, opened.connection, error);
+    recordConnectionDenial(session, route, req, opened.connection, error);
     throw error;
   }
   // The seeded marker rides along, so the routes (and the workbenches after
@@ -160,14 +182,15 @@ async function resolveSeeded(
 }
 
 /**
- * A seeded-connection denial's one audit line: the decision+outcome pair's
- * OUTCOME half with a locally minted correlation id, through the fork audit
- * API (the legacy fork recorded this denial by extending upstream's
- * `AuditReason` — P3 forbids that, so it rides the fork's own vocabulary
- * instead). Isolated like every fork emit: the 403 is already decided, and a
- * broken sink must not turn it into a 500.
+ * A connection denial's one audit line — the same shape for a seeded grant and
+ * a stored record's definer-set grant: the decision+outcome pair's OUTCOME half
+ * with a locally minted correlation id, through the fork audit API (the legacy
+ * fork recorded this denial by extending upstream's `AuditReason` — P3 forbids
+ * that, so it rides the fork's own vocabulary instead). Isolated like every
+ * fork emit: the 403 is already decided, and a broken sink must not turn it
+ * into a 500.
  */
-function recordSeededDenial(
+function recordConnectionDenial(
   session: UserPayload,
   route: string,
   req: NextRequest,

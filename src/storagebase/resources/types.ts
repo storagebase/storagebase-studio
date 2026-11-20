@@ -113,6 +113,15 @@ export interface ResourceConnection {
   vaultName?: string;
   /** HashiCorp Vault / OpenBao Enterprise namespace. */
   namespace?: string;
+  /**
+   * The grant the connection's DEFINING operator chose for everyone who uses it
+   * (D3's config-only model): `read` withholds write affordances, `write` allows
+   * non-destructive writes, `admin` allows the irreversible ones. Stored records
+   * carry the creator's choice (least privilege `read` when omitted); seeded
+   * records carry the grant their roles derive. A route above the grant answers
+   * 403, whichever layer the record came from.
+   */
+  permission?: ResourcePermission;
   sshTunnel?: SSHTunnelConfig;
 }
 
@@ -132,9 +141,14 @@ export function isSeededResourceConnection(conn: ResourceConnection): conn is Se
   return (conn as Partial<SeededResourceConnection>).seeded === true;
 }
 
-/** Whether every write affordance must be withheld: a seeded connection granted `read`. */
+/**
+ * Whether every write affordance must be withheld: a connection whose grant is
+ * `read`, whichever layer it came from — a seeded entry's role-derived grant or
+ * a stored record's creator-set grant. Addresses, names and ids are not
+ * credentials, so the row always reveals this.
+ */
 export function isReadOnlyResourceConnection(conn: ResourceConnection): boolean {
-  return isSeededResourceConnection(conn) && conn.permission === "read";
+  return conn.permission === "read";
 }
 
 /** The fork's operation permission vocabulary (the legacy access model's levels, config-only now). */
@@ -143,8 +157,9 @@ export type ResourcePermission = "read" | "write" | "admin";
 /**
  * The list row the browser holds: an id, the non-secret presentation and
  * addressing fields, and a "has credential" marker — never a secret value.
- * Seeded rows carry `seeded: true` plus the permission the roles grant, so the
- * UI can withhold edit/delete (always) and write controls (below `write`).
+ * Seeded rows carry `seeded: true` plus the permission the roles grant; stored
+ * rows carry their creator-set permission. Either way the UI can withhold
+ * edit/delete (seeded: always) and write controls (below `write`).
  */
 export interface ResourceConnectionRow {
   id: string;
@@ -165,6 +180,7 @@ export interface ResourceConnectionRow {
   hasCredential: boolean;
   /** Present only on seeded rows. */
   seeded?: true;
+  /** The definer's (stored) or roles' (seeded) grant; absent only on an unsaved candidate. */
   permission?: ResourcePermission;
 }
 

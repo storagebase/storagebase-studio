@@ -82,6 +82,7 @@ const seededRecord = (): StoredResourceConnection => ({
   name: "Prod Vault",
   type: "hashicorp-vault",
   createdAt: "2026-11-18T00:00:00.000Z",
+  permission: "read",
   token: "v1:sealed-envelope",
   updatedAt: "2026-11-18T00:00:00.000Z",
   updatedBy: "admin",
@@ -134,6 +135,18 @@ describe("readResourceConnectionInput", () => {
     const read = readResourceConnectionInput({ id: "seed:evil", name: "x", type: "kafka" });
     expect(read.ok).toBe(false);
   });
+
+  test("the grant is optional and must be one of the three levels", () => {
+    const absent = readResourceConnectionInput({ name: "x", type: "kafka" });
+    expect(absent.ok && absent.input.permission).toBeUndefined();
+
+    const explicit = readResourceConnectionInput({ name: "x", type: "kafka", permission: "write" });
+    expect(explicit.ok && explicit.input.permission).toBe("write");
+
+    const invalid = readResourceConnectionInput({ name: "x", type: "kafka", permission: "superuser" });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.error.message).toContain("permission");
+  });
 });
 
 describe("createStoredResourceConnection", () => {
@@ -167,6 +180,32 @@ describe("createStoredResourceConnection", () => {
     expect(refusal).toBeInstanceOf(ResourceStoreUnavailableError);
     expect((refusal as ResourceStoreUnavailableError).code).toBe("SB_STORE_UNAVAILABLE");
     expect(puts).toHaveLength(0);
+  });
+});
+
+describe("the creator-set permission grant", () => {
+  test("defaults to least privilege when the definer omits it", async () => {
+    const record = await createStoredResourceConnection(input(), "alice");
+    expect(record.permission).toBe("read");
+    expect(storedResourceRow(record).permission).toBe("read");
+  });
+
+  test("stores the definer's chosen grant and serves it on the browser row", async () => {
+    const record = await createStoredResourceConnection(input({ permission: "write" }), "alice");
+    expect(record.permission).toBe("write");
+    expect(storedResourceRow(record).permission).toBe("write");
+  });
+
+  test("an edit that omits the grant keeps the stored one", async () => {
+    const record = await createStoredResourceConnection(input({ permission: "admin" }), "alice");
+    const updated = await updateStoredResourceConnection(record.id, input({ name: "Renamed" }), "alice");
+    expect(updated.permission).toBe("admin");
+  });
+
+  test("an edit that names a grant replaces it", async () => {
+    const record = await createStoredResourceConnection(input(), "alice");
+    const updated = await updateStoredResourceConnection(record.id, input({ permission: "write" }), "alice");
+    expect(updated.permission).toBe("write");
   });
 });
 

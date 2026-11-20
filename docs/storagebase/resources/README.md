@@ -145,6 +145,23 @@ With `STORAGE_PROVIDER=local` there is no store: CRUD answers 503 `SB_STORE_UNAV
 ("rather than pretending"), while list keeps serving the seed rows and the seeded connections
 keep working (the seed file needs no store).
 
+### The definer's permission grant
+
+Every stored record carries a `permission` the **defining operator chose** in the connection
+form (`read` | `write` | `admin`; least privilege `read` when omitted, and a record written
+before the grant existed answers `read` rather than an implicit full grant). The grant bounds
+everyone who uses the connection, exactly like a seeded entry's role-derived grant:
+
+- `read` withholds every write affordance and refuses write/admin routes with a 403
+  (`SB_RESOURCE_ACCESS_DENIED`, audited);
+- `write` allows non-destructive writes, `admin` the irreversible ones (`purge`, `topic/delete`,
+  …; admin routes still require an admin session).
+
+The permission is checked **before** a stored record's sealed credentials are opened for use,
+and it travels on the browser row (`permission`) so the UI withholds write controls. For Kafka
+the same rule applies: a stored or seeded connection's grant caps the session's role, while an
+upstream `kafka` seed (no fork grant) keeps the role-based split.
+
 Create/update/delete are admin-only because the records are shared, deployment-wide — the
 store has no per-user scoping. A `user` tests and uses connections (including their own
 unsaved ones through the inline path) but does not change what everyone else can use.
