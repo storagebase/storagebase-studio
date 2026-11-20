@@ -167,6 +167,8 @@ describe("recordStoragebaseAuditEvent", () => {
   });
 
   test("the S3 path converts the upstream event; the S2 path builds the query event", async () => {
+    const real = await memoryStore();
+    store = real;
     storagebaseRecordUpstreamEvent(upstreamEvent({ id: "up-7", user: "bob" }));
     storagebaseRecordQueryEvent({
       source: "editor",
@@ -177,10 +179,13 @@ describe("recordStoragebaseAuditEvent", () => {
       started: { wallClockMs: Date.now(), monotonicMs: 0 },
     });
     await elapse(1000);
+    // The ring holds fork events only: upstream's own ring already holds the upstream one, and the
+    // admin fallback reads both, so ringing it here too would list every sign-in twice.
     const buffered = storagebaseBufferedAuditEvents();
-    expect(buffered.map((event) => event.type)).toEqual(["logout", "query_execution"]);
-    expect(buffered[0]).toMatchObject({ id: "up-7", user: "bob" });
-    expect(buffered[1]).toMatchObject({ action: "executed", statement: "SELECT ?" });
+    expect(buffered.map((event) => event.type)).toEqual(["query_execution"]);
+    expect(buffered[0]).toMatchObject({ action: "executed", statement: "SELECT ?" });
+    const stored = (await real.queryAuditEvents({ limit: 10 })).events;
+    expect(stored.find((event) => event.id === "up-7")).toMatchObject({ type: "logout", user: "bob" });
   });
 
   test("an upstream event reaches the store but prints no second stdout line", async () => {

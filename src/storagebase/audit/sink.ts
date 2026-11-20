@@ -436,13 +436,15 @@ function enqueue(state: SinkState, event: StoragebaseAuditEvent, printed: boolea
  * harmless as a sink failure. It never throws and never waits — a broken sink is the sink's own
  * failure to report, never a failed request.
  */
-function recordBuilt(build: () => StoragebaseAuditEventInput, printed = false): void {
+function recordBuilt(build: () => StoragebaseAuditEventInput, mirrored = false): void {
   try {
     const event = sanitizeStoragebaseAuditEvent(build());
     const state = sinkState();
-    state.ring.push(event);
-    if (state.ring.length > RING_CAPACITY) state.ring.splice(0, state.ring.length - RING_CAPACITY);
-    enqueue(state, event, printed);
+    if (!mirrored) {
+      state.ring.push(event);
+      if (state.ring.length > RING_CAPACITY) state.ring.splice(0, state.ring.length - RING_CAPACITY);
+    }
+    enqueue(state, event, mirrored);
   } catch (error) {
     logger.error("A StorageBase audit event could not be recorded", error, { route: ROUTE });
   }
@@ -460,7 +462,8 @@ export function storagebaseRecordQueryEvent(input: QueryEventInput): void {
 
 /**
  * Records one upstream audit event handed over by the S3 tap, converted to the fork schema, for the
- * durable store and the ring only: its stdout line is upstream's own, already printed.
+ * durable store only: its stdout line is upstream's own, already printed, and it already sits in
+ * upstream's own ring, which the admin fallback reads beside this one.
  */
 export function storagebaseRecordUpstreamEvent(event: AuditEvent): void {
   recordBuilt(() => storagebaseEventFromUpstream(event), true);
