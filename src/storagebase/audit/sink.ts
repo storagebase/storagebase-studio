@@ -315,8 +315,11 @@ function sinkState(): SinkState {
 function printLine(item: QueuedAuditEvent): void {
   try {
     // JSON.stringify escapes newlines and control characters, so an attacker-controlled actor
-    // cannot forge a second log line. This is why the audit channel does not reuse logger.ts.
-    console.log(JSON.stringify(toStoragebaseAuditLine(item.event)));
+    // cannot forge a second log line. This is why the audit channel does not reuse logger.ts. The
+    // line is one write straight to stdout, not console.log: the container log is identical, and
+    // the fork's flush (a second after the event) stays out of the console.log windows upstream's
+    // own tests and live checks capture around their audit and query-event output.
+    process.stdout.write(`${JSON.stringify(toStoragebaseAuditLine(item.event))}\n`);
     item.printed = true;
   } catch (error) {
     logger.error("The StorageBase audit stdout line could not be written", error, { route: ROUTE });

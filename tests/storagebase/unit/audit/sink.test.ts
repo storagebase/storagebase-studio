@@ -127,7 +127,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   store = null;
   openError = null;
-  logSpy = spyOn(console, "log").mockImplementation(() => {});
+  logSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
 });
 
 afterEach(() => {
@@ -186,6 +186,22 @@ describe("recordStoragebaseAuditEvent", () => {
     expect(buffered[0]).toMatchObject({ action: "executed", statement: "SELECT ?" });
     const stored = (await real.queryAuditEvents({ limit: 10 })).events;
     expect(stored.find((event) => event.id === "up-7")).toMatchObject({ type: "logout", user: "bob" });
+  });
+
+  test("the line goes straight to stdout, never through console.log", async () => {
+    // Upstream's tests and live checks capture console.log around their own audit and query-event
+    // output; a fork line flushed a second later must not land inside those windows.
+    const consoleLog = spyOn(console, "log").mockImplementation(() => {});
+    try {
+      store = null;
+      recordStoragebaseAuditEvent(input());
+      await elapse(1000);
+      expect(consoleLog).not.toHaveBeenCalled();
+      expect(String(logSpy.mock.calls[0]?.[0])).toEndWith("}\n");
+      expect(parsedLines()).toHaveLength(1);
+    } finally {
+      consoleLog.mockRestore();
+    }
   });
 
   test("an upstream event reaches the store but prints no second stdout line", async () => {
