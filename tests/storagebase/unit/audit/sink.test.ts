@@ -127,7 +127,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   store = null;
   openError = null;
-  logSpy = spyOn(console, "log").mockImplementation(() => {});
+  logSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
 });
 
 afterEach(() => {
@@ -167,6 +167,8 @@ describe("recordStoragebaseAuditEvent", () => {
   });
 
   test("the S3 path converts the upstream event; the S2 path builds the query event", async () => {
+    const real = await memoryStore();
+    store = real;
     storagebaseRecordUpstreamEvent(upstreamEvent({ id: "up-7", user: "bob" }));
     storagebaseRecordQueryEvent({
       source: "editor",
@@ -177,10 +179,44 @@ describe("recordStoragebaseAuditEvent", () => {
       started: { wallClockMs: Date.now(), monotonicMs: 0 },
     });
     await elapse(1000);
+    // The ring holds fork events only: upstream's own ring already holds the upstream one, and the
+    // admin fallback reads both, so ringing it here too would list every sign-in twice.
     const buffered = storagebaseBufferedAuditEvents();
-    expect(buffered.map((event) => event.type)).toEqual(["logout", "query_execution"]);
-    expect(buffered[0]).toMatchObject({ id: "up-7", user: "bob" });
-    expect(buffered[1]).toMatchObject({ action: "executed", statement: "SELECT ?" });
+    expect(buffered.map((event) => event.type)).toEqual(["query_execution"]);
+    expect(buffered[0]).toMatchObject({ action: "executed", statement: "SELECT ?" });
+    const stored = (await real.queryAuditEvents({ limit: 10 })).events;
+    expect(stored.find((event) => event.id === "up-7")).toMatchObject({ type: "logout", user: "bob" });
+  });
+
+  test("the line goes straight to stdout, never through console.log", async () => {
+    // Upstream's tests and live checks capture console.log around their own audit and query-event
+    // output; a fork line flushed a second later must not land inside those windows.
+    const consoleLog = spyOn(console, "log").mockImplementation(() => {});
+    try {
+      store = null;
+      recordStoragebaseAuditEvent(input());
+      await elapse(1000);
+      expect(consoleLog).not.toHaveBeenCalled();
+      expect(String(logSpy.mock.calls[0]?.[0])).toEndWith("}\n");
+      expect(parsedLines()).toHaveLength(1);
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
+
+  test("an upstream event reaches the store but prints no second stdout line", async () => {
+    // Upstream's emitAuditEvent already printed its `libredb.audit.v1` line for this event; a
+    // `storagebase.audit.v1` echo would double every login in a log pipeline and land inside the
+    // console.log windows upstream's own tests assert on.
+    const real = await memoryStore();
+    store = real;
+    storagebaseRecordUpstreamEvent(upstreamEvent({ id: "up-8" }));
+    recordStoragebaseAuditEvent(input());
+    await elapse(1000);
+    expect(parsedLines().map((line) => line.event)).toEqual(["resource_operation"]);
+    const stored = (await real.queryAuditEvents({ limit: 10 })).events.map((event) => event.id);
+    expect(stored).toContain("up-8");
+    expect(stored).toHaveLength(2);
   });
 
   test("a batch-sized queue flushes at once, without waiting for the interval", async () => {

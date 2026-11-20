@@ -53,7 +53,9 @@ work emit against them.
 - **S3 — `src/lib/audit.ts`, `emitAuditEvent`'s last statement.** Every upstream audit event —
   sign-ins, sign-outs, role denials, rate limits, agent and MCP operations, object edits — reaches
   the fork trail converted field-for-field (`src/storagebase/audit/upstream.ts`), keeping the
-  upstream event's id and timestamp so the two stdout lines join.
+  upstream event's id and timestamp so the durable row joins upstream's `libredb.audit.v1` line.
+  The fork prints **no** second stdout line for it: upstream already wrote one, and an echo would
+  double every sign-in in the log pipeline.
 
 Both seams call `src/storagebase/core/seams.ts`, which is tiny and dependency-free: it lazily loads
 `src/storagebase/audit/sink` with a fire-and-forget dynamic import on the first tap, and a sink that
@@ -73,8 +75,9 @@ The sink (`src/storagebase/audit/sink.ts`) mirrors the discipline of upstream's 
 - a bounded queue (10 000; one more is dropped, counted, and logged once per spell — its line has
   already been printed and it stays in the ring),
 - a flush every second, or at once at 500 events,
-- **one stdout JSON line per event** at the first flush that reaches it (printed exactly once,
-  whatever the store does), and
+- **one stdout JSON line per fork event** (S2 queries and resource operations) at the first flush
+  that reaches it (printed exactly once, whatever the store does; S3 events print none, see above),
+  and
 - **the durable row** through the store's `appendAuditEvent` — idempotent, so a retry after a
   partial write adds nothing; a failed write keeps the batch and backs off (1 s doubling to 30 s),
 - a shutdown hook (`storagebase-audit-flush`) that drains what is queued without waiting out the

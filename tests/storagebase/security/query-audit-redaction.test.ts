@@ -92,7 +92,7 @@ function expectNothingLeaked(destination: string): void {
 beforeEach(() => {
   resetStoragebaseAuditSinkForTests();
   process.env.STORAGE_PROVIDER = "sqlite";
-  logSpy = spyOn(console, "log").mockImplementation(() => {});
+  logSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
   memory.prepare("DELETE FROM storagebase_audit_events").run();
 });
 

@@ -36,7 +36,6 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S17 | `tests/components/studio/StudioMobileHeader.test.tsx` | +9/−12 | Assert no repository link/star handling in the mobile header | Same as S15 | no | applied in final gate |
 | S18 | `tests/hooks/use-query-adapter.test.ts` | +12/−14 | Assert no star invitation from the embedded query path | The test asserted the toast the S8b stub removes | no | applied in final gate |
 | S19 | `tests/hooks/use-query-execution.test.ts` | +8/−9 | Assert no star invitation from the standalone query path | Same as S18 | no | applied in final gate |
-| S20 | `tests/unit/lib/passkey/management.test.ts` | +17/−9 | Filter the fork's `storagebase.audit.v1` stdout lines out of the upstream `libredb.audit.v1` assertion | The S3 tap mirrors upstream events into the fork sink, whose own stdout line is counted by the test's broad `event:"account"` filter under coverage | no | applied in final gate |
 | S21 | `tests/unit/test-runner-discovery.test.ts` | +13/−1 | Name `storagebase` as a test-runner layer | The fork's `tests/storagebase/**` must be discoverable by the runner census, which enumerates layers explicitly | no | applied in final gate |
 | S22 | `tests/unit/helm-pin-matrix.test.ts` | +12/−6 | Count the fork CI's setup-helm site as the ninth | `storagebase-ci.yml:test` is a new, pinned setup-helm site; the census enumerates all of them | no | applied in final gate |
 | S23 | `tests/security/kubernetes-access-callers.test.ts` | +10/−0 | Allow the fork's computed SDK import and the Kafka route's `resolveConnection` call | The census enumerates every such caller repo-wide; these two fork callers are legitimate and named with reasons | no | applied in final gate |
@@ -47,7 +46,6 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S28 | `bin/lib/launcher-utils.mjs` | +2/−0 | Classify `STORAGEBASE_RESOURCE_SEED_PATH` as a path variable | The launcher-utils census requires every `*_PATH` var in `.env.example` be classified; the server reads this one like `SEED_CONFIG_PATH` | no | applied in final gate |
 | S29 | `tests/unit/lib/query-events/sink.test.ts` | +3/−0 | Stub the fork's S2 tap in this upstream sink unit test | S2 arms a second, fork-owned sink; this file's timer-count and warning assertions own only the upstream sink, so the fork tap must not run here | no | applied in final gate |
 | S30 | `bunfig.toml` | +8/−0 | Pin `[install] linker = "hoisted"` | The S5 workspace seam makes bun default to the isolated linker, which breaks upstream dependency-resolution tests that resolve transitive packages (`fzstd`, `ajv-draft-04`) from a symlinked manifest; hoisted is upstream's measured layout | no | applied in final gate |
-| S31 | `tests/unit/lib/query-events/postgres-sink.test.ts` | +3/−0 | Stub the fork's S2/S3 taps in this upstream sink unit test | The taps arm a second, fork-owned sink whose stdout lines would join the `console.log` spy this file asserts on | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 

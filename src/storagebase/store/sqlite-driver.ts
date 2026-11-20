@@ -1,4 +1,5 @@
 import { DEFAULT_STORAGE_SQLITE_PATH } from "@/lib/data-dir";
+import { storagebaseTimers } from "@/storagebase/core/timers";
 import type { SqlDriver } from "./sql-store";
 
 /**
@@ -7,9 +8,14 @@ import type { SqlDriver } from "./sql-store";
  * through better-sqlite3 as a second handle. WAL mode, which the upstream provider turns on,
  * lets the two handles share the file; the busy timeout covers the moments both write.
  *
+ * The handle is held only while the store works: it is opened by a statement and released at the
+ * next macrotask once no statement follows (a flush's batch of appends runs on microtasks, so it
+ * shares one open). A handle held for the life of the process outlived the upstream storage
+ * provider's own close, which on Windows is a database file nobody can move and a test temp
+ * directory whose teardown fails with EBUSY.
+ *
  * The statement surface is the one better-sqlite3 and `bun:sqlite` share (`prepare().run/all`,
- * `exec`, `close`), so the store's SQL is tested against a real SQLite engine in `bun test`, where
- * better-sqlite3 cannot load.
+ * `exec`, `close`), so the store's SQL is tested against a real SQLite engine in `bun test`.
  */
 
 export interface SqliteDatabaseLike {
@@ -18,7 +24,12 @@ export interface SqliteDatabaseLike {
     all(...params: unknown[]): unknown[];
   };
   exec(sql: string): unknown;
-  close(): unknown;
+  /**
+   * `true` is bun:sqlite's "release the file NOW" (it finalizes the statements a bare close would
+   * leave as a zombie connection, see src/lib/db/providers/sql/sqlite-driver.ts); better-sqlite3
+   * closes for real either way and ignores the argument.
+   */
+  close(throwOnError?: boolean): unknown;
 }
 
 export function sqliteDriver(db: SqliteDatabaseLike): SqlDriver {
@@ -30,7 +41,37 @@ export function sqliteDriver(db: SqliteDatabaseLike): SqlDriver {
       return db.prepare(sql).all(...params) as Row[];
     },
     async close() {
-      db.close();
+      db.close(true);
+    },
+  };
+}
+
+/** A driver over a handle `open` makes on demand and releases once idle (see the module docblock). */
+function idleClosingDriver(open: () => SqliteDatabaseLike): SqlDriver {
+  let db: SqliteDatabaseLike | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const release = (): void => {
+    timer = undefined;
+    db?.close(true);
+    db = null;
+  };
+  const acquire = (): SqlDriver => {
+    db ??= open();
+    if (timer === undefined) {
+      timer = storagebaseTimers().setTimeout(release, 0);
+      // The idle close must never hold the process open on its own.
+      timer.unref?.();
+    }
+    return sqliteDriver(db);
+  };
+  // Opened at once, so a file that cannot be opened fails the store's open rather than its first write.
+  acquire();
+  return {
+    run: (sql, params) => acquire().run(sql, params),
+    all: (sql, params) => acquire().all(sql, params),
+    async close() {
+      storagebaseTimers().clearTimeout(timer);
+      release();
     },
   };
 }
@@ -45,8 +86,10 @@ export async function openSqliteDriver(dbPath?: string): Promise<SqlDriver> {
   ]);
   const dir = dirname(path);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const db = new Database(path);
-  db.pragma("journal_mode = WAL");
-  db.pragma("busy_timeout = 5000");
-  return sqliteDriver(db as unknown as SqliteDatabaseLike);
+  return idleClosingDriver(() => {
+    const db = new Database(path);
+    db.pragma("journal_mode = WAL");
+    db.pragma("busy_timeout = 5000");
+    return db as unknown as SqliteDatabaseLike;
+  });
 }

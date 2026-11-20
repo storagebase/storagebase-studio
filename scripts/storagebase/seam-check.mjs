@@ -185,7 +185,11 @@ function forkChangesAgainst(base) {
 
 /** The paths that exist at `base`, from one `ls-tree` walk rather than a cat-file probe per path. */
 function basePaths(base) {
-  return new Set(git(["ls-tree", "-r", "--name-only", base]).split("\n").filter((line) => line !== ""));
+  return new Set(
+    git(["ls-tree", "-r", "--name-only", base])
+      .split("\n")
+      .filter((line) => line !== ""),
+  );
 }
 
 /** Upstream churn per ledger file: commits touching it on the upstream ref in the last 60 days. */
