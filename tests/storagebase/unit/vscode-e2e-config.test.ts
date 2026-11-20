@@ -1,8 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-// @ts-expect-error -- a plain .mjs script with no declaration file, like the other scripts/storagebase tests import.
 import { forkConfigurations, VSCODE_EXTENSION_DIR } from "../../../scripts/storagebase/vscode-e2e-config.mjs";
-// @ts-expect-error -- upstream's .mjs test-cli configuration, read as data only.
 import { configurationsFor } from "../../../vscode-extension/.vscode-test.mjs";
 
 /**
@@ -65,7 +63,7 @@ describe("forkConfigurations", () => {
         workspaceFolder: "test/e2e-workspace/fixture",
         launchArgs: ["--user-data-dir=/elsewhere"],
       },
-    ]);
+    ] as unknown as ReturnType<typeof configurationsFor>);
     expect(result[0].launchArgs).toEqual(["--user-data-dir=/elsewhere"]);
     expect(result[0].workspaceFolder).toBe(join(EXTENSION_DIR, "test/e2e-workspace/fixture"));
     expect(result[0].files).toBe("../../vscode-extension/out/a.test.js");

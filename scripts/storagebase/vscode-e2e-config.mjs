@@ -23,7 +23,9 @@ export function forkConfigurations(configs, { platform, configDir, extensionDir,
       // A glob is forward-slashed on every platform, Windows included.
       files: relative(configDir, join(extensionDir, config.files)).replaceAll("\\", "/"),
       extensionDevelopmentPath: extensionDir,
-      ...(config.workspaceFolder === undefined ? {} : { workspaceFolder: resolve(extensionDir, config.workspaceFolder) }),
+      ...(config.workspaceFolder === undefined
+        ? {}
+        : { workspaceFolder: resolve(extensionDir, config.workspaceFolder) }),
       launchArgs: platform === "darwin" && !named ? [...launchArgs, `--user-data-dir=${userDataDir()}`] : launchArgs,
     };
   });
