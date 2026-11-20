@@ -22,6 +22,7 @@ All fork value lives in files upstream does not have. Every rule below serves th
   `src/app/(storagebase)/**` (pages), `src/app/api/sb/**` (API routes), `tests/storagebase/**`
   (tests), `docs/storagebase/**` (docs), `packages/storagebase-deps` (fork npm deps),
   `scripts/storagebase/**`, `deploy/storagebase/**`, `.github/workflows/storagebase-*.yml`,
+  `vscode-extension/.vscode-test.storagebase.mjs` (a `--config` file test-cli must find beside the extension),
   plus the fork docs at the root (`STORAGEBASE.md`, `SEAMS.md`, `REFORK_ANALYSIS.md`).
   Upstream can never collide with any of these paths.
 - **P2 — Upstream files are touched only through registered seams.** A seam is an edit to an upstream
