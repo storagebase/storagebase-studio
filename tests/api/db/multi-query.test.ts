@@ -192,6 +192,81 @@ describe("POST /api/db/multi-query", () => {
     expect(data.fields).toBeDefined();
   });
 
+  // #2271: the script's last successful statement is the main result, even with no rows.
+  test("a script ending in an empty SELECT shows that statement, not the rows before it (#2271)", async () => {
+    let call = 0;
+    (mockProvider.query as ReturnType<typeof mock>).mockImplementation(async () => {
+      call++;
+      return call === 1
+        ? { rows: [{ id: 1 }], fields: ["id"], rowCount: 1, executionTime: 5 }
+        : { rows: [], fields: ["n"], rowCount: 0, executionTime: 5 };
+    });
+
+    const req = createMockRequest("/api/db/multi-query", {
+      method: "POST",
+      body: { connection: validConnection, sql: "SELECT id FROM t; SELECT n FROM u WHERE 1 = 0" },
+    });
+
+    const data = await parseResponseJSON<{
+      rows: unknown[];
+      fields: string[];
+      rowCount: number;
+      statements: { status: string }[];
+    }>(await POST(req as never));
+
+    expect(data.rows).toEqual([]);
+    expect(data.fields).toEqual(["n"]);
+    expect(data.rowCount).toBe(0);
+    expect(data.statements).toHaveLength(2);
+    expect(data.statements.every((s) => s.status === "success")).toBe(true);
+  });
+
+  test("keeps the last statement's columns when every statement of the script is empty (#2271)", async () => {
+    let call = 0;
+    (mockProvider.query as ReturnType<typeof mock>).mockImplementation(async () => {
+      call++;
+      return call === 1
+        ? { rows: [], fields: ["a"], rowCount: 0, executionTime: 5 }
+        : { rows: [], fields: ["n"], rowCount: 0, executionTime: 5 };
+    });
+
+    const req = createMockRequest("/api/db/multi-query", {
+      method: "POST",
+      body: { connection: validConnection, sql: "SELECT a FROM x WHERE 1 = 0; SELECT n FROM b WHERE 1 = 0" },
+    });
+
+    const data = await parseResponseJSON<{ rows: unknown[]; fields: string[]; rowCount: number }>(
+      await POST(req as never),
+    );
+
+    expect(data.rows).toEqual([]);
+    expect(data.fields).toEqual(["n"]);
+    expect(data.rowCount).toBe(0);
+  });
+
+  test("a script ending in a write shows the write's count, not the SELECT before it (#2271)", async () => {
+    let call = 0;
+    (mockProvider.query as ReturnType<typeof mock>).mockImplementation(async () => {
+      call++;
+      return call === 1
+        ? { rows: [{ id: 1 }], fields: ["id"], rowCount: 1, executionTime: 5 }
+        : { rows: [], fields: [], rowCount: 7, executionTime: 5 };
+    });
+
+    const req = createMockRequest("/api/db/multi-query", {
+      method: "POST",
+      body: { connection: validConnection, sql: "SELECT id FROM t; UPDATE t SET a = 1" },
+    });
+
+    const data = await parseResponseJSON<{ rows: unknown[]; fields: string[]; rowCount: number }>(
+      await POST(req as never),
+    );
+
+    expect(data.rows).toEqual([]);
+    expect(data.fields).toEqual([]);
+    expect(data.rowCount).toBe(7);
+  });
+
   // `JSON.stringify` writes NaN and both infinities as `null`; the main result and the
   // statement it came from both carry them as words.
   test("answers NaN and the infinities as words on the main result and its statement", async () => {
@@ -254,8 +329,8 @@ describe("POST /api/db/multi-query", () => {
     expect(data.statements[1].columnTypes).toEqual({ id: "INTEGER" });
   });
 
-  test("the main result carries the channels of the statement whose rows it shows", async () => {
-    // The main result is the last statement that returned rows, so those rows and
+  test("the main result carries the channels of the statement it shows", async () => {
+    // The main result is the last successful statement, so its rows and
     // these notices come from the same run. Merging every statement's warnings
     // would attribute one statement's notice to another's rows.
     let call = 0;
@@ -716,7 +791,10 @@ describe("POST /api/db/multi-query", () => {
       expect(executed()).toEqual(["SELECT 1; DELETE FROM t"]);
     });
 
-    test("a batch with several result sets shows the last one with rows", async () => {
+    test.each<[string, unknown[], number]>([
+      ["empty", [], 0],
+      ["with rows", [{ c: 4 }, { c: 5 }, { c: 6 }], 3],
+    ])("a batch with several result sets shows the last one, %s (#2286)", async (_label, lastRows, rowCount) => {
       (mockProvider.query as ReturnType<typeof mock>).mockImplementation(async () => ({
         rows: [{ a: 1 }],
         fields: ["a"],
@@ -725,7 +803,7 @@ describe("POST /api/db/multi-query", () => {
         resultSets: [
           { rows: [{ a: 1 }], fields: ["a"] },
           { rows: [{ b: 2 }, { b: 3 }], fields: ["b"], columnTypes: { b: "int" } },
-          { rows: [], fields: ["c"] },
+          { rows: lastRows, fields: ["c"], columnTypes: { c: "int" } },
         ],
       }));
       const req = createMockRequest("/api/db/multi-query", {
@@ -737,13 +815,40 @@ describe("POST /api/db/multi-query", () => {
         rows: unknown[];
         fields: string[];
         rowCount: number;
+        columnTypes?: Record<string, string>;
         statements: { columnTypes?: Record<string, string> }[];
       }>(await POST(req as never));
 
-      expect(data.rows).toEqual([{ b: 2 }, { b: 3 }]);
-      expect(data.fields).toEqual(["b"]);
-      expect(data.rowCount).toBe(2);
-      expect(data.statements[0].columnTypes).toEqual({ b: "int" });
+      expect(data.rows).toEqual(lastRows);
+      expect(data.fields).toEqual(["c"]);
+      expect(data.rowCount).toBe(rowCount);
+      expect(data.columnTypes).toEqual({ c: "int" });
+      expect(data.statements[0].columnTypes).toEqual({ c: "int" });
+    });
+
+    test("a batch ending in a write still shows its last result set (#2286)", async () => {
+      (mockProvider.query as ReturnType<typeof mock>).mockImplementation(async () => ({
+        rows: [{ a: 1 }],
+        fields: ["a"],
+        rowCount: 1,
+        executionTime: 1,
+        resultSets: [
+          { rows: [{ a: 1 }], fields: ["a"] },
+          { rows: [], fields: ["c"], columnTypes: { c: "int" } },
+        ],
+      }));
+      const req = createMockRequest("/api/db/multi-query", {
+        method: "POST",
+        body: { connection: mssql, sql: "SELECT 1 AS a; SELECT c FROM empty; DELETE FROM t" },
+      });
+
+      const data = await parseResponseJSON<{ rows: unknown[]; fields: string[]; rowCount: number }>(
+        await POST(req as never),
+      );
+
+      expect(data.rows).toEqual([]);
+      expect(data.fields).toEqual(["c"]);
+      expect(data.rowCount).toBe(0);
     });
 
     test.each<[string, Record<string, unknown>, number]>([

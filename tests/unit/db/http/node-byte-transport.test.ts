@@ -110,6 +110,11 @@ describe("refusals when the transport is built", () => {
       { requestHeaderNames: ["authorization"] },
       "Invalid requestHeaderNames: authorization is set by the transport or the connection",
     ],
+    [
+      "a per-request __proto__ next to a connection __proto__",
+      { headers: JSON.parse('{"__proto__":"x"}'), requestHeaderNames: ["__proto__"] },
+      "Invalid requestHeaderNames: __proto__ is set by the transport or the connection",
+    ],
   ] as const)("%s", async (_label, extra, sentence) => {
     const listener = await rawHttpListener(OK);
     let error: Error | undefined;
@@ -180,6 +185,27 @@ describe("the connection headers meet the rule a request's own headers meet, whe
     const listener = await rawHttpListener(OK);
     await connect(listener, { headers: { "x-tenant": "t1", "x-long": "a".repeat(1024) } }).request(get("/b/k"));
     expect(lines(listener.heads[0])).toEqual(expect.arrayContaining(["x-tenant: t1", `x-long: ${"a".repeat(1024)}`]));
+  });
+
+  test("a header named __proto__ is sent, and never dropped", async () => {
+    const listener = await rawHttpListener(OK);
+    await connect(listener, { headers: JSON.parse('{"__proto__":"x","x-a":"1"}') }).request(get("/b/k"));
+    expect(lines(listener.heads[0])).toEqual([
+      "GET /b/k HTTP/1.1",
+      "__proto__: x",
+      "x-a: 1",
+      `host: 127.0.0.1:${listener.port}`,
+      "accept-encoding: identity",
+      "Connection: keep-alive",
+    ]);
+  });
+
+  test("__proto__ in two spellings is refused like any other name, and no socket is opened", async () => {
+    const listener = await rawHttpListener(OK);
+    const error = refusal(() => connect(listener, { headers: JSON.parse('{"__proto__":"x","__PROTO__":"y"}') }));
+    expect(error).toBeInstanceOf(DatabaseConfigError);
+    expect(error.message).toBe("Invalid headers: __proto__ is named twice");
+    expect(listener.accepted()).toBe(0);
   });
 });
 
@@ -1198,6 +1224,7 @@ describe("the signer at send time", () => {
           host: `127.0.0.1:${listener.port}`,
           "accept-encoding": "identity",
         },
+        body: "",
       },
     ]);
     expect(Object.isFrozen(inputs[0].headers)).toBe(true);
@@ -1311,12 +1338,12 @@ describe("the signer at send time", () => {
     [
       "a line feed in a value",
       () => ({ authorization: "AWS4\nx-injected: 1" }),
-      "Invalid signature headers: the value of authorization must be visible ASCII or space, at most 1024 bytes",
+      "Invalid signature headers: the value of authorization must be visible ASCII or space, at most 8192 bytes",
     ],
     [
-      "a 1025-character value",
-      () => ({ authorization: "a".repeat(1025) }),
-      "Invalid signature headers: the value of authorization must be visible ASCII or space, at most 1024 bytes",
+      "an 8193-character value",
+      () => ({ authorization: "a".repeat(8193) }),
+      "Invalid signature headers: the value of authorization must be visible ASCII or space, at most 8192 bytes",
     ],
     [
       "an array",
@@ -1341,10 +1368,10 @@ describe("the signer at send time", () => {
     expect(listener.accepted()).toBe(0);
   });
 
-  test("a 1024-character value is sent", async () => {
+  test("an 8192-character value is sent", async () => {
     const listener = await rawHttpListener(OK);
-    await connect(listener, { signer: signer(() => ({ authorization: "a".repeat(1024) })) }).request(get("/b/k"));
-    expect(lines(listener.heads[0])).toContain(`authorization: ${"a".repeat(1024)}`);
+    await connect(listener, { signer: signer(() => ({ authorization: "a".repeat(8192) })) }).request(get("/b/k"));
+    expect(lines(listener.heads[0]).includes(`authorization: ${"a".repeat(8192)}`)).toBe(true);
   });
 });
 

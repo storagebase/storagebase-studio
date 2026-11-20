@@ -28,7 +28,7 @@ None of it is a GitHub issue.
 **Sections**
 
 - [SQL statement reading](#sql-statement-reading) — S2-S12 · 9
-- [Drivers and connections](#drivers-and-connections) — D1-D461, U17 · 340
+- [Drivers and connections](#drivers-and-connections) — D1-D466, U17 · 344
 - [Value interpolation](#value-interpolation) — V1
 - [Row editing](#row-editing) — R1–R3 · 3
 - [Studio UI and query execution](#studio-ui-and-query-execution) — X2-X26, U2-U202 · 188
@@ -1187,7 +1187,9 @@ test pins the behaviour that was chosen.
 
 ### D85. The `@/lib/auth` mock is hand-copied across a layer, untyped, and already misses four exports
 
-`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 67 hits, re-measured on 2026-11-18: the StorageBase re-fork ports nine auth-mocking test helpers into `tests/storagebase/`, which is where the count moved from 59 to 67. The breakdown below is the one measured at 54 on 2026-10-17.
+`grep -rl 'mock.module("@/lib/auth"' tests/` returns exactly 69 hits, re-measured on 2026-11-20:
+upstream's 61 (2026-11-15) plus the StorageBase fork's 8 auth-mocking helpers under
+`tests/storagebase/`. The breakdown below is the one measured at 54 on 2026-10-17.
 Twenty of them spread the real module and replace one function (`{ ...realAuth, getSession: mockGetSession }`, the agent routes' pattern).
 Thirty-one write out the same five-key object - `getSession`, `signJWT`, `verifyJWT`, `login`, `logout` - down to the same `mock(async () => "mock-token")` for a token nothing reads, and one of those thirty-one is `tests/helpers/object-edit-route-harness.ts`, a shared harness that could have been the factory and copied the stub instead.
 The remaining three write a shorter stub of their own, two with two keys and one with a single `getSession`.
@@ -1196,6 +1198,8 @@ The count moved from 54 to 55 on 2026-10-29: `tests/api/auth/openshift-callback-
 The count moved from 55 to 56 with `tests/security/ai-prompt-fence.test.ts`, added with the AI route fence work: it is the fifty-sixth, and it is a copy, carrying one key the other stubs lack, `readSession`, because the AI routes read the session through it.
 The count moved from 56 to 58 on 2026-11-03 with `tests/isolated/agent-run-seed-credential.test.ts` and `tests/security/seed-agent-credential-leak.test.ts`, the seed agent credential's tests: both spread the real module and replace only `getSession` and `readSession`, so neither adds a copy of the five-key stub.
 The count moved from 58 to 59 on 2026-11-04 with `tests/api/db/inline-connection-record.test.ts`, which sends every connection route an inline connection that names no provider: it spreads the real module and replaces only `getSession` and `readSession`, so it adds no copy of the five-key stub.
+The count moved from 59 to 60 on 2026-11-15 with `tests/api/db/demoted-seed.test.ts`, which demotes a BigQuery seed from `managed: true` to `managed: false` through `POST /api/db/query`: it spreads the real module and replaces only `getSession` and `readSession`, so it adds no copy of the five-key stub.
+The count moved from 60 to 61 on 2026-11-15 with `tests/api/db/literal-seed-server-identity.test.ts`, which opens the BigQuery and Firestore rows of a seed file read in literal mode through `POST /api/db/query`: it spreads the real module and replaces only `getSession` and `readSession`, so it adds no copy of the five-key stub.
 
 `src/lib/auth.ts` re-exports three names from `src/lib/auth-cookies.ts` that every hand-written stub lacks:
 `resetCookieSecurityWarning`, `readCookieSecureOverride` and `isLoopbackHost`, re-measured 2026-10-30.
@@ -2750,7 +2754,9 @@ There is no session token field, so credentials issued by AWS STS (an access key
 
 Found 2026-10-09 while designing the S3 provider.
 
-**Done when:** a secret-classified session token field signs as `X-Amz-Security-Token`, refused on every other type, with a test that it never reaches an error, a log line or the fingerprint in the clear, measured against a server that issues temporary credentials, and the byte transport's header value cap, 1024 bytes in `src/lib/db/http/node-transport.ts`, admits the token, which STS issues longer than that.
+**Done when:** a secret-classified session token field signs as `X-Amz-Security-Token`, refused on every other type, with a test that it never reaches an error, a log line or the fingerprint in the clear, measured against a server that issues temporary credentials.
+
+The transport half is done: a signer's header values may now be up to 8192 bytes on both transports in `src/lib/db/http/node-transport.ts`, while a request's own stay at 1024, so a session token that STS issues longer than 1024 bytes fits.
 
 ### D263. S3 connections address buckets by path only
 
@@ -3002,15 +3008,6 @@ Writes need a design of their own, because a call made with an IAM credential is
 Found 2026-10-12 while designing the Firestore provider.
 
 **Done when:** a write design is approved (which requests, which confirmation, which audit line, how Security Rules' absence is shown), the closed request table admits exactly those requests, and tests pin each one and every refusal around it.
-
-### D294. The Google credential and token code exists twice
-
-`src/lib/db/providers/sql/bigquery/auth.ts` and `src/lib/db/providers/document/firestore/google-credentials.ts` with `google-token-source.ts` hold the same Google credential parsing, Application Default Credentials chain, grants and token cache, and each provider keeps its own lane pool, because no provider imports from another provider's directory.
-The Firestore half was written with BigQuery's signatures, with the scope, the environment names and the provider label as parameters, so a hoist is a swap of imports.
-
-Found 2026-10-12 while designing the Firestore provider.
-
-**Done when:** one module outside every provider directory holds the Google-generic half and the lane pool, both providers import it with their own scope, environment names and policy, and both providers' tests pass unchanged.
 
 ### D295. Firestore Pipelines are not offered
 
@@ -4535,6 +4532,52 @@ Found 2026-11-06 by the final local check of MCP phase 1 (#2252).
 
 **Done when:** the worker carries a non-finite number across its JSON line and an MCP answer on an on-disk SQLite seed shows `"Infinity"` and `"-Infinity"`, with a test on the worker path and the provider triad kept (`docs/providers/sqlite.md`, `tests/integration/db/sqlite-provider.test.ts`).
 
+### D462. The Sparkplug STORED certificate test reads a one-second window under bun's five-second default
+
+`a STORED certificate names its metric and says its value may be stale (10.1.4)` in `tests/integration/db/sparkplug-provider.test.ts` runs a read with `"seconds":1` against the test broker and sets no timeout of its own, so the broker connect, the subscription, the one-second window and the provider's teardown all share bun's five-second default.
+Measured 2026-11-10 during the 1.3.0 release gate: in a full `bun run test:coverage` run at 12 jobs it failed at 5002.83 ms, and the same file alone passed every test.
+Found 2026-11-10 while cutting 1.3.0.
+
+**Done when:** the test carries a bound sized to its read window plus the connect, as the 7-Zip packaging tests got in #2258, or the setup the window does not measure moves out of the timed test, and the file passes in a full coverage run at the runner's default job count.
+
+### D463. The bearer lane pool exists three times
+
+`src/lib/db/providers/sql/bigquery/transport.ts`, `src/lib/db/providers/document/firestore/transport.ts` and `src/lib/db/providers/sql/snowflake/transport.ts` each keep their own pool of API transports keyed by bearer token: a new token opens a new transport, the old one closes once its in-flight requests end, and `close()` closes every one.
+The shared transport treats `Authorization` as a connection header, which is why each token needs its own transport, and the three copies differ only in small ways, such as Firestore's check that a lane is still owned before it retires.
+The Google credential and token code moved into `src/lib/db/auth`; this pool did not, because it is not Google's and the move was about sign-in.
+
+Found 2026-11-15 while moving BigQuery onto the shared Google auth, as the half of the closed D294 that the move left.
+
+**Done when:** one module outside every provider directory holds the bearer lane pool, the three providers use it, and their lane tests pass unchanged.
+
+### D464. BigQuery's API lanes do not refuse link-local addresses or upgrades
+
+The API transports in `src/lib/db/providers/sql/bigquery/transport.ts` are built with `maxSockets` 8 and no `refusesLinkLocal` or `refusesUpgrade`, while every auth lane of `src/lib/db/auth` refuses upgrades and every auth lane but the metadata one refuses link-local addresses.
+The API origin is `bigquery.googleapis.com`, or the operator's `BIGQUERY_EMULATOR_HOST`.
+`refusesLinkLocal` leaves loopback and private addresses reachable, so the only open question for the emulator lane is whether an emulator at a link-local address must stay reachable; Firestore answered no and sets both flags on its emulator lane too.
+
+Found 2026-11-15 while moving BigQuery onto the shared Google auth.
+
+**Done when:** the Google API lane refuses link-local addresses and `101` answers, the emulator lane's rule is decided and documented in `docs/providers/bigquery.md`, and a transport test pins both.
+
+### D465. The agent credential check reads a terminal-wrapped key differently from the provider
+
+`isServiceAccountKey` in `src/lib/db/factory.ts` parses an `agentPassword` with `JSON.parse` as it is, while the shared Google parser removes line feeds and carriage returns from a JSON text first.
+A service-account key pasted with a raw line break inside a string, as a terminal wraps a long key, is therefore refused as "not a service-account key" for a BigQuery agent, though the same text signs in as the connection's own password.
+
+Found 2026-11-15 while moving BigQuery onto the shared Google auth.
+
+**Done when:** the agent check reads the key the way the provider's parser does, through the shared Google parser or the same normalisation, with a test for a wrapped key on both paths.
+
+### D466. BigQuery's error mapping quotes Google's text with no secret forms
+
+`BigQueryApiError` carries the `error.message` of a BigQuery API answer, and the provider's `mapBigQueryError` in `src/lib/db/providers/sql/bigquery/index.ts` puts it into a `QueryError` or an `AuthenticationError` as it is, without `serverText` and the forms of the connection's credential, which `src/lib/db/utils/server-text.ts` asks of every provider.
+The token refusals of the shared Google auth already pass `serverText`; the API answers do not.
+
+Found 2026-11-15 while moving BigQuery onto the shared Google auth.
+
+**Done when:** BigQuery computes its credential's forms once at connect with `googleCredentialSecrets` and `secretForms`, every API error text passes `serverText` before a sentence is built from it, and a test shows an answer that echoes the key or token withheld.
+
 ## Value interpolation
 
 ### V1. Query history records the placeholders, not the values that were bound
@@ -5919,7 +5962,7 @@ Found 2026-10-07 by the external review of the result column names fix; pre-exis
 
 ### U96. A statement that returns several result sets shows only its first, and nothing says others came back
 
-`QueryResult.resultSets` (`src/lib/types.ts`) carries every set a text produced, and `shownSet` in `src/app/api/db/multi-query/route.ts` shows the last set with rows, but only for a unit the script splitter made of several statements.
+`QueryResult.resultSets` (`src/lib/types.ts`) carries every set a text produced, and `shownSet` in `src/app/api/db/multi-query/route.ts` shows the last set, empty or not (#2286), but only for a unit the script splitter made of several statements.
 One statement that returns several sets is shown by its first: on SQL Server an `EXEC` of a procedure that selects twice, and `POST /api/db/query` drops the rest through `firstResultSet` (`src/lib/api/first-result-set.ts`).
 A batch run while a transaction is open goes through `queryInTransaction` in `src/lib/db/providers/sql/mssql.ts`, which reads only `result.recordset`, so `SELECT 1; SELECT 2` shows the first set there while the same text outside a transaction shows the last.
 The other sets ran, and the grid gives no sign that they exist; a MySQL `CALL` that selects twice answers the same way once its sets are read (#1575).
@@ -6327,7 +6370,7 @@ Found 2026-10-12 while designing the Snowflake provider.
 
 ### U138. A result cut inside a script gets no limited badge
 
-The multi-query route in `src/app/api/db/multi-query/route.ts` builds a script's main result from the last result with rows, carrying its warnings and column types but no `pagination`.
+The multi-query route in `src/app/api/db/multi-query/route.ts` builds a script's main result from the last successful statement (#2271), carrying its warnings and column types but no `pagination`.
 So a result the provider cut inside a script gets neither the grid's limited badge nor the export menu's cut sentence, only the provider's own warning.
 
 Found 2026-10-12 while designing the Snowflake provider.
@@ -7747,6 +7790,7 @@ Not fixed there: the etcd PR touches no other script.
 Re-measured 2026-10-07 with the operator seed sources in place: the seed file read in `src/lib/seed/sources/file.ts` and DuckDB's `getDatabasePath` are no longer reported, and `src/lib/data-dir.ts` now is, twice.
 Re-measured 2026-10-16 on the governance branch (#1785) with `main` merged in: seven warnings, the five above, the read in `src/lib/data-dir.ts` reported once more as a file pattern that matches 14,846 files, and `readFileSync` of the application default credentials in `src/lib/db/providers/sql/bigquery/auth.ts`, which the BigQuery provider (#1672) added.
 No file of the governance mode is reported.
+Re-measured 2026-11-15 on the branch that moved BigQuery onto the shared Google auth: six warnings, `resolveAgentLedgerDirectory` in `src/lib/agent/config.ts`, `canonicalPath` in `src/lib/data-dir.ts` twice and `reservedStoragePaths` there once, `getDatabasePath` in `src/lib/db/providers/sql/sqlite.ts` and `kubernetesLogin` in `src/lib/seed/vault-client.ts`; the BigQuery read of the application default credentials is no longer reported, since `src/lib/db/providers/sql/bigquery/auth.ts` is gone and its successor reads through `src/lib/db/providers/sql/bigquery/credential-policy.ts`, which Turbopack does not report; only the warnings were counted, and the trace count below was not re-measured.
 The trace of `/api/db/query` then lists 2,662 project files outside `node_modules` and `.next`, `src/`, `tests/`, `operator/`, `research/` and `docs/` among them, and `scripts/lib/prune-standalone-payload.sh` removes only what its deny-list names, so a payload built from the committed tree still carries `operator/`, `CONTRIBUTORS.md` and the seven translated READMEs into the release tarball the `npx` launcher downloads.
 Measured 2026-10-01 on a build of the committed tree, when the five warnings were those reported before the re-measure above, the seed file read and DuckDB's `getDatabasePath` among them: marking those five calls `/*turbopackIgnore: true*/` in a scratch copy removed all five warnings and cut that trace to one project file, `seed-assets/sqlite/employee.db`.
 The warnings are printed on every run of the required check, where a sixth is easy to miss; `main`'s CI printed the same five on 2026-10-01.

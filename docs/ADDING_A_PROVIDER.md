@@ -142,7 +142,17 @@ A `signer` is called once per request just before it is written, with the exact 
 Its connection headers meet the rule a request's own headers meet, so `authorization` comes from the signer alone.
 It never reaches a link-local address or AWS's IPv6 instance metadata address, whatever `DB_HTTP_BLOCK_PRIVATE_HOSTS` says.
 `createNodeTransport` takes both of the byte transport's refusals on request, each off when absent: `refusesLinkLocal: true` keeps a text transport off those addresses the same way, a literal when the transport is built and a DNS answer at the lookup, and `refusesUpgrade: true` fails a 101 answer at once instead of leaving the request to its deadline.
+It also takes the byte transport's `signer`, off when absent: the signer is handed the exact method, Host, path, query, headers and payload text of each POST or GET just before it is written, and the transport then sets Host itself, so the Host signed is the Host sent.
+A signer's header values may be up to 8192 bytes, so an AWS session token fits, while a request's own headers stay at 1024.
+`jsonContentType` picks the type a JSON body is sent under: one of `application/json` (the default when absent), `application/x-amz-json-1.0` or `application/x-amz-json-1.1`, and any other value is refused when the transport is built.
+A connection header named in two spellings is refused, as the byte transport refuses one.
 The older HTTP providers keep their own transports until D37 in [`BACKLOG.md`](BACKLOG.md) moves them.
+
+**Sign in to a cloud through `src/lib/db/auth`.**
+A provider that signs in to a cloud service with a credential (Google's token endpoint or metadata server) uses the shared layer described in [`DB_AUTH.md`](DB_AUTH.md) and never writes a second copy of its mechanism.
+It declares a rules object in its own `credential-policy.ts`: the kinds it accepts, its quota-project rule, and its server-identity gate, an opt-in variable ending in `_SERVER_CREDENTIALS` with its three refusal sentences (`unmanaged`, `literalSeedFile`, `withoutOptIn`).
+It resolves the connection's credential with `resolveGoogleCredential`, builds a token source with `createGoogleTokenSource` over its own transport factory, and feeds `googleCredentialSecrets` to `secretForms` for its error mapping.
+A new server-identity opt-in also needs its row in `src/lib/governance/preflight.ts`, which `tests/unit/lib/governance/preflight.test.ts` holds.
 
 **Send gRPC calls through the shared gRPC transport.**
 A new provider that speaks gRPC opens its channel with `openGrpcChannel` in [`channel.ts`](../src/lib/db/grpc/channel.ts) and reads its SSL / TLS panel with `readGrpcTlsPanel` and `grpcTlsIdentity` in [`tls.ts`](../src/lib/db/grpc/tls.ts), so its adapter holds only its RPC table, descriptor, metadata and error mapping.

@@ -368,6 +368,28 @@ export interface WithTunnelFarEnd {
   readonly [TUNNEL_FAR_END]?: TunnelFarEnd;
 }
 
+/**
+ * Marks a connection of a seed file read in literal mode (SEED_LITERAL_VALUES on). That mode exists for a seed file a
+ * platform writes from data its users control, so on such a row `managed: true` does not mean the server side wrote
+ * the credential text, and the row is not server-written (`isServerWritten` in
+ * `src/lib/db/auth/server-identity-gate.ts`): it never signs in with the server's own cloud identity.
+ *
+ * Set in one place, `projectOperatorEntries` in `src/lib/seed/index.ts`, beside `literal`; never on a discovered or
+ * governed row, which carry `literal` too, nor on a built-in sample. Read by `isServerWritten`, and framed in the
+ * provider cache key (`credentialDigest` in `src/lib/db/provider-cache-key.ts`).
+ *
+ * A symbol key on the footing of {@link TUNNEL_FAR_END}: `JSON.parse` never produces one, so no seed file, request
+ * body or stored connection can carry it, `JSON.stringify` drops it from every response, and the three maps over
+ * `keyof DatabaseConnection` never see it. An object spread keeps it, so it survives every copy on the way to a
+ * provider.
+ */
+export const LITERAL_SEED_FILE: unique symbol = Symbol("libredb.literalSeedFile");
+
+/** Carries {@link LITERAL_SEED_FILE} alongside a connection, deliberately not a field of `DatabaseConnection`. */
+export interface WithLiteralSeedFile {
+  readonly [LITERAL_SEED_FILE]?: true;
+}
+
 export interface DatabaseConnection {
   id: string;
   name: string;
@@ -934,8 +956,9 @@ export interface QueryResult {
    * and `columnTypes` above stay the first set's, as they always were. **Absent** for a text
    * with one result set or none.
    *
-   * The multi-statement route reads it to show a batch's last result with rows, the same
-   * rule it applies across a script's statements; `POST /api/db/query` and `POST /api/db/transaction` do not send it.
+   * The multi-statement route reads it to show a batch's last result set, empty or not
+   * (#2286) - the same rule a script's statements follow (#2271). `POST /api/db/query` and
+   * `POST /api/db/transaction` do not send it.
    */
   resultSets?: QueryResultSet[];
 }
