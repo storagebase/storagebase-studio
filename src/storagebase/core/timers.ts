@@ -7,7 +7,7 @@
  * a fork store's idle close. In production the two pairs are the same.
  */
 
-export const PINNED_TIMERS_KEY = Symbol.for("storagebase.auditTimers");
+const PINNED_TIMERS_KEY = Symbol.for("storagebase.auditTimers");
 
 export interface StoragebaseTimers {
   setTimeout: typeof setTimeout;

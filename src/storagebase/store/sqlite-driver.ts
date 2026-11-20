@@ -55,7 +55,7 @@ function idleClosingDriver(open: () => SqliteDatabaseLike): SqlDriver {
     db?.close(true);
     db = null;
   };
-  const use = (): SqlDriver => {
+  const acquire = (): SqlDriver => {
     db ??= open();
     if (timer === undefined) {
       timer = storagebaseTimers().setTimeout(release, 0);
@@ -65,10 +65,10 @@ function idleClosingDriver(open: () => SqliteDatabaseLike): SqlDriver {
     return sqliteDriver(db);
   };
   // Opened at once, so a file that cannot be opened fails the store's open rather than its first write.
-  use();
+  acquire();
   return {
-    run: (sql, params) => use().run(sql, params),
-    all: (sql, params) => use().all(sql, params),
+    run: (sql, params) => acquire().run(sql, params),
+    all: (sql, params) => acquire().all(sql, params),
     async close() {
       storagebaseTimers().clearTimeout(timer);
       release();
