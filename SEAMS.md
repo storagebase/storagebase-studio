@@ -47,6 +47,7 @@ file is produced by tooling (`bun install`), never hand-resolved.
 | S28 | `bin/lib/launcher-utils.mjs` | +2/−0 | Classify `STORAGEBASE_RESOURCE_SEED_PATH` as a path variable | The launcher-utils census requires every `*_PATH` var in `.env.example` be classified; the server reads this one like `SEED_CONFIG_PATH` | no | applied in final gate |
 | S29 | `tests/unit/lib/query-events/sink.test.ts` | +3/−0 | Stub the fork's S2 tap in this upstream sink unit test | S2 arms a second, fork-owned sink; this file's timer-count and warning assertions own only the upstream sink, so the fork tap must not run here | no | applied in final gate |
 | S30 | `bunfig.toml` | +8/−0 | Pin `[install] linker = "hoisted"` | The S5 workspace seam makes bun default to the isolated linker, which breaks upstream dependency-resolution tests that resolve transitive packages (`fzstd`, `ajv-draft-04`) from a symlinked manifest; hoisted is upstream's measured layout | no | applied in final gate |
+| S31 | `tests/unit/lib/query-events/postgres-sink.test.ts` | +3/−0 | Stub the fork's S2/S3 taps in this upstream sink unit test | The taps arm a second, fork-owned sink whose stdout lines would join the `console.log` spy this file asserts on | no | applied in final gate |
 
 ## Explicitly not seams (the old fork edited them; this fork must not)
 

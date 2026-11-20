@@ -16,6 +16,9 @@ import { queryEventInput, startInTheFuture } from "../../../helpers/governance/q
 
 const realPg = await import("pg");
 mock.module("pg", () => ({ Pool: FakePool, Client: realPg.Client, types: realPg.types }));
+// StorageBase fork (SEAMS.md S31): S2's tap arms a second, fork-owned sink whose stdout line would
+// join the upstream lines this file asserts on; this unit owns only the upstream sink.
+mock.module("@/storagebase/core/seams", () => ({ storagebaseQueryTap: () => {}, storagebaseAuditTap: () => {} }));
 
 const { queryEventSinkState, recordQueryEvent, resetQueryEventSink } = await import("@/lib/query-events/sink");
 const { queryEventBackoffMs } = await import("@/lib/query-events/postgres-sink");
