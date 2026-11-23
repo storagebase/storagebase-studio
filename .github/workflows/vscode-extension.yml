@@ -159,6 +159,6 @@ jobs:
           key: vscode-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vscode-extension/test/vscode-versions.json') }}
 
       - name: E2e smoke subset on the floor and stable builds
-        run: npm run test:e2e
+        run: npm run test:e2e -- --config .vscode-test.storagebase.mjs
         env:
           LIBREDB_E2E_SUBSET: smoke

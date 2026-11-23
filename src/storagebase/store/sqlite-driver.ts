@@ -1,5 +1,4 @@
 import { DEFAULT_STORAGE_SQLITE_PATH } from "@/lib/data-dir";
-import { storagebaseTimers } from "@/storagebase/core/timers";
 import type { SqlDriver } from "./sql-store";
 
 /**
@@ -8,11 +7,13 @@ import type { SqlDriver } from "./sql-store";
  * through better-sqlite3 as a second handle. WAL mode, which the upstream provider turns on,
  * lets the two handles share the file; the busy timeout covers the moments both write.
  *
- * The handle is held only while the store works: it is opened by a statement and released at the
- * next macrotask once no statement follows (a flush's batch of appends runs on microtasks, so it
- * shares one open). A handle held for the life of the process outlived the upstream storage
- * provider's own close, which on Windows is a database file nobody can move and a test temp
- * directory whose teardown fails with EBUSY.
+ * The handle lives for ONE statement: opened, used and closed inside the same synchronous call
+ * (better-sqlite3 is synchronous), so it is never open across an await and nothing that awaits
+ * the store, or anything else, can observe it. A handle held for the life of the process outlived
+ * the upstream storage provider's own close, which on Windows is a database file nobody can move
+ * and a test temp directory whose teardown fails with EBUSY; one released a macrotask later still
+ * left a gap a teardown could land in. An open costs about 2 ms, and the store's statements are
+ * few: an append per audit event, a handful per admin page.
  *
  * The statement surface is the one better-sqlite3 and `bun:sqlite` share (`prepare().run/all`,
  * `exec`, `close`), so the store's SQL is tested against a real SQLite engine in `bun test`.
@@ -46,33 +47,23 @@ export function sqliteDriver(db: SqliteDatabaseLike): SqlDriver {
   };
 }
 
-/** A driver over a handle `open` makes on demand and releases once idle (see the module docblock). */
-function idleClosingDriver(open: () => SqliteDatabaseLike): SqlDriver {
-  let db: SqliteDatabaseLike | null = null;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const release = (): void => {
-    timer = undefined;
-    db?.close(true);
-    db = null;
+/** A driver that opens a handle per statement and closes it before returning (see the module docblock). */
+function perStatementDriver(open: () => SqliteDatabaseLike): SqlDriver {
+  const once = <T>(statement: (driver: SqlDriver) => Promise<T>): Promise<T> => {
+    const db = open();
+    // better-sqlite3 runs the statement synchronously inside `statement`, so the close below follows it
+    // in the same call; the promise only carries the already-settled result.
+    const result = statement(sqliteDriver(db));
+    db.close(true);
+    return result;
   };
-  const acquire = (): SqlDriver => {
-    db ??= open();
-    if (timer === undefined) {
-      timer = storagebaseTimers().setTimeout(release, 0);
-      // The idle close must never hold the process open on its own.
-      timer.unref?.();
-    }
-    return sqliteDriver(db);
-  };
-  // Opened at once, so a file that cannot be opened fails the store's open rather than its first write.
-  acquire();
+  // Opened (and closed) at once, so a file that cannot be opened fails the store's open rather
+  // than its first write.
+  open().close(true);
   return {
-    run: (sql, params) => acquire().run(sql, params),
-    all: (sql, params) => acquire().all(sql, params),
-    async close() {
-      storagebaseTimers().clearTimeout(timer);
-      release();
-    },
+    run: (sql, params) => once((driver) => driver.run(sql, params)),
+    all: (sql, params) => once((driver) => driver.all(sql, params)),
+    async close() {},
   };
 }
 
@@ -86,7 +77,7 @@ export async function openSqliteDriver(dbPath?: string): Promise<SqlDriver> {
   ]);
   const dir = dirname(path);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  return idleClosingDriver(() => {
+  return perStatementDriver(() => {
     const db = new Database(path);
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
