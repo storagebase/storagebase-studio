@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { forkConfigurations, VSCODE_EXTENSION_DIR } from "../../../scripts/storagebase/vscode-e2e-config.mjs";
-import { configurationsFor } from "../../../vscode-extension/.vscode-test.mjs";
 
 /**
  * The fork's `vscode-test --config` target for the VS Code smoke job (SEAMS.md S32): upstream's configurations,
@@ -13,7 +12,24 @@ const ROOT = join(import.meta.dirname, "../../..");
 const CONFIG_DIR = join(ROOT, "scripts/storagebase");
 const EXTENSION_DIR = join(ROOT, "vscode-extension");
 
-function adapted(platform: string, configs = configurationsFor({ LIBREDB_E2E_SUBSET: "smoke" })) {
+/**
+ * The smoke subset's shape as vscode-extension/.vscode-test.mjs builds it, written out: importing that
+ * module reaches @vscode/test-electron, which only the extension's own npm install provides, and the
+ * root test job installs the root's dependencies alone.
+ */
+interface Configuration {
+  label: string;
+  version: string;
+  files: string;
+  workspaceFolder?: string;
+  launchArgs?: string[];
+}
+const SMOKE: Configuration[] = [
+  { label: "vscode-1.12", version: "1.12", files: "out/test/e2e/smoke/**/*.test.js" },
+  { label: "vscode-1.14", version: "1.14", files: "out/test/e2e/smoke/**/*.test.js" },
+];
+
+function adapted(platform: string, configs: Configuration[] = SMOKE) {
   let made = 0;
   const result = forkConfigurations(configs, {
     platform,
@@ -33,11 +49,8 @@ describe("forkConfigurations", () => {
   });
 
   test("keeps every upstream configuration, resolving the globs and the extension from the fork's config", () => {
-    const upstream = configurationsFor({ LIBREDB_E2E_SUBSET: "smoke" });
-    const { result } = adapted("linux", upstream);
-    expect(result.map((config: { label: string }) => config.label)).toEqual(
-      upstream.map((config: { label: string }) => config.label),
-    );
+    const { result } = adapted("linux");
+    expect(result.map((config: Configuration) => config.label)).toEqual(["vscode-1.12", "vscode-1.14"]);
     for (const config of result) {
       expect(config.files).toBe("../../vscode-extension/out/test/e2e/smoke/**/*.test.js");
       expect(config.extensionDevelopmentPath).toBe(EXTENSION_DIR);
@@ -63,7 +76,7 @@ describe("forkConfigurations", () => {
         workspaceFolder: "test/e2e-workspace/fixture",
         launchArgs: ["--user-data-dir=/elsewhere"],
       },
-    ] as unknown as ReturnType<typeof configurationsFor>);
+    ]);
     expect(result[0].launchArgs).toEqual(["--user-data-dir=/elsewhere"]);
     expect(result[0].workspaceFolder).toBe(join(EXTENSION_DIR, "test/e2e-workspace/fixture"));
     expect(result[0].files).toBe("../../vscode-extension/out/a.test.js");
